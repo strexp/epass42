@@ -96,7 +96,7 @@ export default defineI18nConfig(() => ({
         policyDefault: 'Open — anyone may apply',
         policyNia: 'Selective — reviewed case by case',
         policyAsManaged: 'Internal — own organisation only',
-        policyStrict: 'Restricted',
+        policyStrict: 'Restricted — by explicit authorisation only',
         statuses: {
           submitted: 'Submitted',
           approved: 'Approved',
@@ -125,7 +125,7 @@ export default defineI18nConfig(() => ({
         dscOwned: 'My AS certificate',
         email: 'Email (optional)',
         notes: 'Notes (optional)',
-        pve: 'Preview',
+        preview: 'Preview',
         previewTitle: 'Masked preview',
         reference: 'Reference',
         statusTitle: 'Request status',

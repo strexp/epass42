@@ -156,126 +156,137 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NCard :title="$t('dsc.applyTitle')">
-      <NText depth="3">{{ $t('dsc.submitHint') }}</NText>
+      <NCard v-if="reference" size="small" :title="$t('dsc.statusTitle')">
+        <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
+        <template #action>
+          <NuxtLink :to="`/dsc/status?reference=${reference}`">
+            <NButton size="small">{{ $t('dsc.query') }}</NButton>
+          </NuxtLink>
+        </template>
+      </NCard>
 
-      <NAlert
-        v-if="jurisdiction?.notice && !noticeDismissed"
-        type="warning"
-        :title="$t('dsc.jurisdictionTitle')"
-        style="margin-top: 12px"
-      >
-        <div>{{ $t('dsc.jurisdictionBody', { mnt: jurisdiction.mnts.join(', ') }) }}</div>
-        <a
-          v-if="jurisdiction.ownDscUrl"
-          :href="jurisdiction.ownDscUrl"
-          target="_blank"
-          rel="noopener"
-          >{{ jurisdiction.ownDscUrl }}</a
+      <template v-else>
+        <NText depth="3">{{ $t('dsc.submitHint') }}</NText>
+
+        <NAlert
+          v-if="jurisdiction?.notice && !noticeDismissed"
+          type="warning"
+          :title="$t('dsc.jurisdictionTitle')"
+          style="margin-top: 12px"
         >
-        <div style="margin-top: 8px">
-          <NButton size="small" @click="noticeDismissed = true">{{ $t('common.confirm') }}</NButton>
-        </div>
-      </NAlert>
-
-      <NDivider>{{ $t('dsc.personalDetails') }}</NDivider>
-      <NForm label-placement="top">
-        <div class="epass42-grid">
-          <NFormItem :label="$t('dsc.documentation')">
-            <NSelect v-model:value="mrz.documentCode" :options="documentTypeOptions" />
-          </NFormItem>
-          <NFormItem label="Document number">
-            <NInput v-model:value="mrz.documentNumber" maxlength="9" />
-          </NFormItem>
-          <NFormItem label="Surname">
-            <NInput v-model:value="mrz.surname" maxlength="39" />
-          </NFormItem>
-          <NFormItem label="Given names">
-            <NInput v-model:value="mrz.givenNames" maxlength="39" />
-          </NFormItem>
-          <NFormItem label="Date of birth (YYMMDD)">
-            <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
-          </NFormItem>
-          <NFormItem label="Sex">
-            <NSelect v-model:value="mrz.sex" :options="sexOptions" />
-          </NFormItem>
-        </div>
-      </NForm>
-
-      <NDivider>{{ $t('dsc.photoSection') }}</NDivider>
-      <PortraitEditor v-model="portrait" />
-      <EmrtdPreview
-        :mrz="previewMrz"
-        :portrait-data-url="portrait?.previewDataUrl ?? null"
-        style="margin-top: 12px"
-      />
-
-      <NDivider>{{ $t('dsc.optionalInfo') }}</NDivider>
-      <NCollapse>
-        <NCollapseItem :title="$t('dsc.contactSection')" name="contact">
-          <NForm label-placement="top">
-            <NFormItem label="Full name"
-              ><NInput v-model:value="fullName" maxlength="70"
-            /></NFormItem>
-            <NFormItem label="Place of birth"
-              ><NInput v-model:value="placeOfBirth" maxlength="35"
-            /></NFormItem>
-            <NFormItem label="Address"><NInput v-model:value="address" maxlength="70" /></NFormItem>
-            <NFormItem label="Telephone"
-              ><NInput v-model:value="telephone" maxlength="35"
-            /></NFormItem>
-          </NForm>
-        </NCollapseItem>
-        <NCollapseItem :title="$t('dsc.notesSection')" name="notes13">
-          <NInput v-model:value="customNotes" type="textarea" maxlength="2048" />
-        </NCollapseItem>
-        <NCollapseItem :title="$t('dsc.notifySection')" name="notify">
-          <div v-for="(person, index) in people" :key="index" class="epass42-grid">
-            <NInput v-model:value="person.name" placeholder="Name" />
-            <NInput v-model:value="person.telephone" placeholder="Telephone" />
-            <NInput v-model:value="person.address" placeholder="Address" />
-            <NInput v-model:value="person.dateRecorded" placeholder="CCYYMMDD" />
+          <div>{{ $t('dsc.jurisdictionBody', { mnt: jurisdiction.mnts.join(', ') }) }}</div>
+          <a
+            v-if="jurisdiction.ownDscUrl"
+            :href="jurisdiction.ownDscUrl"
+            target="_blank"
+            rel="noopener"
+            >{{ jurisdiction.ownDscUrl }}</a
+          >
+          <div style="margin-top: 8px">
+            <NButton size="small" @click="noticeDismissed = true">{{
+              $t('common.confirm')
+            }}</NButton>
           </div>
-          <NButton size="small" style="margin-top: 8px" @click="addPerson">{{
-            $t('dsc.addPerson')
-          }}</NButton>
-        </NCollapseItem>
-        <NCollapseItem :title="$t('dsc.imagesSection')" name="images">
-          <NSpace>
-            <FileField v-model="dg5" accept="image/*" :label="$t('dsc.displayPhoto')" />
-            <FileField v-model="dg7" accept="image/*" :label="$t('dsc.signatureImageOptional')" />
-          </NSpace>
-          <NSpace style="margin-top: 8px">
-            <FileField v-model="dg3" accept=".bin,*" :label="$t('dsc.fingerprints')" />
-            <FileField v-model="dg4" accept=".bin,*" :label="$t('dsc.iris')" />
-          </NSpace>
-        </NCollapseItem>
-      </NCollapse>
+        </NAlert>
 
-      <NDivider />
-      <NForm label-placement="top">
-        <NFormItem :label="$t('dsc.email')"><NInput v-model:value="email" /></NFormItem>
-        <NFormItem :label="$t('dsc.notes')"
-          ><NInput v-model:value="notes" type="textarea"
-        /></NFormItem>
-      </NForm>
+        <NDivider>{{ $t('dsc.personalDetails') }}</NDivider>
+        <NForm label-placement="top">
+          <div class="epass42-grid">
+            <NFormItem :label="$t('dsc.documentation')">
+              <NSelect v-model:value="mrz.documentCode" :options="documentTypeOptions" />
+            </NFormItem>
+            <NFormItem label="Document number">
+              <NInput v-model:value="mrz.documentNumber" maxlength="9" />
+            </NFormItem>
+            <NFormItem label="Surname">
+              <NInput v-model:value="mrz.surname" maxlength="39" />
+            </NFormItem>
+            <NFormItem label="Given names">
+              <NInput v-model:value="mrz.givenNames" maxlength="39" />
+            </NFormItem>
+            <NFormItem label="Date of birth (YYMMDD)">
+              <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
+            </NFormItem>
+            <NFormItem label="Sex">
+              <NSelect v-model:value="mrz.sex" :options="sexOptions" />
+            </NFormItem>
+          </div>
+        </NForm>
+
+        <NDivider>{{ $t('dsc.photoSection') }}</NDivider>
+        <PortraitEditor v-model="portrait" />
+        <EmrtdPreview
+          :mrz="previewMrz"
+          :portrait-data-url="portrait?.previewDataUrl ?? null"
+          style="margin-top: 12px"
+        />
+
+        <NDivider>{{ $t('dsc.optionalInfo') }}</NDivider>
+        <NCollapse>
+          <NCollapseItem :title="$t('dsc.contactSection')" name="contact">
+            <NForm label-placement="top">
+              <NFormItem label="Full name"
+                ><NInput v-model:value="fullName" maxlength="70"
+              /></NFormItem>
+              <NFormItem label="Place of birth"
+                ><NInput v-model:value="placeOfBirth" maxlength="35"
+              /></NFormItem>
+              <NFormItem label="Address"
+                ><NInput v-model:value="address" maxlength="70"
+              /></NFormItem>
+              <NFormItem label="Telephone"
+                ><NInput v-model:value="telephone" maxlength="35"
+              /></NFormItem>
+            </NForm>
+          </NCollapseItem>
+          <NCollapseItem :title="$t('dsc.notesSection')" name="notes13">
+            <NInput v-model:value="customNotes" type="textarea" maxlength="2048" />
+          </NCollapseItem>
+          <NCollapseItem :title="$t('dsc.notifySection')" name="notify">
+            <div v-for="(person, index) in people" :key="index" class="epass42-grid">
+              <NInput v-model:value="person.name" placeholder="Name" />
+              <NInput v-model:value="person.telephone" placeholder="Telephone" />
+              <NInput v-model:value="person.address" placeholder="Address" />
+              <NInput v-model:value="person.dateRecorded" placeholder="CCYYMMDD" />
+            </div>
+            <NButton size="small" style="margin-top: 8px" @click="addPerson">{{
+              $t('dsc.addPerson')
+            }}</NButton>
+          </NCollapseItem>
+          <NCollapseItem :title="$t('dsc.imagesSection')" name="images">
+            <NSpace>
+              <FileField v-model="dg5" accept="image/*" :label="$t('dsc.displayPhoto')" />
+              <FileField v-model="dg7" accept="image/*" :label="$t('dsc.signatureImageOptional')" />
+            </NSpace>
+            <NSpace style="margin-top: 8px">
+              <FileField v-model="dg3" accept=".bin,*" :label="$t('dsc.fingerprints')" />
+              <FileField v-model="dg4" accept=".bin,*" :label="$t('dsc.iris')" />
+            </NSpace>
+          </NCollapseItem>
+        </NCollapse>
+
+        <NDivider />
+        <NForm label-placement="top">
+          <NFormItem :label="$t('dsc.email')"><NInput v-model:value="email" /></NFormItem>
+          <NFormItem :label="$t('dsc.notes')"
+            ><NInput v-model:value="notes" type="textarea"
+          /></NFormItem>
+        </NForm>
+      </template>
 
       <template #action>
-        <NSpace vertical>
-          <NButton type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
-            <template #icon
-              ><NIcon><Send /></NIcon
-            ></template>
-            {{ $t('common.submit') }}
-          </NButton>
-          <NCard v-if="reference" size="small" :title="$t('dsc.statusTitle')">
-            <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
-            <template #action>
-              <NuxtLink :to="`/dsc/status?reference=${reference}`">
-                <NButton size="small">{{ $t('dsc.query') }}</NButton>
-              </NuxtLink>
-            </template>
-          </NCard>
-        </NSpace>
+        <NButton
+          v-if="!reference"
+          type="primary"
+          :loading="submitting"
+          :disabled="!canSubmit"
+          @click="submit"
+        >
+          <template #icon
+            ><NIcon><Send /></NIcon
+          ></template>
+          {{ $t('common.submit') }}
+        </NButton>
       </template>
     </NCard>
   </div>

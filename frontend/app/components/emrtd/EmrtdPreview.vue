@@ -25,7 +25,7 @@ const rows = computed(() => [
 </script>
 
 <template>
-  <NCard :title="$t('dsc.pve')" size="small" data-testid="emrtd-preview">
+  <NCard :title="$t('dsc.preview')" size="small" data-testid="emrtd-preview">
     <div class="emrtd-preview">
       <div class="emrtd-photo">
         <img v-if="portraitDataUrl" :src="portraitDataUrl" alt="" />

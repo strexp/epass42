@@ -39,6 +39,9 @@ const base = computed(() =>
   reference.value ? `/dsc/requests/${reference.value}` : `/dsc/requests/id/${id.value}`,
 )
 
+/** A consumed (claimed) request can no longer be revealed. */
+const consumed = computed(() => Boolean(metadata.value?.consumedAt))
+
 async function lookup(): Promise<void> {
   metadata.value = null
   preview.value = null
@@ -95,7 +98,7 @@ onMounted(() => {
           </NDescriptionsItem>
         </NDescriptions>
         <NAlert
-          v-if="metadata.status === 'approved'"
+          v-if="metadata.status === 'approved' && !consumed"
           type="warning"
           :title="$t('dsc.revealWarningTitle')"
           style="margin-top: 12px"
@@ -103,9 +106,9 @@ onMounted(() => {
           {{ $t('dsc.revealWarning') }}
         </NAlert>
         <div class="epass42-actions" style="margin-top: 12px">
-          <NButton size="small" @click="loadPreview">{{ $t('dsc.previewTitle') }}</NButton>
+          <NButton size="small" @click="loadPreview">{{ $t('dsc.preview') }}</NButton>
           <NButton
-            v-if="metadata.status === 'approved'"
+            v-if="metadata.status === 'approved' && !consumed"
             size="small"
             type="warning"
             @click="reveal"
