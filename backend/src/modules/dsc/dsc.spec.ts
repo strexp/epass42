@@ -435,6 +435,46 @@ describe('M7 DSC signing service', () => {
     expect(response.json().error).toBe('dg2_too_large')
   })
 
+  it('emits empty LDS2 applications only when enabled', async () => {
+    const { app, oidc, db, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    // Default: LDS1 only, no LDS2 section.
+    const first = await submit(app, 'H1111111')
+    const firstId = dsc.getByReference(first)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${firstId}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(artifactText(db, firstId)).not.toMatch(/^@lds2 /m)
+
+    // Enable empty LDS2 applications for Travel Records.
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { lds2: { enabled: true, roles: ['travel'] } },
+    })
+    expect(update.statusCode).toBe(200)
+    expect(update.json().lds2).toEqual({ enabled: true, roles: ['travel'] })
+
+    const second = await submit(app, 'H2222222')
+    const secondId = dsc.getByReference(second)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${secondId}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    const perso = artifactText(db, secondId)
+    expect(perso).toMatch(/^@lds2 travel$/m)
+    expect(perso).toContain('@cardsecurity')
+    expect(perso).not.toMatch(/^@record /m)
+    expect(perso).not.toMatch(/^@transparent /m)
+  })
+
   it('server-sets the MRZ nationality', async () => {
     const { app, dsc } = await harness()
     const response = await app.inject({

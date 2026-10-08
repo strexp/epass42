@@ -34,6 +34,7 @@ import {
   buildPersoSigning,
   mrzExpiry,
   type IssuingDefaults,
+  type Lds2Role,
   type PersoBuildResult,
   type SigningMaterial,
 } from './build'
@@ -41,9 +42,10 @@ import { buildPreview, type RequestPreview } from './preview'
 
 export type SignRequestRow = typeof signRequest.$inferSelect
 
-/** A partial update to the issuing defaults (security may be partial). */
-export type IssuingDefaultsUpdate = Partial<Omit<IssuingDefaults, 'security'>> & {
+/** A partial update to the issuing defaults (nested objects may be partial). */
+export type IssuingDefaultsUpdate = Partial<Omit<IssuingDefaults, 'security' | 'lds2'>> & {
   security?: Partial<SecurityInfoSelection>
+  lds2?: { enabled?: boolean; roles?: Lds2Role[] }
 }
 
 /** Who is submitting the request (may be anonymous). */
@@ -100,6 +102,16 @@ export class DscService {
         overrides.dg2MaxBytes ??
         (extra.dg2MaxBytes as number | undefined) ??
         this.config.issuing.dg2MaxBytes,
+      lds2: {
+        enabled:
+          overrides.lds2?.enabled ??
+          (extra.lds2 as { enabled?: boolean } | undefined)?.enabled ??
+          this.config.issuing.lds2.enabled,
+        roles:
+          overrides.lds2?.roles ??
+          (extra.lds2 as { roles?: IssuingDefaults['lds2']['roles'] } | undefined)?.roles ??
+          this.config.issuing.lds2.roles,
+      },
       endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
       security: {
         ...this.config.issuing.security,

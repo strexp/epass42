@@ -126,6 +126,18 @@ const configSchema = z.object({
        * capacity (16384 B); a larger face is rejected.
        */
       dg2MaxBytes: z.number().int().min(1024).default(16384),
+      /**
+       * LDS2 applications to emit.  Disabled by default (no LDS2 sections); when
+       * enabled the listed roles are emitted as empty applications.
+       */
+      lds2: z
+        .object({
+          enabled: z.boolean().default(false),
+          roles: z
+            .array(z.enum(['travel', 'visa', 'biometrics']))
+            .default(['travel', 'visa', 'biometrics']),
+        })
+        .prefault({}),
       /** Default eMRTD security mechanisms chosen by the administrator. */
       security: z
         .object({

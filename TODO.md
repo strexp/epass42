@@ -134,6 +134,7 @@ pkd42/
 - 结构化请求（无裸 hex）；服务端权威 DG1（issuing state / nationality / 到期日由 settings 计算）。
 - DG2 结构校验 + **16 KiB 上限**（`issuing.dg2MaxBytes`，超限 `413 dg2_too_large`）；DG3/DG4 包装；DG5/DG7；DG11/DG12（发证机构/签发日期/背书由服务端填充）/DG13/DG14/DG15/DG16。
 - 安全机制（PACE/CA/AA）与 DSC 选择为**管理员默认 + 服务端推导**，申请者不配置；服务端生成 AA(RSA-2048)/CA(P-256)，EF.CardAccess/DG14、EF.CardSecurity；EF.SOD 自检；`.perso` 产物（AA/CA 私钥仅存在于产物）。
+- 可选输出**默认空的 LDS2 应用**（`issuing.lds2`，默认关闭）：按 Travel/Visa/Additional Biometrics 生成空应用段，附 PACE+CA 的 EF.CardAccess/EF.CardSecurity 与 CA 标量；CardAccess/Security/CA 位于 Master File，各角色共享同一份。记录/透明 EF 仍为空，留待 M12+。
 - 提交前按登录 ASN 或 IP 路由表（`jurisdiction.routes` / `PKD42_JURISDICTION_ROUTES`）判定管辖；若该 AS 使用自有 DSC 则提示并引导（可忽略继续用 NIA）。
 
 ### M8 交付
@@ -158,11 +159,11 @@ pkd42/
 
 - **card42 宿主侧**：pkd42 生成的 EF.SOD 通过 card42 `PassiveAuthentication`（DSC 链 + 签名 + DG 哈希），CardAccess/CardSecurity 解析正确。
 - **card42 模拟器**：用 pkd42 构建器（card42 CSCA/DSC、样例 MRZ、合规 DG2）生成 perso，`make test-emrtd` 的 `EmrtdBacTest` + `EmrtdPaceIntegrationTest` 全绿（BAC/SM/AA/PA/PACE 3DES+AES）。
-- 遗留：card42 全矩阵需 LDS2 段（pkd42 目前仅输出 LDS1）。
+- **card42 LDS2**：启用 `issuing.lds2` 的产物被 card42 `EmrtdPersoExporter` 正确解析（FF03 CA 标量 + 011C/011D），Travel 应用可建 PACE、读出 CardAccess/CardSecurity。card42 `EmrtdLds2*` 套件按样例假定存在记录，对“默认空”不适用；其 `EmrtdChipAuthIntegrationTest` 在本机对样例 perso 亦不稳定（环境相关）。
 
 ### 已知遗留
 
-- LDS2 记录/透明 EF 生成（申请者不输入，留待管理员/授权终端，见 M12+）。
+- LDS2 记录/透明 EF 写入（空应用已实现；记录留待管理员/授权终端，见 M12+）。
 - ECDSA（显式 ECParameters）证书。
 - 真实 dn42 IP→AS 管辖自动同步（现为静态路由表）。
 - LDS1 是否应宣告/支持 Chip Authentication（card42 LDS1 仅 PACE+AA）。
@@ -204,7 +205,7 @@ pkd42/
 - [ ] T14.7 交付模式测试：模式 A 申请人领取；模式 B 申请人 `403`、管理员领取；审批覆盖快照。
 - [ ] T14.8 一次性/预取测试：确认页不消费、`POST` 才消费、并发双请求只有一个成功。
 - [ ] T14.9 mask 规则测试；重新生成测试。
-- [ ] T14.10 LDS2 默认空测试；`issuing_profile` 默认值与审批覆盖测试。
+- [x] T14.10 LDS2 默认空测试；`issuing_profile` 默认值与审批覆盖测试。
 - [ ] T14.11 CI 全绿；关键路径覆盖率目标（如 pki ≥ 85%）。
 
 ---

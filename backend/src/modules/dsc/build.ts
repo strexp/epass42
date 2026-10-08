@@ -40,6 +40,9 @@ import {
 import type { SignRequest } from '@pkd42/shared'
 import { AppError } from '@pkd42/shared'
 
+/** The LDS2 roles a document may emit (empty applications by default). */
+export type Lds2Role = 'travel' | 'visa' | 'biometrics'
+
 /** Server-filled issuing fields (defaults + admin overrides). */
 export interface IssuingDefaults {
   issuingState: string
@@ -50,6 +53,8 @@ export interface IssuingDefaults {
   validityYears: number
   /** Maximum DG2 byte size (card42 LDS1 DG2 capacity by default). */
   dg2MaxBytes: number
+  /** Emit empty LDS2 applications for these roles (disabled by default). */
+  lds2: { enabled: boolean; roles: Lds2Role[] }
   endorsements?: string
   /** Default security mechanisms applied when the request omits them. */
   security: SecurityInfoSelection
@@ -243,7 +248,7 @@ export async function buildPersoSigning(
   const hashes = groups.map((group) => ({ number: group.number, hash: sha256(group.bytes) }))
   const sod = await buildSod(hashes, fromBase64Pem(dsc.certPem), dsc.keyPair.privateKey)
 
-  const perso = renderEmrtdScript([
+  const sections: Parameters<typeof renderEmrtdScript>[0] = [
     {
       role: 'lds1',
       documentNumber: request.mrz.documentNumber,
@@ -256,7 +261,42 @@ export async function buildPersoSigning(
       cardAccess,
       cardSecurity,
     },
-  ])
+  ]
+
+  // Optional empty LDS2 applications (disabled by default).  Chip
+  // Authentication material (EF.CardAccess, EF.CardSecurity, CA key) lives in
+  // the shared master file, so it is generated once and reused by every role.
+  if (profile.lds2.enabled && profile.lds2.roles.length > 0) {
+    const lds2Access = buildCardAccess({
+      paceEcdhGm3des: true,
+      paceEcdhGmAes128: false,
+      caEcdh3des: true,
+      caEcdhAes128: false,
+      caKeyId: profile.security.caKeyId,
+      aa: false,
+    })
+    const ca = generateP256KeyPair()
+    const securityObject = buildSecurityObject(lds2Access, ca.spki, profile.security.caKeyId)
+    const lds2CardSecurity = await buildCardSecurity(
+      securityObject,
+      fromBase64Pem(dsc.certPem),
+      dsc.keyPair.privateKey,
+    )
+    for (const role of profile.lds2.roles) {
+      sections.push({
+        role,
+        documentNumber: request.mrz.documentNumber,
+        dateOfBirth: request.mrz.dateOfBirth,
+        dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
+        dataGroups: [],
+        caScalar: ca.scalar,
+        cardAccess: lds2Access,
+        cardSecurity: lds2CardSecurity,
+      })
+    }
+  }
+
+  const perso = renderEmrtdScript(sections)
 
   return {
     perso,

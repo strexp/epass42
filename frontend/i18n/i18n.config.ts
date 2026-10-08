@@ -147,6 +147,11 @@ export default defineI18nConfig(() => ({
         dg13Policy: 'DG13 encoding policy',
         validityYears: 'Document validity (years)',
         dg2MaxBytes: 'Maximum DG2 size (bytes)',
+        lds2Title: 'LDS2 applications',
+        lds2Hint: 'Emit empty LDS2 applications (no records); disabled by default.',
+        lds2Travel: 'Travel records',
+        lds2Visa: 'Visa records',
+        lds2Biometrics: 'Additional biometrics',
         jurisdictionTitle: 'Your AS uses its own Document Signer',
         jurisdictionBody:
           'Traffic from AS{asn} is configured to use its own DSC. Apply through your own network’s DSC service instead; you may still continue here with the NIA DSC.',

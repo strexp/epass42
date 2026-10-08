@@ -76,6 +76,11 @@ validityYears = 10
 # Maximum DG2 (face) size in bytes (card42 LDS1 DG2 capacity).
 dg2MaxBytes = 16384
 
+# LDS2 applications: disabled by default (empty when enabled).
+[issuing.lds2]
+enabled = false
+roles = ["travel", "visa", "biometrics"]
+
 [issuing.security]
 paceEcdhGm3des = true
 paceEcdhGmAes128 = true
