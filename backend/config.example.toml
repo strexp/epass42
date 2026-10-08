@@ -1,0 +1,66 @@
+# pkd42 backend configuration (optional).
+#
+# Values here are the base; environment variables (see .env.example) override
+# them.  Point PKD42_CONFIG at this file, or copy it to `config.toml`.
+
+env = "development"
+host = "127.0.0.1"
+port = 3000
+publicUrl = "http://localhost:3000"
+
+# Enabled roles: any subset of ["pkd", "csca", "dsc"].
+roles = ["pkd", "csca", "dsc"]
+
+databasePath = "./data/pkd42.db"
+runMigrations = true
+
+# Minimum 16 characters.  Must be changed for production.
+sessionSecret = "change-me-to-a-long-random-secret"
+sessionTtlSeconds = 604800
+# Set to true behind HTTPS.
+cookieSecure = false
+logLevel = "info"
+
+# Base64-encoded 32-byte AES-256-GCM key for envelope encryption (M13).
+# encryptionKek = "..."
+
+# Trust X-Forwarded-For from a reverse proxy (configure the proxy allowlist).
+trustProxy = false
+
+[rateLimit]
+max = 120
+windowMs = 60000
+
+[smtp]
+# url = "smtps://user:pass@smtp.example.net:465"
+from = "pkd42 <no-reply@localhost>"
+
+# Administrator maintainers per realm (M4/T4.7).
+[adminMnts]
+csca = ["EXAMPLE-CSCA-MNT"]
+dsc = ["EXAMPLE-DSC-MNT"]
+# Also accept any MNT from the identity's `mnt_by`.
+adminIncludeMntBy = false
+
+# OAuth/OIDC providers.  The `dn42` claim carries the ASN and maintainer data.
+[[oauthProviders]]
+realm = "csca"
+issuer = "https://auth.example.net"
+clientId = "pkd42-csca"
+clientSecret = "replace-me"
+scopes = ["openid", "profile", "email", "dn42"]
+enabled = true
+
+[oauthProviders.claimMap]
+dn42 = "dn42"
+
+[[oauthProviders]]
+realm = "dsc"
+issuer = "https://auth.example.net"
+clientId = "pkd42-dsc"
+clientSecret = "replace-me"
+scopes = ["openid", "profile", "email", "dn42"]
+enabled = true
+
+[oauthProviders.claimMap]
+dn42 = "dn42"

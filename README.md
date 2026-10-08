@@ -12,7 +12,7 @@ pkd42/
 │   ├── pki/       pure functions: X.509/CRL/CMS/SOD/MasterList/data groups/perso
 │   └── shared/    zod schemas, types, error codes and constants (OIDs, country codes)
 ├── scripts/       gen-csca, verify (M2)
-├── backend/       Fastify + TypeScript (M3+, planned)
+├── backend/       Fastify + SQLite/Drizzle (M3–M4)
 ├── frontend/      Nuxt 4 + Naive UI (M11, planned)
 ├── deploy/        docker-compose, OpenLDAP schema (planned)
 └── TODO.md        milestone/task plan
@@ -29,6 +29,19 @@ pkd42/
 pnpm install
 pnpm check          # format:check + lint + typecheck + test
 ```
+
+### Run the backend (M3–M4)
+
+```bash
+cp backend/.env.example backend/.env      # edit as needed
+pnpm --filter @pkd42/backend dev          # or: start
+curl http://127.0.0.1:3000/healthz
+```
+
+Configuration is read from environment variables overlaid on an optional
+`config.toml` (see [`backend/config.example.toml`](backend/config.example.toml)).
+Migrations run automatically at startup (`RUN_MIGRATIONS`) and live in
+`backend/drizzle`.
 
 ### Generate a CSCA (M2)
 
@@ -66,5 +79,9 @@ pnpm --filter @pkd42/scripts exec tsx src/verify.ts \
   data groups, MRZ, SecurityInfo, perso script, verification) — core done;
   ECDSA remains optional.
 - **M2** `scripts/gen-csca` + `scripts/verify` — done.
+- **M3** backend skeleton: Fastify + zod/OpenAPI, SQLite/Drizzle schema and
+  migrations, configuration, logging, health checks — done.
+- **M4** dual-realm OIDC authentication (`/auth/{realm}/login|callback|logout|me`),
+  SQLite sessions, dn42 claim mapping and MNT-based admin authorization — done.
 
 See [`TODO.md`](TODO.md) for the full milestone plan.

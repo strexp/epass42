@@ -4,8 +4,12 @@ packages:
   - 'frontend'
   - 'scripts'
 
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+
+minimumReleaseAgeExclude:
+  - nodemailer@10.0.16
 
 # The workspace is checked explicitly with `pnpm check`; do not re-run a deps
 # status check before every script (it treats ignored optional builds as fatal).

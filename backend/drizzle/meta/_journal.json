@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791436071921,
+      "tag": "0000_little_madelyne_pryor",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791436072229,
+      "tag": "0001_sign-request-mrz",
+      "breakpoints": true
+    }
+  ]
+}

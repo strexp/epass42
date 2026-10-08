@@ -254,14 +254,14 @@ pkd42/
 
 ## 5. M3 — 后端骨架（SQLite）
 
-- [ ] T3.1 Fastify + `fastify-type-provider-zod`，导出 OpenAPI。
-- [ ] T3.2 配置加载（`zod` 校验 env + 可选 `config.toml`）：端口、公开 URL、角色开关、国家码、SMTP、加密 KEK、限流、IP 判定策略。
-- [ ] T3.3 SQLite：`better-sqlite3`（或 `@libsql/client` 本地）；开启 `PRAGMA journal_mode=WAL`、`foreign_keys=ON`、`busy_timeout`。
-- [ ] T3.4 Drizzle ORM + `drizzle-kit` 迁移；表结构见附录 C。
-- [ ] T3.5 模块目录：`src/modules/{auth,pkd,csca,dsc,directory}`、`src/db`、`src/crypto`、`src/jobs`、`src/mail`、`src/audit`。
-- [ ] T3.6 统一错误处理、请求 ID、`pino` 日志。
-- [ ] T3.7 健康检查 `/healthz`、`/readyz`。
-- [ ] T3.8 优雅关闭、迁移自动执行（可开关）。
+- [x] T3.1 Fastify + `fastify-type-provider-zod`，导出 OpenAPI。
+- [x] T3.2 配置加载（`zod` 校验 env + 可选 `config.toml`）：端口、公开 URL、角色开关、国家码、SMTP、加密 KEK、限流、IP 判定策略。
+- [x] T3.3 SQLite：`better-sqlite3`（或 `@libsql/client` 本地）；开启 `PRAGMA journal_mode=WAL`、`foreign_keys=ON`、`busy_timeout`。
+- [x] T3.4 Drizzle ORM + `drizzle-kit` 迁移；表结构见附录 C。
+- [x] T3.5 模块目录：`src/modules/{auth,pkd,csca,dsc,directory}`、`src/db`、`src/crypto`、`src/jobs`、`src/mail`、`src/audit`。
+- [x] T3.6 统一错误处理、请求 ID、`pino` 日志。
+- [x] T3.7 健康检查 `/healthz`、`/readyz`。
+- [x] T3.8 优雅关闭、迁移自动执行（可开关）。
 
 **验收**：`pnpm --filter backend dev` 起服务；`/healthz` 200；迁移生成 `.db` 文件。
 
@@ -269,19 +269,19 @@ pkd42/
 
 ## 6. M4 — 认证与授权（双 realm 多 OAuth）
 
-- [ ] T4.1 抽象 `OAuthProviderConfig`：`realm`（csca|dsc）、`issuer`、`client_id/secret`、`scopes`、`claim_map`、`enabled`。
-- [ ] T4.2 `openid-client` 动态发现 + PKCE + state + nonce；`/auth/{realm}/login`、`/callback`、`/logout`。
-- [ ] T4.3 双 realm 完全隔离：独立 cookie 名（如 `pkd42_csca_sid` / `pkd42_dsc_sid`）、独立 session 表前缀、独立 CSRF scope。
-- [ ] T4.4 session 存储：SQLite 表；cookie `HttpOnly; Secure; SameSite=Lax`；滑动过期。
-- [ ] T4.5 dn42 claim 映射：`asn`、`active_mnt`、`mnt_by`、`route/route6`、`email`、`active_name`；只信任白名单 issuer；缺失时降级。
-- [ ] T4.6 预填：把 claim 暴露到前端表单默认值。
-- [ ] T4.7 授权：
-  - [ ] `CSCA_ADMIN_MNTS` / `DSC_ADMIN_MNTS` 配置（或表）。
-  - [ ] 判定 `active_mnt ∈ 清单`，可选 `mnt_by` 命中。
-  - [ ] 管理接口中间件 + 审计。
-- [ ] T4.8 匿名访问：DSC realm 允许匿名提交（见 M7/M8）。
-- [ ] T4.9 防 CSRF、防开放重定向、防 SSRF（issuer 白名单/预置 discovery 结果）。
-- [ ] T4.10 单测：mock OIDC 完成登录；越权被拒；两 realm 互不影响。
+- [x] T4.1 抽象 `OAuthProviderConfig`：`realm`（csca|dsc）、`issuer`、`client_id/secret`、`scopes`、`claim_map`、`enabled`。
+- [x] T4.2 `openid-client` 动态发现 + PKCE + state + nonce；`/auth/{realm}/login`、`/callback`、`/logout`。
+- [x] T4.3 双 realm 完全隔离：独立 cookie 名（如 `pkd42_csca_sid` / `pkd42_dsc_sid`）、独立 session 表前缀、独立 CSRF scope。
+- [x] T4.4 session 存储：SQLite 表；cookie `HttpOnly; Secure; SameSite=Lax`；滑动过期。
+- [x] T4.5 dn42 claim 映射：`asn`、`active_mnt`、`mnt_by`、`route/route6`、`email`、`active_name`；只信任白名单 issuer；缺失时降级。
+- [x] T4.6 预填：把 claim 暴露到前端表单默认值。
+- [x] T4.7 授权：
+  - [x] `CSCA_ADMIN_MNTS` / `DSC_ADMIN_MNTS` 配置（或表）。
+  - [x] 判定 `active_mnt ∈ 清单`，可选 `mnt_by` 命中。
+  - [x] 管理接口中间件 + 审计。
+- [x] T4.8 匿名访问：DSC realm 允许匿名提交（见 M7/M8）。
+- [x] T4.9 防 CSRF、防开放重定向、防 SSRF（issuer 白名单/预置 discovery 结果）。
+- [x] T4.10 单测：mock OIDC 完成登录；越权被拒；两 realm 互不影响。
 
 **验收**：两个 realm 可同时登录；非管理员访问管理接口返回 403。
 
