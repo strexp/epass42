@@ -12,7 +12,7 @@ import { derInteger, derSequence, derTlv, parseTlv, type TlvNode } from '../code
 import { rsaSigningAlgorithm } from './x509'
 import { toArrayBuffer } from '../codec/bytes'
 import * as x509 from './x509lib'
-import { OIDS } from '@pkd42/shared'
+import { OIDS } from '@epass42/shared'
 
 /** A revoked certificate entry in a CRL. */
 export interface RevokedEntry {

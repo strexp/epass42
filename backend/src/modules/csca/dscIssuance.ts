@@ -5,7 +5,7 @@
 import * as pkijs from 'pkijs'
 import { and, eq } from 'drizzle-orm'
 
-import { AppError } from '@pkd42/shared'
+import { AppError } from '@epass42/shared'
 import {
   createDsc,
   derToPem,
@@ -16,7 +16,7 @@ import {
   toArrayBuffer,
   type RsaKeyPair,
   type SubjectPublicKey,
-} from '@pkd42/pki'
+} from '@epass42/pki'
 
 import { dscApplication, dscCert } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'

@@ -56,7 +56,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NSpace vertical size="large">
       <div>
         <h1 style="margin: 0">{{ $t('nav.dsc') }}</h1>

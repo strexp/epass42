@@ -10,7 +10,7 @@ import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { account, maintainer, mntConfig } from '../../db/schema'
 import { nowIso } from '../../util/time'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 import type { Dn42Identity } from './claims'
 import { mntIncludes } from '../jurisdiction/whois'
 

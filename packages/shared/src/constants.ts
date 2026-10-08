@@ -1,5 +1,5 @@
 /**
- * Global constants for the pkd42 project.
+ * Global constants for the ePass 42 project.
  *
  * The country codes below are used throughout the DN/PKD paths and the MRZ.
  */

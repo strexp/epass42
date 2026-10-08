@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { generateRsaKeyPair } from '../crypto/crypto'
 import { createCscaRoot, createDsc } from './x509'
 import { createCrl, readCrlNumber } from './crl'
-import { OIDS } from '@pkd42/shared'
+import { OIDS } from '@epass42/shared'
 import * as x509 from './x509lib'
 
-const CRL_DP = ['ldap://pkd42.local/c=XD', 'https://pkd42.local/crl/csca.crl']
+const CRL_DP = ['ldap://epass42.local/c=XD', 'https://epass42.local/crl/csca.crl']
 
 function dates() {
   const notBefore = new Date('2026-01-01T00:00:00Z')
@@ -22,7 +22,7 @@ describe('X.509 CSCA profile', () => {
     const { notBefore, notAfter, keyNotAfter } = dates()
     const generated = await createCscaRoot(
       {
-        commonName: 'pkd42 Test CSCA',
+        commonName: 'ePass 42 Test CSCA',
         notBefore,
         notAfter,
         privateKeyNotAfter: keyNotAfter,
@@ -63,7 +63,7 @@ describe('X.509 CSCA profile', () => {
     const { notBefore, notAfter } = dates()
     const csca = await createCscaRoot(
       {
-        commonName: 'pkd42 Test CSCA',
+        commonName: 'ePass 42 Test CSCA',
         notBefore,
         notAfter,
         crlDistributionPoints: CRL_DP,
@@ -74,7 +74,7 @@ describe('X.509 CSCA profile', () => {
     const dscKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
     const dsc = await createDsc(
       {
-        commonName: 'pkd42 Test DSC',
+        commonName: 'ePass 42 Test DSC',
         documentTypes: ['P'],
         notBefore,
         notAfter,
@@ -103,7 +103,7 @@ describe('CRL profile', () => {
     const { notBefore, notAfter } = dates()
     const csca = await createCscaRoot(
       {
-        commonName: 'pkd42 Test CSCA',
+        commonName: 'ePass 42 Test CSCA',
         notBefore,
         notAfter,
         crlDistributionPoints: CRL_DP,

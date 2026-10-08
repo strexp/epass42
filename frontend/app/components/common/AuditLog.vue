@@ -2,7 +2,7 @@
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NTag, useMessage } from 'naive-ui'
 import { RefreshCw } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 import { errorMessageKey } from '~/composables/useApi'
 
 /** The `GET /:realm/audit` payload. */

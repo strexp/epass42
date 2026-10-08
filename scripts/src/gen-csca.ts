@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * `pkd42-gen-csca` — generate a conforming ICAO Doc 9303-12 CSCA root.
+ * `epass42-gen-csca` — generate a conforming ICAO Doc 9303-12 CSCA root.
  *
- * The certificate is built with `@pkd42/pki` (not `openssl req`), because the
+ * The certificate is built with `@epass42/pki` (not `openssl req`), because the
  * profile requires the PrivateKeyUsagePeriod extension that `openssl req` does
  * not support.  Outputs:
  *
@@ -17,8 +17,8 @@ import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 
-import { createCscaRoot, generateRsaKeyPair, type HashName, type RsaKeyPair } from '@pkd42/pki'
-import { COUNTRY_ALPHA2, COUNTRY_ALPHA3 } from '@pkd42/shared'
+import { createCscaRoot, generateRsaKeyPair, type HashName, type RsaKeyPair } from '@epass42/pki'
+import { COUNTRY_ALPHA2, COUNTRY_ALPHA3 } from '@epass42/shared'
 
 const HASHES: Record<string, HashName> = {
   sha224: 'SHA-224',
@@ -43,7 +43,7 @@ interface Options {
 }
 
 function usage(): string {
-  return `Usage: pkd42-gen-csca [options]
+  return `Usage: epass42-gen-csca [options]
 
 Options:
   --out <dir>                    output directory (default: .)
@@ -114,8 +114,8 @@ function parseOptions(argv: string[]): Options {
     keyRsaBits: Number(values['key-rsa-bits']),
     hash,
     pss: values.pss as boolean,
-    crlDp: values['crl-dp'] ?? [`ldap://pkd42.local/c=${country}`],
-    passphrase: values.passphrase ?? process.env.PKD42_KEY_PASSPHRASE,
+    crlDp: values['crl-dp'] ?? [`ldap://epass42.local/c=${country}`],
+    passphrase: values.passphrase ?? process.env.EPASS42_KEY_PASSPHRASE,
   }
 }
 

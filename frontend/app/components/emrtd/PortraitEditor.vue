@@ -107,7 +107,7 @@ async function onChange(event: Event): Promise<void> {
 
 <template>
   <div>
-    <div class="pkd42-actions">
+    <div class="epass42-actions">
       <NButton tag="label">
         {{ $t('dsc.portrait') }}
         <input type="file" accept="image/*" hidden @change="onChange" />

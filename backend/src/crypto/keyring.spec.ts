@@ -21,7 +21,7 @@ describe('private key sealing', () => {
   })
 
   it('persists a stable primary KEK across config changes', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'pkd42-kek-'))
+    const dir = mkdtempSync(join(tmpdir(), 'epass42-kek-'))
     const first = resolveKeks(configWithSecret('secret-one-0123456789'), dir)
     const second = resolveKeks(configWithSecret('secret-two-0123456789'), dir)
     // The primary (used for sealing) does not depend on the session secret.

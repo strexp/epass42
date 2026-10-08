@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `pkd42-verify` — validate CSCA/DSC certificates, CRLs, Master Lists and
+ * `epass42-verify` — validate CSCA/DSC certificates, CRLs, Master Lists and
  * EF.SOD against the ICAO Doc 9303-12 / Doc 9303-10 profiles.
  *
  * Exit code 0 means success; otherwise the failure is printed as
@@ -21,10 +21,10 @@ import {
   verifyDscAgainstCsca,
   verifySod,
   type CertKind,
-} from '@pkd42/pki'
+} from '@epass42/pki'
 import * as pkijs from 'pkijs'
 
-const USAGE = `Usage: pkd42-verify <command> <file> [options]
+const USAGE = `Usage: epass42-verify <command> <file> [options]
 
 Commands:
   cert <file>     validate a certificate profile (use --kind)

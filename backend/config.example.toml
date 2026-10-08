@@ -1,4 +1,4 @@
-# pkd42 backend configuration (optional).
+# ePass 42 backend configuration (optional).
 #
 # Copy this file to `config.toml`; it is the only configuration source (the
 # service reads `./config.toml` by default).
@@ -14,7 +14,7 @@ frontendUrl = "http://localhost:3001"
 # Enabled roles: any subset of ["pkd", "csca", "dsc"].
 roles = ["pkd", "csca", "dsc"]
 
-databasePath = "./data/pkd42.db"
+databasePath = "./data/epass42.db"
 runMigrations = true
 # Directory for generated artifacts (perso scripts).
 dataDir = "./data"
@@ -38,21 +38,21 @@ windowMs = 60000
 
 [smtp]
 # url = "smtps://user:pass@smtp.example.net:465"
-from = "pkd42 <no-reply@localhost>"
+from = "ePass 42 <no-reply@localhost>"
 
 # CSCA (M5): bootstrap a self-signed online CSCA key when none exists.
 [csca]
-commonName = "pkd42 CSCA"
+commonName = "ePass 42 CSCA"
 validityYears = 13
 privateKeyUsageYears = 4
 keyBits = 4096
 hash = "SHA-256"
 pss = false
 bootstrap = true
-crlDistributionPoints = ["ldap://pkd42.local/c=XD"]
+crlDistributionPoints = ["ldap://epass42.local/c=XD"]
 
 [csca.niaDsc]
-commonName = "pkd42 NIA DSC"
+commonName = "ePass 42 NIA DSC"
 documentTypes = ["P"]
 validityYears = 10
 privateKeyUsageYears = 3
@@ -69,7 +69,7 @@ minIntervalHours = 48
 [issuing]
 issuingState = "UDN"
 issuingAuthority = "NIA"
-personalizationDevice = "PKD42"
+personalizationDevice = "EPASS42"
 dg13Policy = "utf8-text"
 # Document validity (years); the MRZ expiry is computed by the service.
 validityYears = 10
@@ -117,7 +117,7 @@ adminIncludeMntBy = false
 [[oauthProviders]]
 realm = "csca"
 issuer = "https://auth.example.net"
-clientId = "pkd42-csca"
+clientId = "epass42-csca"
 clientSecret = "replace-me"
 # Short login-method alias (defaults to the issuer host); shown in the UI and
 # used in the callback URL.
@@ -131,7 +131,7 @@ dn42 = "dn42"
 [[oauthProviders]]
 realm = "dsc"
 issuer = "https://auth.example.net"
-clientId = "pkd42-dsc"
+clientId = "epass42-dsc"
 clientSecret = "replace-me"
 alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]

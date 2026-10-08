@@ -20,7 +20,7 @@ const crls = ref<PkdCrl[]>([])
 const masterlists = ref<{ id: string }[]>([])
 
 function downloadLinks(id: string) {
-  return h('div', { class: 'pkd42-actions' }, [
+  return h('div', { class: 'epass42-actions' }, [
     h('a', { href: `/pkd/objects/${id}.der` }, () => 'DER'),
     h('a', { href: `/pkd/objects/${id}.pem` }, () => 'PEM'),
   ])
@@ -49,7 +49,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <h1>{{ $t('pkd.title') }}</h1>
     <NTabs>
       <NTabPane name="certs" :tab="$t('pkd.certificates')">

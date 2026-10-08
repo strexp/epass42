@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import * as pkijs from 'pkijs'
 import { describe, expect, it } from 'vitest'
 
-import { CMS_OIDS, parseTlv, toArrayBuffer } from '@pkd42/pki'
+import { CMS_OIDS, parseTlv, toArrayBuffer } from '@epass42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { currentCscaKey } from '../csca/service'
 
@@ -46,7 +46,7 @@ describe('M10 Master List', () => {
   it('verifies with the openssl cms tool', async () => {
     const built = await setup()
     const row = await built.csca.generateMasterList()
-    const dir = mkdtempSync(join(tmpdir(), 'pkd42-ml-'))
+    const dir = mkdtempSync(join(tmpdir(), 'epass42-ml-'))
     const path = join(dir, 'masterlist.cms')
     writeFileSync(path, new Uint8Array(row.der))
 

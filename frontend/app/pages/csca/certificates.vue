@@ -92,7 +92,7 @@ const columns = computed(() => [
     title: '',
     key: 'download',
     render: (row: Certificate) =>
-      h('div', { class: 'pkd42-actions' }, [
+      h('div', { class: 'epass42-actions' }, [
         h('a', { href: `/csca/certificates/${row.id}.pem` }, () => 'PEM'),
         h('a', { href: `/csca/certificates/${row.id}.der` }, () => 'DER'),
         canDownloadKey(row)
@@ -114,7 +114,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NCard :title="$t('csca.certificatesTitle')">
       <template #header-extra>
         <a href="/csca/crl.pem">{{ $t('csca.crl') }} (PEM)</a>

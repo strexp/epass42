@@ -13,7 +13,7 @@ const DSC_ADMIN = {
 }
 
 function cookieOf(response: LightMyRequestResponse, realm: 'csca' | 'dsc'): string {
-  const cookie = response.cookies.find((entry) => entry.name === `pkd42_${realm}_sid`)!
+  const cookie = response.cookies.find((entry) => entry.name === `epass42_${realm}_sid`)!
   return `${cookie.name}=${cookie.value}`
 }
 

@@ -18,7 +18,7 @@ import {
   derTlv,
   generalizedTime,
 } from '../codec/der'
-import { OIDS } from '@pkd42/shared'
+import { OIDS } from '@epass42/shared'
 
 /** The certificate profile being built or validated. */
 export type CertKind = 'csca' | 'dsc' | 'ml-signer' | 'link'

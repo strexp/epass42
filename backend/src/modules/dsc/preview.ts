@@ -5,7 +5,7 @@
  * and masks the sensitive fields configured for the deployment.  Images are
  * reported by presence, never returned as bytes.
  */
-import type { SignRequest } from '@pkd42/shared'
+import type { SignRequest } from '@epass42/shared'
 import { dataGroupList } from './dataGroups'
 
 /** The preview mask rules. */

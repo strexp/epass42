@@ -5,7 +5,7 @@
  * List — behind the single entry point consumed by the routes and the DSC
  * signing service.
  */
-import type { RsaKeyPair } from '@pkd42/pki'
+import type { RsaKeyPair } from '@epass42/pki'
 
 import type {
   CscaContext,

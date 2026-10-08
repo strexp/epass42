@@ -7,7 +7,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { parseCertificatePem } from '@pkd42/pki'
+import { parseCertificatePem } from '@epass42/pki'
 
 import { writeAudit } from '../../../audit/audit'
 import { dscCert } from '../../../db/schema'

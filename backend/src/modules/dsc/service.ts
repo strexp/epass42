@@ -4,7 +4,7 @@
  * Composes the focused services — settings, request intake, artifact build and
  * one-time delivery — behind the single entry point consumed by the routes.
  */
-import type { SignRequest } from '@pkd42/shared'
+import type { SignRequest } from '@epass42/shared'
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'

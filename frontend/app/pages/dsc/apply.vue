@@ -17,8 +17,8 @@ import {
 } from 'naive-ui'
 import { Send } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import type { MrzFields } from '@pkd42/shared'
-import { COUNTRY_ALPHA3 } from '@pkd42/shared'
+import type { MrzFields } from '@epass42/shared'
+import { COUNTRY_ALPHA3 } from '@epass42/shared'
 import type { EncodedFile } from '~/components/common/FileField.vue'
 import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
@@ -154,7 +154,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NCard :title="$t('dsc.applyTitle')">
       <NText depth="3">{{ $t('dsc.submitHint') }}</NText>
 
@@ -179,7 +179,7 @@ onMounted(async () => {
 
       <NDivider>{{ $t('dsc.personalDetails') }}</NDivider>
       <NForm label-placement="top">
-        <div class="pkd42-grid">
+        <div class="epass42-grid">
           <NFormItem :label="$t('dsc.documentation')">
             <NSelect v-model:value="mrz.documentCode" :options="documentTypeOptions" />
           </NFormItem>
@@ -229,7 +229,7 @@ onMounted(async () => {
           <NInput v-model:value="customNotes" type="textarea" maxlength="2048" />
         </NCollapseItem>
         <NCollapseItem :title="$t('dsc.notifySection')" name="notify">
-          <div v-for="(person, index) in people" :key="index" class="pkd42-grid">
+          <div v-for="(person, index) in people" :key="index" class="epass42-grid">
             <NInput v-model:value="person.name" placeholder="Name" />
             <NInput v-model:value="person.telephone" placeholder="Telephone" />
             <NInput v-model:value="person.address" placeholder="Address" />
@@ -268,7 +268,7 @@ onMounted(async () => {
             {{ $t('common.submit') }}
           </NButton>
           <NCard v-if="reference" size="small" :title="$t('dsc.statusTitle')">
-            <NText class="pkd42-mono" data-testid="reference">{{ reference }}</NText>
+            <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
             <template #action>
               <NuxtLink :to="`/dsc/status?reference=${reference}`">
                 <NButton size="small">{{ $t('dsc.query') }}</NButton>

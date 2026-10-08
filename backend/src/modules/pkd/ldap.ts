@@ -20,7 +20,7 @@ export interface LdapEntry {
 export function buildEntries(db: Db, config: AppConfig): LdapEntry[] {
   const base = baseDn(config)
   const entries: LdapEntry[] = [
-    { dn: base, attributes: { objectclass: ['top', 'organization'], o: ['pkd42'] } },
+    { dn: base, attributes: { objectclass: ['top', 'organization'], o: ['ePass 42'] } },
     {
       dn: `ou=csca,${base}`,
       attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['csca'] },

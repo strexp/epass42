@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # gen-csca-openssl.sh - generate a comparison CSCA with the OpenSSL CLI.
 #
-# The recommended generator is `pnpm --filter @pkd42/scripts gen-csca`, which
+# The recommended generator is `pnpm --filter @epass42/scripts gen-csca`, which
 # emits the PrivateKeyUsagePeriod extension required by ICAO Doc 9303-12
 # §7.1.1.  `openssl req` cannot express that extension, so this script exists
-# only to produce a certificate for cross-checking the pkd42 output.
+# only to produce a certificate for cross-checking the ePass 42 output.
 #
 # Usage:
 #   scripts/gen-csca-openssl.sh rsa   [outdir]
@@ -14,11 +14,11 @@ set -euo pipefail
 MODE="${1:-rsa}"
 OUTDIR="${2:-.}"
 
-CN="${CN:-pkd42 OpenSSL CSCA}"
+CN="${CN:-ePass 42 OpenSSL CSCA}"
 COUNTRY="${COUNTRY:-XD}"
 LOCALITY="${LOCALITY:-UDN}"
 VALIDITY_DAYS="${VALIDITY_DAYS:-4745}"   # ~13 years
-CRL_DP="${CRL_DP:-ldap://pkd42.local/c=XD}"
+CRL_DP="${CRL_DP:-ldap://epass42.local/c=XD}"
 
 mkdir -p "$OUTDIR"
 CONF="$(mktemp)"
@@ -43,7 +43,7 @@ keyUsage               = critical, keyCertSign, cRLSign
 basicConstraints       = critical, CA:TRUE, pathlen:0
 crlDistributionPoints  = URI:$CRL_DP
 # San/ian with directoryName are not representable in a plain openssl config;
-# see the pkd42 generator for a fully conforming certificate.
+# see the ePass 42 generator for a fully conforming certificate.
 EOF
 
 case "$MODE" in

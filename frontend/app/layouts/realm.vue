@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 
 /** A realm-aware layout shared by the CSCA and DSC pages. */
 const route = useRoute()

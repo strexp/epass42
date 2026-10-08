@@ -1,4 +1,4 @@
-import type { Role } from '@pkd42/shared'
+import type { Role } from '@epass42/shared'
 
 /** The `/api/config` payload. */
 export interface PkdConfig {

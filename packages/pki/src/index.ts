@@ -1,5 +1,5 @@
 /**
- * `@pkd42/pki` — pure functions for the ICAO Doc 9303-12 PKI core and the
+ * `@epass42/pki` — pure functions for the ICAO Doc 9303-12 PKI core and the
  * eMRTD personalization structures (data groups, EF.SOD, EF.CardAccess,
  * EF.CardSecurity, Master List, `.perso` script).
  *

@@ -21,7 +21,7 @@ import {
   isResponseSerializationError,
 } from 'fastify-type-provider-zod'
 
-import { AppError } from '@pkd42/shared'
+import { AppError } from '@epass42/shared'
 import type { AppConfig } from './config'
 import { openDatabase, type DbHandle } from './db/client'
 import { runMigrations } from './db/migrate'
@@ -150,7 +150,7 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   })
   await app.register(swagger, {
     openapi: {
-      info: { title: 'pkd42 API', version: '0.1.0' },
+      info: { title: 'ePass 42 API', version: '0.1.0' },
       servers: [{ url: config.publicUrl }],
     },
     transform: jsonSchemaTransform,

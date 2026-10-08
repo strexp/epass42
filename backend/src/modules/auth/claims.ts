@@ -7,7 +7,7 @@
  */
 import type { OAuthProviderConfig } from '../../config'
 
-/** The identity fields pkd42 consumes. */
+/** The identity fields ePass 42 consumes. */
 export interface Dn42Identity {
   issuer: string
   subject: string

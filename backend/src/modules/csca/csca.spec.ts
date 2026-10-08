@@ -1,7 +1,12 @@
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify'
 import { describe, expect, it } from 'vitest'
 
-import { derToPem, generateRsaKeyPair, parseCertificatePem, verifyDscAgainstCsca } from '@pkd42/pki'
+import {
+  derToPem,
+  generateRsaKeyPair,
+  parseCertificatePem,
+  verifyDscAgainstCsca,
+} from '@epass42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { currentCscaKey } from './service'
 
@@ -44,7 +49,7 @@ async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promis
       method: 'GET',
       url: `/auth/${realm}/callback?code=x&state=${state}`,
     })
-    const cookie = callback.cookies.find((entry) => entry.name === `pkd42_${realm}_sid`)!
+    const cookie = callback.cookies.find((entry) => entry.name === `epass42_${realm}_sid`)!
     return `${cookie.name}=${cookie.value}`
   }
 
@@ -73,7 +78,7 @@ async function loginAs(
     method: 'GET',
     url: `/auth/${realm}/callback?code=x&state=${state}`,
   })
-  const cookie = callback.cookies.find((entry) => entry.name === `pkd42_${realm}_sid`)!
+  const cookie = callback.cookies.find((entry) => entry.name === `epass42_${realm}_sid`)!
   return `${cookie.name}=${cookie.value}`
 }
 

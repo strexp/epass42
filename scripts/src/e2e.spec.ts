@@ -17,7 +17,7 @@ import {
   importRsaKeyPair,
   parseCertificatePem,
   sha256,
-} from '@pkd42/pki'
+} from '@epass42/pki'
 
 const TSX = fileURLToPath(new URL('../node_modules/.bin/tsx', import.meta.url))
 const GEN = fileURLToPath(new URL('./gen-csca.ts', import.meta.url))
@@ -43,10 +43,13 @@ function decryptKey(pem: string, passphrase: string): Uint8Array {
 
 describe('M2 scripts end to end', () => {
   it('generates a CSCA, issues a DSC and verifies both', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'pkd42-scripts-'))
-    const generated = run([GEN, '--out', dir, '--cn', 'pkd42 E2E CSCA', '--key-rsa-bits', '2048'], {
-      PKD42_KEY_PASSPHRASE: 'e2e-passphrase',
-    })
+    const dir = mkdtempSync(join(tmpdir(), 'epass42-scripts-'))
+    const generated = run(
+      [GEN, '--out', dir, '--cn', 'ePass 42 E2E CSCA', '--key-rsa-bits', '2048'],
+      {
+        EPASS42_KEY_PASSPHRASE: 'e2e-passphrase',
+      },
+    )
     expect(generated.status).toBe(0)
 
     const cscaPem = readFileSync(join(dir, 'csca.crt'), 'utf8')
@@ -58,12 +61,12 @@ describe('M2 scripts end to end', () => {
     const now = new Date('2026-10-08T00:00:00Z')
     const dsc = await createDsc(
       {
-        commonName: 'pkd42 E2E DSC',
+        commonName: 'ePass 42 E2E DSC',
         documentTypes: ['P'],
         notBefore: now,
         notAfter: new Date('2036-10-08T00:00:00Z'),
         privateKeyNotAfter: new Date('2027-01-08T00:00:00Z'),
-        crlDistributionPoints: ['ldap://pkd42.local/c=XD'],
+        crlDistributionPoints: ['ldap://epass42.local/c=XD'],
         pss: false,
       },
       dscKey,
@@ -86,10 +89,13 @@ describe('M2 scripts end to end', () => {
   }, 120_000)
 
   it('verifies a CRL, EF.SOD and Master List', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'pkd42-scripts-'))
-    const generated = run([GEN, '--out', dir, '--cn', 'pkd42 E2E CSCA', '--key-rsa-bits', '2048'], {
-      PKD42_KEY_PASSPHRASE: 'e2e-passphrase',
-    })
+    const dir = mkdtempSync(join(tmpdir(), 'epass42-scripts-'))
+    const generated = run(
+      [GEN, '--out', dir, '--cn', 'ePass 42 E2E CSCA', '--key-rsa-bits', '2048'],
+      {
+        EPASS42_KEY_PASSPHRASE: 'e2e-passphrase',
+      },
+    )
     expect(generated.status).toBe(0)
 
     const cscaCert = parseCertificatePem(readFileSync(join(dir, 'csca.crt'), 'utf8'))
@@ -102,11 +108,11 @@ describe('M2 scripts end to end', () => {
     const dscKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
     const dsc = await createDsc(
       {
-        commonName: 'pkd42 E2E DSC',
+        commonName: 'ePass 42 E2E DSC',
         documentTypes: ['P'],
         notBefore: now,
         notAfter: new Date('2036-10-08T00:00:00Z'),
-        crlDistributionPoints: ['ldap://pkd42.local/c=XD'],
+        crlDistributionPoints: ['ldap://epass42.local/c=XD'],
         pss: false,
       },
       dscKey,
@@ -149,11 +155,11 @@ describe('M2 scripts end to end', () => {
     const mlKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
     const mlSigner = await createMasterListSigner(
       {
-        commonName: 'pkd42 E2E ML Signer',
+        commonName: 'ePass 42 E2E ML Signer',
         documentTypes: ['P'],
         notBefore: now,
         notAfter: new Date('2036-10-08T00:00:00Z'),
-        crlDistributionPoints: ['ldap://pkd42.local/c=XD'],
+        crlDistributionPoints: ['ldap://epass42.local/c=XD'],
         pss: false,
       },
       mlKey,

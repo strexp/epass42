@@ -4,7 +4,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
-import { derToPem } from '@pkd42/pki'
+import { derToPem } from '@epass42/pki'
 
 import { writeAudit } from '../../../audit/audit'
 import { requireAdmin } from '../../auth/middleware'

@@ -8,7 +8,7 @@ import type { FastifyRequest, preHandlerHookHandler } from 'fastify'
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 import { getAccount, isAdmin, type AccountRow } from './authorization'
 import type { SessionStore, SessionRecord } from './session'
 

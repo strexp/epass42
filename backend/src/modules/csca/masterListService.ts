@@ -12,7 +12,7 @@ import {
   createMasterListSigner,
   generateRsaKeyPair,
   parseCertificatePem,
-} from '@pkd42/pki'
+} from '@epass42/pki'
 
 import { cscaKey, dscCert, masterList } from '../../db/schema'
 import { sealPrivateKey } from '../../crypto/keyring'

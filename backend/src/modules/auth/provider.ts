@@ -13,7 +13,7 @@ import type { OAuthProviderConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { oauthProvider } from '../../db/schema'
 import { realmSchema, type AppConfig } from '../../config'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 
 /** A started authorization-code flow (persisted in `oauth_flow`). */
 export interface OidcFlowStart {

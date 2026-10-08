@@ -1,5 +1,5 @@
 /** The data group numbers a signing request produces (for metadata/preview). */
-import type { SignRequest } from '@pkd42/shared'
+import type { SignRequest } from '@epass42/shared'
 
 export function dataGroupList(
   payload: SignRequest,

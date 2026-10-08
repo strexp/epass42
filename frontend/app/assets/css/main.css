@@ -1,5 +1,5 @@
 :root {
-  --pkd42-max-width: 1120px;
+  --epass42-max-width: 1120px;
 }
 
 html,
@@ -20,26 +20,26 @@ body {
     sans-serif;
 }
 
-.pkd42-page {
-  max-width: var(--pkd42-max-width);
+.epass42-page {
+  max-width: var(--epass42-max-width);
   margin: 0 auto;
   padding: 24px 16px 64px;
 }
 
-.pkd42-grid {
+.epass42-grid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
-.pkd42-actions {
+.epass42-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 
-.pkd42-mono {
+.epass42-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   white-space: pre-wrap;

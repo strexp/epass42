@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NCard, NTag } from 'naive-ui'
 import { computed } from 'vue'
-import type { MrzFields } from '@pkd42/shared'
+import type { MrzFields } from '@epass42/shared'
 
 const props = defineProps<{
   mrz: MrzFields
@@ -34,7 +34,7 @@ const rows = computed(() => [
       <dl class="emrtd-fields">
         <template v-for="row in rows" :key="row.key">
           <dt>{{ $t(row.key) }}</dt>
-          <dd :class="{ 'pkd42-mono': row.mono }">{{ row.value }}</dd>
+          <dd :class="{ 'epass42-mono': row.mono }">{{ row.value }}</dd>
         </template>
       </dl>
     </div>

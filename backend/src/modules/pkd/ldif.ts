@@ -4,7 +4,7 @@
  * Certificates use `inetOrgPerson` + `userCertificate;binary`, CRLs use
  * `cRLDistributionPoint` + `certificateRevocationList;binary`, and Master Lists
  * use the ICAO objectClass `2.23.136.2` with the attribute `2.23.136.1.1.2`
- * (see `deploy/openldap/pkd42.schema`).
+ * (see `deploy/openldap/epass42.schema`).
  */
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
@@ -58,7 +58,7 @@ export function buildLdif(db: Db, config: AppConfig): string {
     'dn: ' + base,
     'objectClass: top',
     'objectClass: organization',
-    `o: pkd42`,
+    `o: ePass 42`,
     '',
     `dn: ou=csca,${base}`,
     'objectClass: top',

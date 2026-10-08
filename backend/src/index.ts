@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   await app.listen({ host: config.host, port: config.port })
   app.log.info(
     { url: config.publicUrl, roles: config.roles, env: config.env },
-    'pkd42 backend listening',
+    'ePass 42 backend listening',
   )
 
   const stopCrlScheduler = config.roles.includes('csca')

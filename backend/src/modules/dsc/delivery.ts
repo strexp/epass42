@@ -4,7 +4,7 @@
  */
 import { and, desc, eq, isNull } from 'drizzle-orm'
 
-import { AppError } from '@pkd42/shared'
+import { AppError } from '@epass42/shared'
 
 import type { Db } from '../../db/client'
 import { mailToken, revealToken, signRequest } from '../../db/schema'

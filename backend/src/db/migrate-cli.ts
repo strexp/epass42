@@ -1,5 +1,5 @@
 /**
- * CLI wrapper for applying Drizzle migrations (`pnpm --filter @pkd42/backend db:migrate`).
+ * CLI wrapper for applying Drizzle migrations (`pnpm --filter @epass42/backend db:migrate`).
  */
 import { loadConfig } from '../config'
 import { openDatabase } from './client'

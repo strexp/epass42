@@ -1,7 +1,7 @@
-# Example slapd.conf for the pkd42 read-only PKD directory.
+# Example slapd.conf for the ePass 42 read-only PKD directory.
 #
 # 1. Import the LDIF produced by `GET /pkd/ldif`:
-#      slapadd -f slapd.conf -l pkd42.ldif
+#      slapadd -f slapd.conf -l epass42.ldif
 # 2. Start slapd and query it:
 #      ldapsearch -x -H ldap://127.0.0.1:3890 \
 #        -b "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int" \
@@ -11,10 +11,10 @@ include  /etc/ldap/schema/core.schema
 include  /etc/ldap/schema/cosine.schema
 include  /etc/ldap/schema/inetorgperson.schema
 include  /etc/ldap/schema/pki.schema
-include  /etc/ldap/schema/pkd42.schema
+include  /etc/ldap/schema/epass42.schema
 
-pidfile  /var/run/slapd/pkd42.pid
-argsfile /var/run/slapd/pkd42.args
+pidfile  /var/run/slapd/epass42.pid
+argsfile /var/run/slapd/epass42.args
 
 database mdb
 suffix   "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int"
@@ -27,5 +27,5 @@ access to attrs=userCertificate,certificateRevocationList,cscaMasterListData
 access to *
     by * read
 
-directory /var/lib/ldap/pkd42
+directory /var/lib/ldap/epass42
 index objectClass eq

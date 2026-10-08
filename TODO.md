@@ -1,4 +1,4 @@
-# pkd42 — Task & Implementation Plan (TODO)
+# ePass 42 — Task & Implementation Plan (TODO)
 
 > 本文把系统拆成里程碑（M0–M15），并给出每个
 > 模块的任务、验收标准、规范依据与风险。
@@ -55,7 +55,7 @@ CSCA (NIA, C=XD, CN=...)                       ← 在线私钥
 ### 0.3 代码结构
 
 ```
-pkd42/
+epass42/
 ├── packages/
 │   ├── pki/            # 纯函数：X.509 / CMS / CRL / MasterList / SOD / perso
 │   └── shared/         # zod schema、类型、错误码、常量（OID、国家码）
@@ -157,8 +157,8 @@ pkd42/
 
 ### 交叉验证（M14 部分）
 
-- **card42 宿主侧**：pkd42 生成的 EF.SOD 通过 card42 `PassiveAuthentication`（DSC 链 + 签名 + DG 哈希），CardAccess/CardSecurity 解析正确。
-- **card42 模拟器**：用 pkd42 构建器（card42 CSCA/DSC、样例 MRZ、合规 DG2）生成 perso，`make test-emrtd` 的 `EmrtdBacTest` + `EmrtdPaceIntegrationTest` 全绿（BAC/SM/AA/PA/PACE 3DES+AES）。
+- **card42 宿主侧**：ePass 42 生成的 EF.SOD 通过 card42 `PassiveAuthentication`（DSC 链 + 签名 + DG 哈希），CardAccess/CardSecurity 解析正确。
+- **card42 模拟器**：用 ePass 42 构建器（card42 CSCA/DSC、样例 MRZ、合规 DG2）生成 perso，`make test-emrtd` 的 `EmrtdBacTest` + `EmrtdPaceIntegrationTest` 全绿（BAC/SM/AA/PA/PACE 3DES+AES）。
 - **card42 LDS2**：启用 `issuing.lds2` 的产物被 card42 `EmrtdPersoExporter` 正确解析（FF03 CA 标量 + 011C/011D），Travel 应用可建 PACE、读出 CardAccess/CardSecurity。card42 `EmrtdLds2*` 套件按样例假定存在记录，对“默认空”不适用；其 `EmrtdChipAuthIntegrationTest` 在本机对样例 perso 亦不稳定（环境相关）。
 
 ### 已知遗留

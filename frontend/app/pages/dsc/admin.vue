@@ -85,7 +85,7 @@ const columns = [
     key: 'actions',
     render: (row: RequestRow) =>
       row.status === 'submitted'
-        ? h('div', { class: 'pkd42-actions' }, [
+        ? h('div', { class: 'epass42-actions' }, [
             h(
               NButton,
               { size: 'tiny', type: 'primary', onClick: () => approve(row.id) },
@@ -133,7 +133,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NSpace vertical size="large">
       <div>
         <h1 style="margin: 0">{{ $t('dsc.adminTitle') }}</h1>
@@ -174,7 +174,7 @@ onMounted(async () => {
       <NCard v-if="isAdmin" :title="$t('dsc.pendingQueue')" size="small">
         <NDataTable v-if="queue.length" :columns="queueColumns" :data="queue" size="small" />
         <NEmpty v-else :description="$t('common.empty')" />
-        <pre v-if="revealText" class="pkd42-mono">{{ revealText }}</pre>
+        <pre v-if="revealText" class="epass42-mono">{{ revealText }}</pre>
       </NCard>
     </NSpace>
   </div>

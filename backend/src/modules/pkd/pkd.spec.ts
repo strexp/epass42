@@ -66,7 +66,7 @@ describe('M9 PKD REST and LDIF', () => {
       method: 'GET',
       url: `/auth/csca/callback?code=x&state=${state}`,
     })
-    const cookie = callback.cookies.find((entry) => entry.name === 'pkd42_csca_sid')!
+    const cookie = callback.cookies.find((entry) => entry.name === 'epass42_csca_sid')!
 
     const created = await app.inject({
       method: 'POST',

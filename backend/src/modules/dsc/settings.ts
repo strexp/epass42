@@ -3,7 +3,7 @@
  */
 import { desc, eq } from 'drizzle-orm'
 
-import type { SecurityOptions } from '@pkd42/shared'
+import type { SecurityOptions } from '@epass42/shared'
 
 import { issuingProfile, systemSetting } from '../../db/schema'
 import { nowIso } from '../../util/time'

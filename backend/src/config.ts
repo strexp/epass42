@@ -9,7 +9,7 @@ import { resolve } from 'node:path'
 import { parse as parseToml } from 'smol-toml'
 import { z } from 'zod'
 
-import { COUNTRY_ALPHA2, COUNTRY_ALPHA3 } from '@pkd42/shared'
+import { COUNTRY_ALPHA2, COUNTRY_ALPHA3 } from '@epass42/shared'
 
 export const realmSchema = z.enum(['csca', 'dsc'])
 export const roleSchema = z.enum(['pkd', 'csca', 'dsc'])
@@ -39,7 +39,7 @@ export const oauthProviderSchema = z.object({
 export type OAuthProviderConfig = z.infer<typeof oauthProviderSchema>
 
 const niaDscSchema = z.object({
-  commonName: z.string().default('pkd42 NIA DSC'),
+  commonName: z.string().default('ePass 42 NIA DSC'),
   documentTypes: z.array(z.string()).default(['P']),
   validityYears: z.number().int().min(1).default(10),
   privateKeyUsageYears: z.number().int().min(1).default(3),
@@ -48,7 +48,7 @@ const niaDscSchema = z.object({
 })
 
 const cscaSchema = z.object({
-  commonName: z.string().default('pkd42 CSCA'),
+  commonName: z.string().default('ePass 42 CSCA'),
   organization: z.string().optional(),
   locality: z.string().default(COUNTRY_ALPHA3),
   validityYears: z.number().int().min(1).default(13),
@@ -56,7 +56,7 @@ const cscaSchema = z.object({
   keyBits: z.number().int().default(4096),
   hash: z.enum(['SHA-256', 'SHA-384', 'SHA-512']).default('SHA-256'),
   pss: z.boolean().default(false),
-  crlDistributionPoints: z.array(z.string()).default([`ldap://pkd42.local/c=${COUNTRY_ALPHA2}`]),
+  crlDistributionPoints: z.array(z.string()).default([`ldap://epass42.local/c=${COUNTRY_ALPHA2}`]),
   /** Generate a CSCA key at startup when none exists. */
   bootstrap: z.boolean().default(true),
   niaDsc: niaDscSchema.prefault({}),
@@ -75,7 +75,7 @@ const configSchema = z.object({
   roles: z.array(roleSchema).default(['pkd', 'csca', 'dsc']),
   countryAlpha2: z.string().length(2).default(COUNTRY_ALPHA2),
   countryAlpha3: z.string().length(3).default(COUNTRY_ALPHA3),
-  databasePath: z.string().default('./data/pkd42.db'),
+  databasePath: z.string().default('./data/epass42.db'),
   runMigrations: z.boolean().default(true),
   /** Directory for generated artifacts (perso, …). */
   dataDir: z.string().default('./data'),
@@ -99,9 +99,9 @@ const configSchema = z.object({
   smtp: z
     .object({
       url: z.string().optional(),
-      from: z.string().default('pkd42 <no-reply@localhost>'),
+      from: z.string().default('ePass 42 <no-reply@localhost>'),
     })
-    .default({ from: 'pkd42 <no-reply@localhost>' }),
+    .default({ from: 'ePass 42 <no-reply@localhost>' }),
   adminMnts: z
     .object({
       csca: z.array(z.string()).default([]),
@@ -116,7 +116,7 @@ const configSchema = z.object({
     .object({
       issuingState: z.string().length(3).default(COUNTRY_ALPHA3),
       issuingAuthority: z.string().default('NIA'),
-      personalizationDevice: z.string().default('PKD42'),
+      personalizationDevice: z.string().default('EPASS42'),
       dg13Policy: z.string().default('utf8-text'),
       /** Document validity, in years, applied to the server-computed expiry. */
       validityYears: z.number().int().min(1).max(30).default(10),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isRevoked, parseCertificatePem, parseCrl, parseCrlPem } from '@pkd42/pki'
+import { isRevoked, parseCertificatePem, parseCrl, parseCrlPem } from '@epass42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { crl as crlTable } from '../../db/schema'
 import { eq } from 'drizzle-orm'
@@ -22,7 +22,7 @@ async function setup() {
     method: 'GET',
     url: `/auth/csca/callback?code=x&state=${state}`,
   })
-  const cookie = callback.cookies.find((entry) => entry.name === 'pkd42_csca_sid')!
+  const cookie = callback.cookies.find((entry) => entry.name === 'epass42_csca_sid')!
   return { app, db: dbHandle.db, csca, cookie: `${cookie.name}=${cookie.value}` }
 }
 

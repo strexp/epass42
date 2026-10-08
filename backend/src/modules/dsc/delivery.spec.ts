@@ -69,7 +69,7 @@ async function login(
     method: 'GET',
     url: `/auth/dsc/callback?code=x&state=${state}`,
   })
-  const cookie = callback.cookies.find((entry) => entry.name === 'pkd42_dsc_sid')!
+  const cookie = callback.cookies.find((entry) => entry.name === 'epass42_dsc_sid')!
   return `${cookie.name}=${cookie.value}`
 }
 
@@ -248,11 +248,11 @@ describe('M8 delivery', () => {
       method: 'PUT',
       url: '/dsc/settings/issuing-profile',
       headers: { cookie: admin },
-      payload: { issuingAuthority: 'CUSTOM-NIA', personalizationDevice: 'PKD42-X' },
+      payload: { issuingAuthority: 'CUSTOM-NIA', personalizationDevice: 'EPASS42-X' },
     })
     expect(update.statusCode).toBe(200)
     expect(update.json().issuingAuthority).toBe('CUSTOM-NIA')
-    expect(update.json().personalizationDevice).toBe('PKD42-X')
+    expect(update.json().personalizationDevice).toBe('EPASS42-X')
   })
 
   it('issues email tokens on approval and exposes a non-consuming landing', async () => {

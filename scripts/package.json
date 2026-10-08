@@ -1,11 +1,11 @@
 {
-  "name": "@pkd42/scripts",
+  "name": "@epass42/scripts",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "pkd42-gen-csca": "./src/gen-csca.ts",
-    "pkd42-verify": "./src/verify.ts"
+    "epass42-gen-csca": "./src/gen-csca.ts",
+    "epass42-verify": "./src/verify.ts"
   },
   "scripts": {
     "gen-csca": "tsx src/gen-csca.ts",
@@ -14,8 +14,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@pkd42/pki": "workspace:*",
-    "@pkd42/shared": "workspace:*",
+    "@epass42/pki": "workspace:*",
+    "@epass42/shared": "workspace:*",
     "pkijs": "^3.4.1"
   },
   "devDependencies": {

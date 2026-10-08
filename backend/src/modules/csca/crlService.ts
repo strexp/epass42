@@ -6,7 +6,7 @@
  */
 import { and, desc, eq } from 'drizzle-orm'
 
-import { createCrl, parseCertificatePem } from '@pkd42/pki'
+import { createCrl, parseCertificatePem } from '@epass42/pki'
 
 import { crl, dscCert } from '../../db/schema'
 import { nowIso } from '../../util/time'

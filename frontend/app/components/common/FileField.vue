@@ -28,7 +28,7 @@ function onChange(event: Event): void {
 </script>
 
 <template>
-  <div class="pkd42-actions">
+  <div class="epass42-actions">
     <NButton tag="label">
       {{ label ?? 'Choose file' }}
       <input

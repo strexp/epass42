@@ -36,9 +36,9 @@ import {
   wrapDg3,
   wrapDg4,
   type RsaKeyPair,
-} from '@pkd42/pki'
-import type { SecurityOptions, SignRequest } from '@pkd42/shared'
-import { AppError } from '@pkd42/shared'
+} from '@epass42/pki'
+import type { SecurityOptions, SignRequest } from '@epass42/shared'
+import { AppError } from '@epass42/shared'
 
 /** The LDS2 roles a document may emit (empty applications by default). */
 export type Lds2Role = 'travel' | 'visa' | 'biometrics'

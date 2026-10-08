@@ -56,7 +56,7 @@ describe('multiple OAuth providers per realm', () => {
       url: `/auth/dsc/callback/beta?code=x&state=${state}`,
     })
     expect(callback.statusCode).toBe(302)
-    expect(callback.cookies.find((entry) => entry.name === 'pkd42_dsc_sid')).toBeTruthy()
+    expect(callback.cookies.find((entry) => entry.name === 'epass42_dsc_sid')).toBeTruthy()
   })
 
   it('rejects a callback whose alias does not match the state', async () => {

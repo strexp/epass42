@@ -31,8 +31,8 @@ function onSelect(key: string): void {
 </script>
 
 <template>
-  <div class="pkd42-header">
-    <NuxtLink to="/" class="pkd42-brand">
+  <div class="epass42-header">
+    <NuxtLink to="/" class="epass42-brand">
       <NIcon size="22"><Waypoints /></NIcon>
       <span>{{ $t('app.name') }}</span>
     </NuxtLink>
@@ -40,17 +40,17 @@ function onSelect(key: string): void {
       mode="horizontal"
       :options="options"
       :value="active"
-      class="pkd42-menu"
+      class="epass42-menu"
       @update:value="onSelect"
     />
-    <NSpace class="pkd42-header-actions">
+    <NSpace class="epass42-header-actions">
       <ThemeToggle />
     </NSpace>
   </div>
 </template>
 
 <style scoped>
-.pkd42-header {
+.epass42-header {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -58,7 +58,7 @@ function onSelect(key: string): void {
   height: 56px;
   border-bottom: 1px solid rgba(128, 128, 128, 0.18);
 }
-.pkd42-brand {
+.epass42-brand {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -67,11 +67,11 @@ function onSelect(key: string): void {
   text-decoration: none;
   color: inherit;
 }
-.pkd42-menu {
+.epass42-menu {
   flex: 1;
   min-width: 0;
 }
-.pkd42-header-actions {
+.epass42-header-actions {
   margin-left: auto;
 }
 </style>

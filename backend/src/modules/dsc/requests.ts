@@ -4,9 +4,9 @@
  */
 import { and, desc, eq } from 'drizzle-orm'
 
-import type { SignRequest } from '@pkd42/shared'
-import { AppError } from '@pkd42/shared'
-import { buildDg2, fromBase64, validateDg2 } from '@pkd42/pki'
+import type { SignRequest } from '@epass42/shared'
+import { AppError } from '@epass42/shared'
+import { buildDg2, fromBase64, validateDg2 } from '@epass42/pki'
 
 import type { Db } from '../../db/client'
 import { dscCert, signRequest } from '../../db/schema'

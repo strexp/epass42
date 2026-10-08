@@ -31,7 +31,7 @@ const DSC_CLAIMS = {
 }
 
 function cookieOf(response: LightMyRequestResponse, realm: 'csca' | 'dsc'): string {
-  const cookie = response.cookies.find((entry) => entry.name === `pkd42_${realm}_sid`)
+  const cookie = response.cookies.find((entry) => entry.name === `epass42_${realm}_sid`)
   if (!cookie) throw new Error(`no ${realm} session cookie`)
   return `${cookie.name}=${cookie.value}`
 }

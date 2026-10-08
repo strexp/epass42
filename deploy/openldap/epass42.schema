@@ -1,4 +1,4 @@
-# pkd42 ICAO PKD LDAP schema additions.
+# ePass 42 ICAO PKD LDAP schema additions.
 #
 # Include this file from slapd.conf after the standard schema:
 #
@@ -6,7 +6,7 @@
 #   include  /etc/ldap/schema/cosine.schema
 #   include  /etc/ldap/schema/inetorgperson.schema
 #   include  /etc/ldap/schema/pki.schema          # userCertificate / cRLDistributionPoint
-#   include  /etc/ldap/schema/pkd42.schema
+#   include  /etc/ldap/schema/epass42.schema
 
 # CSCA Master List content (Doc 9303-12 §9).
 attributetype (

@@ -3,7 +3,7 @@
  */
 import { z } from 'zod'
 
-import { parseCertificatePem, sha256 } from '@pkd42/pki'
+import { parseCertificatePem, sha256 } from '@epass42/pki'
 import type { dscCert } from '../../db/schema'
 import type { AuthContext } from '../auth/middleware'
 import type { CscaService } from './service'

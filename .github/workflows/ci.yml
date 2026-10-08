@@ -24,9 +24,9 @@ jobs:
       - run: pnpm run test
       - name: M2 script check (generate CSCA and verify it)
         env:
-          PKD42_KEY_PASSPHRASE: ci-passphrase
+          EPASS42_KEY_PASSPHRASE: ci-passphrase
         run: |
-          pnpm --filter @pkd42/scripts exec tsx src/gen-csca.ts \
-            --out "$RUNNER_TEMP/csca" --cn "pkd42 CI CSCA" --key-rsa-bits 2048
-          pnpm --filter @pkd42/scripts exec tsx src/verify.ts \
+          pnpm --filter @epass42/scripts exec tsx src/gen-csca.ts \
+            --out "$RUNNER_TEMP/csca" --cn "ePass 42 CI CSCA" --key-rsa-bits 2048
+          pnpm --filter @epass42/scripts exec tsx src/verify.ts \
             cert "$RUNNER_TEMP/csca/csca.crt" --kind csca

@@ -5,8 +5,8 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
-import { buildMrzLines, validateMrzLines } from '@pkd42/pki'
-import { signRequestSchema, type SignRequest, LIMITS } from '@pkd42/shared'
+import { buildMrzLines, validateMrzLines } from '@epass42/pki'
+import { signRequestSchema, type SignRequest, LIMITS } from '@epass42/shared'
 
 import { writeAudit } from '../../../audit/audit'
 import { mntDelegatesToNia } from '../../auth/authorization'

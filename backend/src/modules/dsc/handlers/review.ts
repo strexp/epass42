@@ -64,7 +64,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
         await deps.mailer
           .send({
             to: updated.email,
-            subject: 'pkd42: your signing request was approved',
+            subject: 'ePass 42: your signing request was approved',
             text:
               `Your signing request was approved.\n\n` +
               `Open this link to view the details before claiming (claiming is one-time):\n${link}\n`,

@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import EmrtdPreview from '~/components/emrtd/EmrtdPreview.vue'
-import type { MrzFields } from '@pkd42/shared'
+import type { MrzFields } from '@epass42/shared'
 
 const mrz: MrzFields = {
   documentCode: 'P',

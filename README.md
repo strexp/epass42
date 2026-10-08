@@ -1,13 +1,13 @@
-# pkd42
+# ePass 42
 
-pkd42 is a dn42 public key infrastructure: a certificate directory (PKD), a
+ePass 42 is a dn42 public key infrastructure: a certificate directory (PKD), a
 Country Signing Certificate Authority (CSCA) and a Document Signer (DSC) signing
 service for eMRTD ("passport") personalization.
 
 ## Repository layout
 
 ```
-pkd42/
+epass42/
 ├── packages/
 │   ├── pki/       pure functions: X.509/CRL/CMS/SOD/MasterList/data groups/perso
 │   └── shared/    zod schemas, types, error codes and constants (OIDs, country codes)
@@ -34,7 +34,7 @@ pnpm check          # format:check + lint + typecheck + test
 
 ```bash
 cp backend/config.example.toml backend/config.toml   # edit as needed
-pnpm --filter @pkd42/backend dev          # or: start
+pnpm --filter @epass42/backend dev          # or: start
 curl http://127.0.0.1:3000/healthz
 ```
 
@@ -46,8 +46,8 @@ automatically at startup (`runMigrations`) and live in `backend/drizzle`.
 ### Run the frontend (M11)
 
 ```bash
-pnpm --filter @pkd42/frontend dev      # http://localhost:3001 (proxies to the API)
-pnpm --filter @pkd42/frontend build
+pnpm --filter @epass42/frontend dev      # http://localhost:3001 (proxies to the API)
+pnpm --filter @epass42/frontend build
 ```
 
 The SPA renders client-side and calls the backend cross-origin
@@ -62,16 +62,16 @@ pnpm dev    # backend on :3000, frontend on :3001
 ### Generate a CSCA (M2)
 
 ```bash
-pnpm --filter @pkd42/scripts exec tsx src/gen-csca.ts \
+pnpm --filter @epass42/scripts exec tsx src/gen-csca.ts \
   --out ./csca --cn "Example CSCA" --key-rsa-bits 4096 \
-  --crl-dp ldap://pkd42.local/c=XD
+  --crl-dp ldap://epass42.local/c=XD
 
-pnpm --filter @pkd42/scripts exec tsx src/verify.ts \
+pnpm --filter @epass42/scripts exec tsx src/verify.ts \
   cert ./csca/csca.crt --kind csca
 ```
 
 `csca.key` is written as an encrypted PKCS#8 PEM (passphrase prompted, or set
-`PKD42_KEY_PASSPHRASE`). See [`scripts/README.md`](scripts/README.md).
+`EPASS42_KEY_PASSPHRASE`). See [`scripts/README.md`](scripts/README.md).
 
 ## Design notes
 

@@ -11,7 +11,7 @@ import * as pkijs from 'pkijs'
 import { toArrayBuffer, type Bytes } from '../codec/bytes'
 import { derTlv } from '../codec/der'
 import { hash as hashBytes, type HashName } from '../crypto/crypto'
-import { OIDS } from '@pkd42/shared'
+import { OIDS } from '@epass42/shared'
 
 /** The eMRTD CMS content types. */
 export const CMS_OIDS = {

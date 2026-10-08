@@ -129,7 +129,7 @@ const columns = [
     key: 'actions',
     render: (row: Application) =>
       row.status === 'submitted' && isAdmin.value
-        ? h('div', { class: 'pkd42-actions' }, [
+        ? h('div', { class: 'epass42-actions' }, [
             h(NButton, { size: 'tiny', type: 'primary', onClick: () => approve(row.id) }, () =>
               t('common.approve'),
             ),
@@ -150,7 +150,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NSpace vertical size="large">
       <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
         <NText depth="3">{{ $t('home.cscaCard') }}</NText>

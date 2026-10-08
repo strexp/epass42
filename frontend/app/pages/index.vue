@@ -10,7 +10,7 @@ const cards = [
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NSpace vertical size="large">
       <div>
         <h1 style="margin: 0">{{ $t('app.name') }}</h1>
@@ -22,11 +22,11 @@ const cards = [
         :y-gap="16"
         item-responsive
         responsive="screen"
-        class="pkd42-cards"
+        class="epass42-cards"
       >
         <NGi v-for="card in cards" :key="card.key" span="3 s:3 m:1">
-          <NuxtLink :to="card.to" class="pkd42-card-link">
-            <NCard hoverable class="pkd42-card">
+          <NuxtLink :to="card.to" class="epass42-card-link">
+            <NCard hoverable class="epass42-card">
               <NSpace vertical size="small" align="start">
                 <NIcon size="28"><component :is="card.icon" /></NIcon>
                 <NText strong style="font-size: 16px">{{ $t(card.title) }}</NText>
@@ -44,11 +44,11 @@ const cards = [
 </template>
 
 <style scoped>
-.pkd42-card-link {
+.epass42-card-link {
   display: block;
   height: 100%;
 }
-.pkd42-card {
+.epass42-card {
   height: 100%;
 }
 :deep(.n-grid-item) {

@@ -1,5 +1,5 @@
 {
-  "name": "@pkd42/frontend",
+  "name": "@epass42/frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
     "@nuxtjs/color-mode": "^4.0.1",
     "@nuxtjs/i18n": "^10.6.0",
     "@pinia/nuxt": "^1.0.2",
-    "@pkd42/shared": "workspace:*",
+    "@epass42/shared": "workspace:*",
     "naive-ui": "^2.45.3",
     "nuxt": "^4.6.0",
     "ofetch": "^1.5.1",

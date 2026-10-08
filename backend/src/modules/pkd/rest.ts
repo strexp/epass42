@@ -11,7 +11,7 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
-import { derToPem } from '@pkd42/pki'
+import { derToPem } from '@epass42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { writeAudit } from '../../audit/audit'

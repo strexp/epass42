@@ -127,13 +127,13 @@ describe('DG12', () => {
       issuingAuthority: 'NIA',
       dateOfIssue: '20260101',
       personalizationTime: '20260101120000',
-      personalizationDevice: 'PKD42-01',
+      personalizationDevice: 'EPASS42-01',
     })
     const root = parseTlv(dg12)
     expect(root.tag).toBe(0x6c)
     expect(find(root, 0x5f19)?.value).toEqual(ascii('NIA'))
     expect(find(root, 0x5f55)?.value).toEqual(ascii('20260101120000'))
-    expect(find(root, 0x5f56)?.value).toEqual(ascii('PKD42-01'))
+    expect(find(root, 0x5f56)?.value).toEqual(ascii('EPASS42-01'))
   })
 })
 

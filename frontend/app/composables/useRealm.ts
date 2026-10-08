@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 import { useAuthStore } from '~/stores/auth'
 
 /**

@@ -5,7 +5,7 @@
  * opaque DER objects with stable ids, plus the LDAP DN layout used by the REST,
  * LDIF and read-only LDAP surfaces.
  */
-import { parseCertificatePem } from '@pkd42/pki'
+import { parseCertificatePem } from '@epass42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { crl, cscaKey, masterList } from '../../db/schema'

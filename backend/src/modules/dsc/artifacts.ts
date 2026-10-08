@@ -6,9 +6,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { and, eq } from 'drizzle-orm'
 
-import type { SignRequest } from '@pkd42/shared'
-import { AppError } from '@pkd42/shared'
-import { verifySod } from '@pkd42/pki'
+import type { SignRequest } from '@epass42/shared'
+import { AppError } from '@epass42/shared'
+import { verifySod } from '@epass42/pki'
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'

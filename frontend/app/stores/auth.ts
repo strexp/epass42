@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 
 /** The `/auth/{realm}/me` payload. */
 export interface Me {

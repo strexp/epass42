@@ -93,7 +93,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NCard v-if="signedIn" :title="$t('csca.applyTitle')">
       <NText depth="3">{{ $t('auth.signedInTo', { realm: 'CSCA' }) }}</NText>
       <NForm label-placement="top" style="margin-top: 12px">

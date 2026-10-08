@@ -3,7 +3,7 @@ definePageMeta({ layout: 'realm' })
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <AuditLog realm="csca" />
   </div>
 </template>

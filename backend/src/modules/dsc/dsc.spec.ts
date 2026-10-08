@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { describe, expect, it } from 'vitest'
 
-import { hexToBytes, parseCertificatePem, verifySod } from '@pkd42/pki'
+import { hexToBytes, parseCertificatePem, verifySod } from '@epass42/pki'
 import { FakeOidc, makeTestApp, staticMntResolver } from '../../test-support'
 import type { Db } from '../../db/client'
 import { mntConfig } from '../../db/schema'
@@ -92,7 +92,7 @@ async function login(
     method: 'GET',
     url: `/auth/${realm}/callback?code=x&state=${state}`,
   })
-  const cookie = callback.cookies.find((entry) => entry.name === `pkd42_${realm}_sid`)!
+  const cookie = callback.cookies.find((entry) => entry.name === `epass42_${realm}_sid`)!
   return `${cookie.name}=${cookie.value}`
 }
 

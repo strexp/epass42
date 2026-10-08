@@ -13,7 +13,7 @@ import type { Db } from '../../db/client'
 import { session } from '../../db/schema'
 import { hashToken, randomToken } from '../../crypto/secret'
 import { isExpired, isoInSeconds, nowIso } from '../../util/time'
-import type { Realm } from '@pkd42/shared'
+import type { Realm } from '@epass42/shared'
 
 /** Data carried inside a session. */
 export interface SessionData {
@@ -38,7 +38,7 @@ export class SessionStore {
 
   /** The per-realm cookie name. */
   cookieName(realm: Realm): string {
-    return `pkd42_${realm}_sid`
+    return `epass42_${realm}_sid`
   }
 
   /** Cookie options for `Set-Cookie`. */

@@ -1,6 +1,6 @@
 import { defineNuxtConfig } from 'nuxt/config'
 
-// pkd42 frontend (Nuxt 4 + Naive UI).  English-only i18n; all copy goes through
+// ePass 42 frontend (Nuxt 4 + Naive UI).  English-only i18n; all copy goes through
 // i18n keys (never hard-coded).
 //
 // The API runs on a separate origin in development (backend :3000, frontend
@@ -41,7 +41,7 @@ export default defineNuxtConfig({
     preference: 'system',
     fallback: 'light',
     classSuffix: '',
-    storageKey: 'pkd42-color-mode',
+    storageKey: 'epass42-color-mode',
   },
 
   build: {
@@ -54,7 +54,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'PKD42',
+      title: 'ePass 42',
       htmlAttrs: { lang: 'en' },
     },
   },

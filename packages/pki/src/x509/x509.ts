@@ -23,7 +23,7 @@ import {
   subjectKeyIdentifier,
 } from './profile'
 import * as x509 from './x509lib'
-import { OIDS } from '@pkd42/shared'
+import { OIDS } from '@epass42/shared'
 
 /** Maps a hash name to its signature salt length (RSA-PSS). */
 function saltLength(hash: HashName): number {

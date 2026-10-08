@@ -108,7 +108,7 @@ export async function makeTestApp(
 ): Promise<BuiltApp & { dbHandle: DbHandle }> {
   const config = makeTestConfig(overrides)
   // Keep generated artifacts out of the repository.
-  config.dataDir = mkdtempSync(join(tmpdir(), 'pkd42-artifacts-'))
+  config.dataDir = mkdtempSync(join(tmpdir(), 'epass42-artifacts-'))
   const dbHandle = openDatabase(':memory:')
   runMigrations(dbHandle)
   return buildApp({ config, dbHandle, driverFactory: oidc.factory, mntResolver, logger: false })

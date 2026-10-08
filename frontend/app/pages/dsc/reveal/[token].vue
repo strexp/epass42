@@ -21,7 +21,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NCard :title="$t('dsc.statusTitle')">
       <NAlert type="warning" :title="$t('dsc.revealWarning')" style="margin-bottom: 12px" />
       <NDescriptions v-if="metadata" :column="2" size="small">

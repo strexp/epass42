@@ -74,9 +74,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="pkd42-page">
+  <div class="epass42-page">
     <NCard :title="$t('dsc.statusTitle')">
-      <div class="pkd42-actions">
+      <div class="epass42-actions">
         <NInput v-model:value="reference" :placeholder="$t('dsc.referencePlaceholder')" />
         <NButton @click="lookup">{{ $t('dsc.query') }}</NButton>
       </div>
@@ -100,7 +100,7 @@ onMounted(() => {
         >
           {{ $t('dsc.revealWarning') }}
         </NAlert>
-        <div class="pkd42-actions" style="margin-top: 12px">
+        <div class="epass42-actions" style="margin-top: 12px">
           <NButton size="small" @click="loadPreview">{{ $t('dsc.previewTitle') }}</NButton>
           <NButton
             v-if="metadata.status === 'approved'"
@@ -135,7 +135,7 @@ onMounted(() => {
 
       <template v-if="claimed">
         <NAlert type="warning" style="margin-top: 12px" :title="$t('dsc.claimedWarning')" />
-        <pre class="pkd42-mono" data-testid="claimed">{{ claimedText }}</pre>
+        <pre class="epass42-mono" data-testid="claimed">{{ claimedText }}</pre>
       </template>
     </NCard>
   </div>

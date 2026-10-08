@@ -40,7 +40,7 @@ describe('EF.SOD', () => {
     const result = await verifySod(sod, new Map([[1, dg1]]), [ca.certificate])
     expect(result.errors).toEqual([])
     expect(result.valid).toBe(true)
-    expect(result.signerCertificate?.subject).toContain('pkd42 Test DSC')
+    expect(result.signerCertificate?.subject).toContain('ePass 42 Test DSC')
   })
 
   it('detects a data group hash mismatch', async () => {
@@ -72,7 +72,7 @@ describe('CSCA Master List', () => {
     const mlKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
     const mlSigner = await createMasterListSigner(
       {
-        commonName: 'pkd42 Master List Signer',
+        commonName: 'ePass 42 Master List Signer',
         documentTypes: ['P'],
         ...TEST_DATES,
         crlDistributionPoints: TEST_CRL_DP,

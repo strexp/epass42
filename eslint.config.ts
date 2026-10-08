@@ -12,11 +12,11 @@ import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
  */
 export default defineConfigWithVueTs(
   {
-    name: 'pkd42/files-to-lint',
+    name: 'epass42/files-to-lint',
     files: ['**/*.{ts,mts,tsx,vue}'],
   },
   {
-    name: 'pkd42/files-to-ignore',
+    name: 'epass42/files-to-ignore',
     ignores: [
       '**/dist/**',
       '**/build/**',
@@ -34,7 +34,7 @@ export default defineConfigWithVueTs(
   pluginVue.configs['flat/recommended'],
   vueTsConfigs.recommended,
   {
-    name: 'pkd42/rules',
+    name: 'epass42/rules',
     rules: {
       'vue/multi-word-component-names': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',

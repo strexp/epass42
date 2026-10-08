@@ -13,7 +13,7 @@ import {
   type GeneratedCertificate,
   type HashName,
   type RsaKeyPair,
-} from '@pkd42/pki'
+} from '@epass42/pki'
 
 import { cscaKey } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
