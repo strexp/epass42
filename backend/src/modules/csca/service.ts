@@ -7,9 +7,10 @@
  * signing service (M7) can sign EF.SOD.
  */
 import * as pkijs from 'pkijs'
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 
 import {
+  createCrl,
   createCscaLink,
   createCscaRoot,
   createDsc,
@@ -25,13 +26,14 @@ import {
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { cscaKey, dscApplication, dscCert } from '../../db/schema'
+import { crl, cscaKey, dscApplication, dscCert } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
 
 export type CscaKeyRow = typeof cscaKey.$inferSelect
 export type DscCertRow = typeof dscCert.$inferSelect
 export type DscApplicationRow = typeof dscApplication.$inferSelect
+export type CrlRow = typeof crl.$inferSelect
 
 /** Collaborators for the CSCA service. */
 export interface CscaContext {
@@ -303,6 +305,101 @@ export class CscaService {
       .where(eq(dscCert.id, certId))
       .run()
     return { ...row, status: 'revoked', revokedAt: nowIso(), revokeReason: reason }
+  }
+
+  /* ---------------------------------------------------------------- *
+   * CRL (M6)
+   * ---------------------------------------------------------------- */
+
+  /** The most recently generated CRL, or undefined. */
+  latestCrl(): CrlRow | undefined {
+    return this.ctx.db.select().from(crl).orderBy(desc(crl.crlNumber)).get()
+  }
+
+  /**
+   * Whether a CRL should be issued now (M6/T6.3):
+   * none exists, a revocation post-dates the last CRL, the last CRL is older
+   * than the maximum age, or the minimum refresh interval has elapsed.
+   */
+  crlSchedule(now: Date = new Date()): { issue: boolean; reason: string } {
+    const last = this.latestCrl()
+    if (!last) return { issue: true, reason: 'none' }
+    const csca = currentCscaKey(this.ctx.db)
+    const revoked = csca
+      ? this.ctx.db
+          .select()
+          .from(dscCert)
+          .where(and(eq(dscCert.cscaKeyId, csca.id), eq(dscCert.status, 'revoked')))
+          .all()
+      : []
+    const lastTime = new Date(last.thisUpdate).getTime()
+    if (revoked.some((row) => row.revokedAt && new Date(row.revokedAt).getTime() > lastTime)) {
+      return { issue: true, reason: 'revocation' }
+    }
+    const ageMs = now.getTime() - lastTime
+    if (ageMs >= this.ctx.config.crl.maxAgeDays * 86_400_000)
+      return { issue: true, reason: 'max-age' }
+    if (ageMs >= this.ctx.config.crl.minIntervalHours * 3_600_000)
+      return { issue: true, reason: 'refresh' }
+    return { issue: false, reason: 'fresh' }
+  }
+
+  /**
+   * Generates a fresh CRL with a monotonically increasing number, covering all
+   * DSCs revoked under the current CSCA key.
+   */
+  async generateCrl(now: Date = new Date()): Promise<CrlRow> {
+    const { db } = this.ctx
+    const csca = await this.ensureCscaKey()
+    if (!csca) throw new Error('no CSCA key available')
+    const keyPair = await this.loadKeyPair(csca)
+    const issuerCertificate = parseCertificatePem(csca.certPem)
+    const revoked = db
+      .select()
+      .from(dscCert)
+      .where(and(eq(dscCert.cscaKeyId, csca.id), eq(dscCert.status, 'revoked')))
+      .all()
+    const last = this.latestCrl()
+    const crlNumber = (last?.crlNumber ?? 0) + 1
+    const nextUpdate = new Date(now.getTime() + this.ctx.config.crl.maxAgeDays * 86_400_000)
+
+    const generated = await createCrl({
+      issuerCertificate,
+      signingKey: keyPair,
+      crlNumber,
+      thisUpdate: now,
+      nextUpdate,
+      entries: revoked
+        .filter((row) => row.revokedAt !== null)
+        .map((row) => ({
+          serialHex: row.serial,
+          revocationDate: new Date(row.revokedAt as string),
+        })),
+      pss: keyPair.pss,
+    })
+    const result = db
+      .insert(crl)
+      .values({
+        cscaKeyId: csca.id,
+        crlNumber,
+        thisUpdate: now.toISOString(),
+        nextUpdate: nextUpdate.toISOString(),
+        der: Buffer.from(generated.der),
+        published: true,
+        createdAt: nowIso(),
+      })
+      .run()
+    return db
+      .select()
+      .from(crl)
+      .where(eq(crl.id, Number(result.lastInsertRowid)))
+      .get() as CrlRow
+  }
+
+  /** Generates a CRL only when the schedule says one is due. */
+  async maybeGenerateCrl(now: Date = new Date()): Promise<CrlRow | undefined> {
+    if (!this.ctx.config.crl.autoGenerate) return undefined
+    return this.crlSchedule(now).issue ? this.generateCrl(now) : undefined
   }
 
   /** Rolls the CSCA key over, emitting a link certificate signed by the old key. */

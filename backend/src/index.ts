@@ -4,6 +4,7 @@
  */
 import { buildApp } from './app'
 import { loadConfig } from './config'
+import { startCrlScheduler } from './jobs/crlScheduler'
 
 async function main(): Promise<void> {
   const config = loadConfig()
@@ -16,11 +17,16 @@ async function main(): Promise<void> {
     'pkd42 backend listening',
   )
 
+  const stopCrlScheduler = config.roles.includes('csca')
+    ? startCrlScheduler(built.csca, (message, detail) => app.log.info({ detail }, message))
+    : () => {}
+
   let shuttingDown = false
   const shutdown = async (signal: string): Promise<void> => {
     if (shuttingDown) return
     shuttingDown = true
     app.log.info({ signal }, 'shutting down')
+    stopCrlScheduler()
     try {
       await app.close()
       dbHandle.sqlite.close()

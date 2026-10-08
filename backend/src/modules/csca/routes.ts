@@ -17,7 +17,7 @@ import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAudit } from '../../audit/audit'
-import { parseCertificatePem, sha256 } from '@pkd42/pki'
+import { parseCertificatePem, sha256, derToPem } from '@pkd42/pki'
 import { dscApplication, dscCert } from '../../db/schema'
 import { nowIso } from '../../util/time'
 import { requireAdmin, requireSession, type AuthContext } from '../auth/middleware'
@@ -26,8 +26,6 @@ import { CscaService } from './service'
 /** Dependencies for the CSCA routes. */
 export interface CscaRouteDeps extends AuthContext {
   service: CscaService
-  /** Called after a revocation so the CRL can be regenerated (M6). */
-  onRevoked?: () => void
 }
 
 const applicationBody = z.object({
@@ -237,7 +235,8 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
         targetId: cert.id,
         ip: request.ip,
       })
-      deps.onRevoked?.()
+      // Regenerate the CRL so the revocation is published promptly (M6/T6.3).
+      if (deps.config.crl.autoGenerate) await service.generateCrl()
       return reply.send(certMetadata(cert))
     },
   )
@@ -292,6 +291,35 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
         ip: request.ip,
       })
       return reply.send({ previous: result.previous.id, current: result.next.id })
+    },
+  )
+
+  server.get('/csca/crl.der', async (_request, reply) => {
+    const last = service.latestCrl()
+    if (!last) return reply.code(404).send({ error: 'crl_not_found' })
+    return reply.type('application/pkix-crl').send(Buffer.from(last.der))
+  })
+
+  server.get('/csca/crl.pem', async (_request, reply) => {
+    const last = service.latestCrl()
+    if (!last) return reply.code(404).send({ error: 'crl_not_found' })
+    return reply.type('application/x-pem-file').send(derToPem(new Uint8Array(last.der), 'X509 CRL'))
+  })
+
+  server.post(
+    '/csca/crl/generate',
+    { preHandler: requireAdmin(deps, 'csca') },
+    async (request, reply) => {
+      const row = await service.generateCrl()
+      writeAudit(db, {
+        actorAccountId: request.principal!.account.id,
+        realm: 'csca',
+        action: 'crl.generate',
+        targetType: 'crl',
+        targetId: row.id,
+        ip: request.ip,
+      })
+      return reply.code(201).send({ id: row.id, crlNumber: row.crlNumber })
     },
   )
 }

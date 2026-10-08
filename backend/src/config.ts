@@ -95,6 +95,13 @@ const configSchema = z.object({
   adminIncludeMntBy: z.boolean().default(false),
   oauthProviders: z.array(oauthProviderSchema).default([]),
   csca: cscaSchema.prefault({}),
+  crl: z
+    .object({
+      autoGenerate: z.boolean().default(true),
+      maxAgeDays: z.number().int().min(1).default(90),
+      minIntervalHours: z.number().int().min(1).default(48),
+    })
+    .prefault({}),
   logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 })
 

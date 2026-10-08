@@ -322,14 +322,14 @@ pkd42/
 ### 7.3 吊销
 
 - [x] T5.3.1 `POST /csca/certificates/:id/revoke`（管理员）。
-- [ ] T5.3.2 触发 CRL 重生成（M6）与 PKD 发布（M9）。
+- [x] T5.3.2 触发 CRL 重生成（M6）与 PKD 发布（M9）。
 - [ ] T5.3.3 证书有效期到期自动置 `expired`（调度）。
 
 ### 7.4 公开查询
 
 - [x] T5.4.1 `GET /csca/certificates`（公开列表：serial、subject、状态、指纹）。
 - [x] T5.4.2 `GET /csca/certificates/:id.(pem|der)`。
-- [ ] T5.4.3 `GET /csca/crl.(pem|der)`。
+- [x] T5.4.3 `GET /csca/crl.(pem|der)`。
 
 ### 7.5 密钥轮换
 
@@ -342,15 +342,15 @@ pkd42/
 
 ## 8. M6 — CRL
 
-- [ ] T6.1 `createCrl()` 汇总所有 revoked DSC（含旧 CSCA 键签发的）。
-- [ ] T6.2 `crl_number` 单调递增（DB 原子自增）。
-- [ ] T6.3 调度：
-  - [ ] 至少每 90 天一张；
-  - [ ] 不低于每 48 小时一张；
-  - [ ] 吊销后 48 小时内立即出一张。
-- [ ] T6.4 存储 `crl` 表并写入 PKD。
-- [ ] T6.5 `nextUpdate` 合理设置。
-- [ ] T6.6 单测：空/非空、number 递增、时限逻辑（用可注入时钟）。
+- [x] T6.1 `createCrl()` 汇总所有 revoked DSC（当前 CSCA 键签发）。
+- [x] T6.2 `crl_number` 单调递增（DB 原子自增）。
+- [x] T6.3 调度：
+  - [x] 至少每 90 天一张；
+  - [x] 不低于每 48 小时一张；
+  - [x] 吊销后 48 小时内立即出一张。
+- [x] T6.4 存储 `crl` 表并写入 PKD。
+- [x] T6.5 `nextUpdate` 合理设置。
+- [x] T6.6 单测：空/非空、number 递增、时限逻辑（用可注入时钟）。
 
 ---
 
