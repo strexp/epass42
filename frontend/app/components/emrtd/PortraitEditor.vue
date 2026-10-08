@@ -96,8 +96,9 @@ async function onChange(event: Event): Promise<void> {
     bitmap.close()
     if (!best) throw new Error('could not encode the portrait')
     if (best.bytes > TARGET_BYTES) tooLarge.value = true
-    const binary = atob(best.previewDataUrl.slice(best.previewDataUrl.indexOf(',') + 1))
-    best.jpegBase64 = binary
+    // Keep the raw base64 payload (strip the `data:image/jpeg;base64,` prefix);
+    // the API contract expects base64, not the decoded binary string.
+    best.jpegBase64 = best.previewDataUrl.slice(best.previewDataUrl.indexOf(',') + 1)
     model.value = best
   } catch (cause) {
     error.value = (cause as Error).message

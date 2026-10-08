@@ -13,6 +13,7 @@ import {
 } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
+import { downloadText } from '~/utils/download'
 
 interface RequestPreview {
   surname: { present: boolean; value?: string }
@@ -32,7 +33,6 @@ const id = ref((route.query.id as string) ?? '')
 const metadata = ref<Record<string, unknown> | null>(null)
 const preview = ref<RequestPreview | null>(null)
 const claimed = ref(false)
-const claimedText = ref('')
 
 /** Owner requests may be addressed by id (from the history list) or reference. */
 const base = computed(() =>
@@ -61,8 +61,10 @@ async function loadPreview(): Promise<void> {
 
 async function reveal(): Promise<void> {
   try {
-    claimedText.value = await api(`${base.value}/reveal`, { method: 'POST' })
+    const perso = await api<string>(`${base.value}/reveal`, { method: 'POST' })
+    downloadText(`perso-${reference.value || id.value}.txt`, perso)
     claimed.value = true
+    message.success(t('common.success'))
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   }
@@ -133,10 +135,12 @@ onMounted(() => {
         </NDescriptions>
       </NCard>
 
-      <template v-if="claimed">
-        <NAlert type="warning" style="margin-top: 12px" :title="$t('dsc.claimedWarning')" />
-        <pre class="epass42-mono" data-testid="claimed">{{ claimedText }}</pre>
-      </template>
+      <NAlert
+        v-if="claimed"
+        type="warning"
+        style="margin-top: 12px"
+        :title="$t('dsc.claimedWarning')"
+      />
     </NCard>
   </div>
 </template>

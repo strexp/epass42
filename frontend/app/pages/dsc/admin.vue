@@ -4,6 +4,7 @@ import { Check, Download, RefreshCw, ScrollText, Settings, X } from '@lucide/vue
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { downloadText } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 
 definePageMeta({ layout: 'realm' })
@@ -24,7 +25,6 @@ const message = useMessage()
 
 const requests = ref<RequestRow[]>([])
 const queue = ref<RequestRow[]>([])
-const revealText = ref('')
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 
@@ -63,7 +63,9 @@ async function reject(id: number): Promise<void> {
 
 async function adminReveal(id: number): Promise<void> {
   try {
-    revealText.value = await api(`/dsc/admin/requests/${id}/reveal`, { method: 'POST' })
+    const perso = await api<string>(`/dsc/admin/requests/${id}/reveal`, { method: 'POST' })
+    downloadText(`perso-${id}.txt`, perso)
+    message.success(t('common.success'))
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -174,7 +176,6 @@ onMounted(async () => {
       <NCard v-if="isAdmin" :title="$t('dsc.pendingQueue')" size="small">
         <NDataTable v-if="queue.length" :columns="queueColumns" :data="queue" size="small" />
         <NEmpty v-else :description="$t('common.empty')" />
-        <pre v-if="revealText" class="epass42-mono">{{ revealText }}</pre>
       </NCard>
     </NSpace>
   </div>
