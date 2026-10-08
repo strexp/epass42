@@ -1,7 +1,7 @@
 # pkd42 backend configuration (optional).
 #
-# Values here are the base; environment variables (see .env.example) override
-# them.  Point PKD42_CONFIG at this file, or copy it to `config.toml`.
+# Copy this file to `config.toml`; it is the only configuration source (the
+# service reads `./config.toml` by default).
 
 env = "development"
 host = "127.0.0.1"
@@ -76,17 +76,16 @@ validityYears = 10
 # Maximum DG2 (face) size in bytes (card42 LDS1 DG2 capacity).
 dg2MaxBytes = 16384
 
-# LDS2 applications: disabled by default (empty when enabled).
+# LDS2 applications: disabled by default (empty when enabled).  Chip
+# Authentication is advertised by LDS2 only (card42's LDS1 is PACE + AA).
 [issuing.lds2]
 enabled = false
 roles = ["travel", "visa", "biometrics"]
+caKeyId = 1
 
 [issuing.security]
 paceEcdhGm3des = true
 paceEcdhGmAes128 = true
-caEcdh3des = false
-caEcdhAes128 = false
-caKeyId = 1
 aa = false
 
 # Static IP-prefix to ASN map for jurisdiction lookup; the endpoint

@@ -57,8 +57,6 @@ export interface RequestPreview {
   security: {
     paceEcdhGm3des: boolean
     paceEcdhGmAes128: boolean
-    caEcdh3des: boolean
-    caEcdhAes128: boolean
     aa: boolean
   }
   /** Masked optional fields. */
@@ -81,9 +79,6 @@ export function buildPreview(
   const resolved = security ?? {
     paceEcdhGm3des: true,
     paceEcdhGmAes128: true,
-    caEcdh3des: false,
-    caEcdhAes128: false,
-    caKeyId: 1,
     aa: false,
   }
   return {
@@ -102,8 +97,6 @@ export function buildPreview(
     security: {
       paceEcdhGm3des: resolved.paceEcdhGm3des,
       paceEcdhGmAes128: resolved.paceEcdhGmAes128,
-      caEcdh3des: resolved.caEcdh3des,
-      caEcdhAes128: resolved.caEcdhAes128,
       aa: resolved.aa,
     },
     additional: {

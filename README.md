@@ -33,15 +33,15 @@ pnpm check          # format:check + lint + typecheck + test
 ### Run the backend (M3–M4)
 
 ```bash
-cp backend/.env.example backend/.env      # edit as needed
+cp backend/config.example.toml backend/config.toml   # edit as needed
 pnpm --filter @pkd42/backend dev          # or: start
 curl http://127.0.0.1:3000/healthz
 ```
 
-Configuration is read from environment variables overlaid on an optional
-`config.toml` (see [`backend/config.example.toml`](backend/config.example.toml)).
-Migrations run automatically at startup (`RUN_MIGRATIONS`) and live in
-`backend/drizzle`.
+Configuration is read from a single TOML file (`backend/config.toml`, i.e.
+`./config.toml` relative to the backend's working directory; see
+[`backend/config.example.toml`](backend/config.example.toml)). Migrations run
+automatically at startup (`runMigrations`) and live in `backend/drizzle`.
 
 ### Run the frontend (M11)
 
@@ -52,7 +52,7 @@ pnpm --filter @pkd42/frontend build
 
 The SPA renders client-side and calls the backend cross-origin
 (`NUXT_PUBLIC_API_BASE`, default `http://localhost:3000` in development). The
-backend allows the frontend origin via `FRONTEND_URL` and redirects the OAuth
+backend allows the frontend origin via `frontendUrl` and redirects the OAuth
 callback back to it. To run everything at once:
 
 ```bash

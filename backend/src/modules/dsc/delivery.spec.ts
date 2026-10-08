@@ -50,7 +50,7 @@ interface Harness {
 
 async function harness(): Promise<Harness> {
   const oidc = new FakeOidc()
-  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true' })
+  const built = await makeTestApp(oidc, { csca: { bootstrap: true } })
   oidc.set('dsc-client', { subject: USER.sub, claims: USER })
   return { app: built.app, oidc, db: built.dbHandle.db, dsc: built.dsc }
 }

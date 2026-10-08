@@ -113,7 +113,7 @@ pkd42/
 
 ### M3 后端骨架
 
-- Fastify + `fastify-type-provider-zod` + OpenAPI；zod 校验的 env / 可选 `config.toml`；better-sqlite3（WAL/FK/busy_timeout）+ Drizzle 迁移；pino + request id；`/healthz`、`/readyz`；优雅关闭、自动迁移。
+- Fastify + `fastify-type-provider-zod` + OpenAPI；zod 校验的 `config.toml`（唯一配置来源，不读环境变量）；better-sqlite3（WAL/FK/busy_timeout）+ Drizzle 迁移；pino + request id；`/healthz`、`/readyz`；优雅关闭、自动迁移。
 
 ### M4 认证与授权
 
@@ -135,7 +135,7 @@ pkd42/
 - DG2 结构校验 + **16 KiB 上限**（`issuing.dg2MaxBytes`，超限 `413 dg2_too_large`）；DG3/DG4 包装；DG5/DG7；DG11/DG12（发证机构/签发日期/背书由服务端填充）/DG13/DG14/DG15/DG16。
 - 安全机制（PACE/CA/AA）与 DSC 选择为**管理员默认 + 服务端推导**，申请者不配置；服务端生成 AA(RSA-2048)/CA(P-256)，EF.CardAccess/DG14、EF.CardSecurity；EF.SOD 自检；`.perso` 产物（AA/CA 私钥仅存在于产物）。
 - 可选输出**默认空的 LDS2 应用**（`issuing.lds2`，默认关闭）：按 Travel/Visa/Additional Biometrics 生成空应用段，附 PACE+CA 的 EF.CardAccess/EF.CardSecurity 与 CA 标量；CardAccess/Security/CA 位于 Master File，各角色共享同一份。记录/透明 EF 仍为空，留待 M12+。
-- 提交前按登录 ASN 或 IP 路由表（`jurisdiction.routes` / `PKD42_JURISDICTION_ROUTES`）判定管辖；若该 AS 使用自有 DSC 则提示并引导（可忽略继续用 NIA）。
+- 提交前按登录 ASN 或 IP 路由表（`jurisdiction.routes`）判定管辖；若该 AS 使用自有 DSC 则提示并引导（可忽略继续用 NIA）。
 
 ### M8 交付
 
@@ -166,7 +166,8 @@ pkd42/
 - LDS2 记录/透明 EF 写入（空应用已实现；记录留待管理员/授权终端，见 M12+）。
 - ECDSA（显式 ECParameters）证书。
 - 真实 dn42 IP→AS 管辖自动同步（现为静态路由表）。
-- LDS1 是否应宣告/支持 Chip Authentication（card42 LDS1 仅 PACE+AA）。
+
+> 注：LDS1 仅 PACE + AA（card42 LDS1 不支持 CA），CA 只在 LDS2 上启用；该问题已按此约定实现。
 
 ## 14. M12 — 单角色模式（各 AS 自建）
 
@@ -179,7 +180,7 @@ pkd42/
 
 ## 15. M13 — 安全、审计、加密
 
-- [ ] T13.1 私钥加密落盘：信封加密（KEK 来自 env/文件，AES-256-GCM），`key_ref` 不落明文。
+- [ ] T13.1 私钥加密落盘：信封加密（KEK 来自 config.toml/文件，AES-256-GCM），`key_ref` 不落明文。
 - [ ] T13.2 CSCA 在线私钥保护：最小权限、操作二次确认、可选 PKCS#11/HSM 适配层（接口预留）。
 - [ ] T13.3 审计日志：申请/审批/吊销/签发/签名/轮换/登录，含 actor、IP、UA、时间、对象。
 - [ ] T13.4 限流：登录、提交、查询、下载（按 IP + reference）。

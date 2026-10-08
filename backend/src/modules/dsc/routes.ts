@@ -477,6 +477,7 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
             .object({
               enabled: z.boolean().optional(),
               roles: z.array(z.enum(['travel', 'visa', 'biometrics'])).optional(),
+              caKeyId: z.number().int().min(0).max(255).optional(),
             })
             .optional(),
           endorsements: z.string().max(70).optional(),
@@ -484,9 +485,6 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
             .object({
               paceEcdhGm3des: z.boolean().optional(),
               paceEcdhGmAes128: z.boolean().optional(),
-              caEcdh3des: z.boolean().optional(),
-              caEcdhAes128: z.boolean().optional(),
-              caKeyId: z.number().int().min(0).max(255).optional(),
               aa: z.boolean().optional(),
             })
             .optional(),

@@ -152,6 +152,7 @@ export default defineI18nConfig(() => ({
         lds2Travel: 'Travel records',
         lds2Visa: 'Visa records',
         lds2Biometrics: 'Additional biometrics',
+        lds2CaKeyId: 'Chip Authentication key id',
         jurisdictionTitle: 'Your AS uses its own Document Signer',
         jurisdictionBody:
           'Traffic from AS{asn} is configured to use its own DSC. Apply through your own network’s DSC service instead; you may still continue here with the NIA DSC.',

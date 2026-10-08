@@ -21,10 +21,7 @@ coverage/
 # Generated artifacts (perso scripts, etc.)
 backend/data/
 
-# Environment and secrets
-.env
-.env.*
-!.env.example
+# Secrets and local configuration
 config.toml
 secrets/
 *.pem

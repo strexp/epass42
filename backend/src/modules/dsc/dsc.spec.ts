@@ -62,9 +62,9 @@ interface Harness {
   cscaPem: string
 }
 
-async function harness(overrides: Record<string, string> = {}): Promise<Harness> {
+async function harness(overrides: Record<string, unknown> = {}): Promise<Harness> {
   const oidc = new FakeOidc()
-  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true', ...overrides })
+  const built = await makeTestApp(oidc, { csca: { bootstrap: true }, ...overrides })
   oidc.set('csca-client', { subject: CSCA_ADMIN.sub, claims: CSCA_ADMIN })
   oidc.set('dsc-client', { subject: USER.sub, claims: USER })
   return {
@@ -179,7 +179,7 @@ describe('M7 DSC signing service', () => {
     const submit = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
-      payload: payload('X1234567', { security: { aa: true, caEcdh3des: true, caKeyId: 1 } }),
+      payload: payload('X1234567', { security: { aa: true } }),
     })
     const reference = submit.json().reference as string
     const adminCookie = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
@@ -458,7 +458,7 @@ describe('M7 DSC signing service', () => {
       payload: { lds2: { enabled: true, roles: ['travel'] } },
     })
     expect(update.statusCode).toBe(200)
-    expect(update.json().lds2).toEqual({ enabled: true, roles: ['travel'] })
+    expect(update.json().lds2).toEqual({ enabled: true, roles: ['travel'], caKeyId: 1 })
 
     const second = await submit(app, 'H2222222')
     const secondId = dsc.getByReference(second)!.id
@@ -470,9 +470,43 @@ describe('M7 DSC signing service', () => {
     })
     const perso = artifactText(db, secondId)
     expect(perso).toMatch(/^@lds2 travel$/m)
-    expect(perso).toContain('@cardsecurity')
+    expect(perso).toMatch(/^@ca /m)
+    expect(perso).toMatch(/^@cardsecurity /m)
     expect(perso).not.toMatch(/^@record /m)
     expect(perso).not.toMatch(/^@transparent /m)
+  })
+
+  it('advertises Chip Authentication only on LDS2 (LDS1 is PACE + AA)', async () => {
+    const { app, oidc, db, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { security: { aa: true }, lds2: { enabled: true, roles: ['travel'] } },
+    })
+    expect(update.statusCode).toBe(200)
+
+    const reference = await submit(app, 'H3333333')
+    const id = dsc.getByReference(reference)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+
+    const perso = artifactText(db, id)
+    const lds1 = perso.split('@instance A0000002472001')[0]!
+    // LDS1 carries the AA private key but never a CA key or EF.CardSecurity.
+    expect(lds1).toMatch(/^@aa /m)
+    expect(lds1).not.toMatch(/^@ca /m)
+    expect(lds1).not.toMatch(/^@cardsecurity /m)
+    // The LDS2 application advertises Chip Authentication.
+    expect(perso).toMatch(/^@lds2 travel$/m)
+    expect(perso).toMatch(/^@ca /m)
+    expect(perso).toMatch(/^@cardsecurity /m)
   })
 
   it('server-sets the MRZ nationality', async () => {
@@ -490,7 +524,7 @@ describe('M7 DSC signing service', () => {
 
   it('reports AS jurisdiction from the IP route table and settings', async () => {
     const { app, db } = await harness({
-      PKD42_JURISDICTION_ROUTES: JSON.stringify([{ prefix: '10.0.0.0/8', asn: 4242420001 }]),
+      jurisdiction: { routes: [{ prefix: '10.0.0.0/8', asn: 4242420001 }] },
     })
     db.insert(asConfig)
       .values({ asn: 4242420001, useNiaDsc: false, updatedAt: new Date().toISOString() })

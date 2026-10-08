@@ -11,7 +11,7 @@ import { currentCscaKey } from '../csca/service'
 
 async function setup() {
   const oidc = new FakeOidc()
-  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true' })
+  const built = await makeTestApp(oidc, { csca: { bootstrap: true } })
   return built
 }
 

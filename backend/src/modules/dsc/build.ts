@@ -35,9 +35,8 @@ import {
   wrapDg3,
   wrapDg4,
   type RsaKeyPair,
-  type SecurityInfoSelection,
 } from '@pkd42/pki'
-import type { SignRequest } from '@pkd42/shared'
+import type { SecurityOptions, SignRequest } from '@pkd42/shared'
 import { AppError } from '@pkd42/shared'
 
 /** The LDS2 roles a document may emit (empty applications by default). */
@@ -54,10 +53,13 @@ export interface IssuingDefaults {
   /** Maximum DG2 byte size (card42 LDS1 DG2 capacity by default). */
   dg2MaxBytes: number
   /** Emit empty LDS2 applications for these roles (disabled by default). */
-  lds2: { enabled: boolean; roles: Lds2Role[] }
+  lds2: { enabled: boolean; roles: Lds2Role[]; caKeyId: number }
   endorsements?: string
-  /** Default security mechanisms applied when the request omits them. */
-  security: SecurityInfoSelection
+  /**
+   * Default LDS1 security mechanisms applied when the request omits them.
+   * Chip Authentication is LDS2-only (card42's LDS1 is PACE + AA).
+   */
+  security: SecurityOptions
 }
 
 /** The Document Signer material used to sign EF.SOD / EF.CardSecurity. */
@@ -207,29 +209,16 @@ export async function buildPersoSigning(
   // Security mechanisms are administrator defaults the applicant does not see.
   const security = request.security ?? profile.security
 
-  // EF.CardAccess advertises the selected PACE/CA/AA mechanisms.
+  // EF.CardAccess advertises the LDS1 PACE mechanisms (and AA, if enabled).
+  // Chip Authentication is LDS2-only, so LDS1 never advertises it.
   const cardAccess = buildCardAccess({
     paceEcdhGm3des: security.paceEcdhGm3des,
     paceEcdhGmAes128: security.paceEcdhGmAes128,
-    caEcdh3des: security.caEcdh3des,
-    caEcdhAes128: security.caEcdhAes128,
-    caKeyId: security.caKeyId,
+    caEcdh3des: false,
+    caEcdhAes128: false,
+    caKeyId: profile.lds2.caKeyId,
     aa: security.aa,
   })
-
-  let cardSecurity: Uint8Array | undefined
-  let caScalar: Uint8Array | undefined
-  const caEnabled = security.caEcdh3des || security.caEcdhAes128
-  if (caEnabled) {
-    const ca = generateP256KeyPair()
-    caScalar = ca.scalar
-    const securityObject = buildSecurityObject(cardAccess, ca.spki, security.caKeyId)
-    cardSecurity = await buildCardSecurity(
-      securityObject,
-      fromBase64Pem(dsc.certPem),
-      dsc.keyPair.privateKey,
-    )
-  }
 
   // DG14 mirrors EF.CardAccess.
   groups.push({ number: 14, bytes: buildDg14(cardAccess) })
@@ -257,9 +246,7 @@ export async function buildPersoSigning(
       dataGroups: groups,
       sod,
       aaPrivateKey,
-      caScalar,
       cardAccess,
-      cardSecurity,
     },
   ]
 
@@ -272,11 +259,11 @@ export async function buildPersoSigning(
       paceEcdhGmAes128: false,
       caEcdh3des: true,
       caEcdhAes128: false,
-      caKeyId: profile.security.caKeyId,
+      caKeyId: profile.lds2.caKeyId,
       aa: false,
     })
     const ca = generateP256KeyPair()
-    const securityObject = buildSecurityObject(lds2Access, ca.spki, profile.security.caKeyId)
+    const securityObject = buildSecurityObject(lds2Access, ca.spki, profile.lds2.caKeyId)
     const lds2CardSecurity = await buildCardSecurity(
       securityObject,
       fromBase64Pem(dsc.certPem),
@@ -304,7 +291,6 @@ export async function buildPersoSigning(
     groups,
     sod,
     cardAccess,
-    cardSecurity,
     sha256: bytesToHex(sha256(ascii(perso))),
   }
 }

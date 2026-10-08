@@ -9,10 +9,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 
-import type { SignRequest } from '@pkd42/shared'
+import type { SecurityOptions, SignRequest } from '@pkd42/shared'
 import { AppError } from '@pkd42/shared'
 import { verifySod } from '@pkd42/pki'
-import type { SecurityInfoSelection } from '@pkd42/pki'
 import { buildDg2, fromBase64, validateDg2 } from '@pkd42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
@@ -44,8 +43,8 @@ export type SignRequestRow = typeof signRequest.$inferSelect
 
 /** A partial update to the issuing defaults (nested objects may be partial). */
 export type IssuingDefaultsUpdate = Partial<Omit<IssuingDefaults, 'security' | 'lds2'>> & {
-  security?: Partial<SecurityInfoSelection>
-  lds2?: { enabled?: boolean; roles?: Lds2Role[] }
+  security?: Partial<SecurityOptions>
+  lds2?: { enabled?: boolean; roles?: Lds2Role[]; caKeyId?: number }
 }
 
 /** Who is submitting the request (may be anonymous). */
@@ -111,6 +110,10 @@ export class DscService {
           overrides.lds2?.roles ??
           (extra.lds2 as { roles?: IssuingDefaults['lds2']['roles'] } | undefined)?.roles ??
           this.config.issuing.lds2.roles,
+        caKeyId:
+          overrides.lds2?.caKeyId ??
+          (extra.lds2 as { caKeyId?: number } | undefined)?.caKeyId ??
+          this.config.issuing.lds2.caKeyId,
       },
       endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
       security: {

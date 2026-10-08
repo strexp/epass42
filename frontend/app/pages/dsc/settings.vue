@@ -31,13 +31,10 @@ const profile = ref({
   dg13Policy: '',
   validityYears: 10,
   dg2MaxBytes: 16384,
-  lds2: { enabled: false, roles: ['travel', 'visa', 'biometrics'] as string[] },
+  lds2: { enabled: false, roles: ['travel', 'visa', 'biometrics'] as string[], caKeyId: 1 },
   security: {
     paceEcdhGm3des: true,
     paceEcdhGmAes128: true,
-    caEcdh3des: false,
-    caEcdhAes128: false,
-    caKeyId: 1,
     aa: false,
   },
 })
@@ -155,6 +152,13 @@ onMounted(async () => {
             :options="lds2Options"
             style="max-width: 460px; margin-top: 8px"
           />
+          <NFormItem
+            v-if="profile.lds2.enabled"
+            :label="$t('dsc.lds2CaKeyId')"
+            style="margin-top: 8px"
+          >
+            <NInputNumber v-model:value="profile.lds2.caKeyId" :min="0" :max="255" />
+          </NFormItem>
         </NCard>
 
         <NSpace>

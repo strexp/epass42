@@ -200,7 +200,7 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
     } catch (error) {
       app.log.error(
         { err: error },
-        'sealed CSCA key cannot be decrypted (KEK mismatch): set the same ENCRYPTION_KEK/PKD42_ENCRYPTION_KEK used before, or remove the database to bootstrap a new CSCA',
+        'sealed CSCA key cannot be decrypted (KEK mismatch): set the same encryptionKek in config.toml used before, or remove the database to bootstrap a new CSCA',
       )
     }
   }

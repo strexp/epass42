@@ -13,7 +13,7 @@ const ADMIN = {
 async function setup() {
   const oidc = new FakeOidc()
   oidc.set('csca-client', { subject: ADMIN.sub, claims: ADMIN })
-  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true' })
+  const built = await makeTestApp(oidc, { csca: { bootstrap: true } })
   // Publish a CRL and a Master List.
   await built.csca.generateCrl()
   await built.csca.generateMasterList()

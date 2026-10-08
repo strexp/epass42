@@ -4,14 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { loadConfig } from '../config'
+import { parseConfig } from '../config'
 import { openPrivateKey, resolveKeks, sealPrivateKey } from './keyring'
 
 function configWithSecret(secret: string) {
-  return loadConfig({
-    configPath: '/nonexistent-pkd42-config.toml',
-    env: { PKD42_ENV: 'test', PKD42_SESSION_SECRET: secret },
-  })
+  return parseConfig({ env: 'test', sessionSecret: secret })
 }
 
 describe('private key sealing', () => {
@@ -36,9 +33,10 @@ describe('private key sealing', () => {
 
   it('uses the configured ENCRYPTION_KEK when present', () => {
     const kek = randomBytes(32).toString('base64')
-    const config = loadConfig({
-      configPath: '/nonexistent-pkd42-config.toml',
-      env: { PKD42_ENV: 'test', PKD42_SESSION_SECRET: 'x'.repeat(20), PKD42_ENCRYPTION_KEK: kek },
+    const config = parseConfig({
+      env: 'test',
+      sessionSecret: 'x'.repeat(20),
+      encryptionKek: kek,
     })
     const keks = resolveKeks(config, '/tmp/does-not-matter')
     expect(keks).toHaveLength(1)

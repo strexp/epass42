@@ -14,7 +14,7 @@ const ADMIN = {
 async function setup() {
   const oidc = new FakeOidc()
   oidc.set('csca-client', { subject: ADMIN.sub, claims: ADMIN })
-  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true' })
+  const built = await makeTestApp(oidc, { csca: { bootstrap: true } })
   const { app, dbHandle, csca } = built
   const start = await app.inject({ method: 'GET', url: '/auth/csca/login' })
   const state = new URL(start.headers.location as string).searchParams.get('state')

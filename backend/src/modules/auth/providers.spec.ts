@@ -26,7 +26,7 @@ async function setup() {
     claims: { sub: 'alpha-user', dn42: { asn: 1 } },
   })
   oidc.set('beta-client', { subject: 'beta-user', claims: { sub: 'beta-user', dn42: { asn: 2 } } })
-  return makeTestApp(oidc, { PKD42_OAUTH_PROVIDERS: JSON.stringify(PROVIDERS) })
+  return makeTestApp(oidc, { oauthProviders: PROVIDERS })
 }
 
 /** Starts a login and returns the flow state from the redirect. */

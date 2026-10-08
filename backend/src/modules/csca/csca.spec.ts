@@ -34,7 +34,7 @@ async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promis
   const oidc = new FakeOidc()
   oidc.set('csca-client', { subject: String(cscaClaims.sub), claims: cscaClaims })
   oidc.set('dsc-client', { subject: OTHER_USER.sub, claims: OTHER_USER })
-  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true' })
+  const built = await makeTestApp(oidc, { csca: { bootstrap: true } })
   const app = built.app
 
   async function login(realm: 'csca' | 'dsc'): Promise<string> {

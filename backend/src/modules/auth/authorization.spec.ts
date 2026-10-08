@@ -45,7 +45,7 @@ function insertAccount(
 }
 
 describe('DSC delegated AS review scope', () => {
-  const config = makeTestConfig({ PKD42_DSC_ADMIN_MNTS: 'NIA-DSC-MNT' })
+  const config = makeTestConfig({ adminMnts: { dsc: ['NIA-DSC-MNT'] } })
 
   it('treats a configured MNT as a global NIA administrator', () => {
     const db = makeDb()

@@ -85,13 +85,13 @@ export const dg16Schema = z.object({
     .default([]),
 })
 
-/** Security mechanism switches used to build EF.CardAccess / DG14 / DG15. */
+/**
+ * LDS1 security mechanism switches used to build EF.CardAccess / DG14 / DG15.
+ * Chip Authentication is LDS2-only, so it is not configurable here.
+ */
 export const securityOptionsSchema = z.object({
   paceEcdhGm3des: z.boolean().default(true),
   paceEcdhGmAes128: z.boolean().default(true),
-  caEcdh3des: z.boolean().default(false),
-  caEcdhAes128: z.boolean().default(false),
-  caKeyId: z.number().int().min(0).max(255).default(1),
   aa: z.boolean().default(false),
 })
 

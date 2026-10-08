@@ -5,13 +5,17 @@
  * realm isolation and admin authorization can be exercised without a live
  * identity provider (M4/T4.10).
  */
-import type { AppConfig } from './config'
-import { loadConfig } from './config'
+import {
+  mergeConfig,
+  parseConfig,
+  type AppConfig,
+  type OAuthProviderConfig,
+  type RawConfig,
+} from './config'
 import { openDatabase, type DbHandle } from './db/client'
 import { runMigrations } from './db/migrate'
 import { buildApp, type BuiltApp } from './app'
 import type { OidcDriver, OidcDriverFactory, OidcFlowStart } from './modules/auth/provider'
-import type { OAuthProviderConfig } from './config'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -71,28 +75,25 @@ const PROVIDERS = [
   },
 ] as const
 
-/** Builds a test configuration. */
-export function makeTestConfig(overrides: Record<string, string> = {}): AppConfig {
-  return loadConfig({
-    configPath: '/nonexistent-pkd42-config.toml',
-    env: {
-      PKD42_COOKIE_SECURE: 'false',
-      PKD42_SESSION_SECRET: 'test-session-secret-0123456789',
-      PKD42_ROLES: 'pkd,csca,dsc',
-      PKD42_CSCA_ADMIN_MNTS: 'EXAMPLE-CSCA-MNT',
-      PKD42_DSC_ADMIN_MNTS: 'EXAMPLE-DSC-MNT',
-      PKD42_CSCA_BOOTSTRAP: 'false',
-      PKD42_CSCA_KEY_BITS: '2048',
-      PKD42_OAUTH_PROVIDERS: JSON.stringify(PROVIDERS),
-      ...overrides,
-    },
-  })
+/** Base raw configuration used by every test (merged with per-test overrides). */
+const TEST_CONFIG: RawConfig = {
+  cookieSecure: false,
+  sessionSecret: 'test-session-secret-0123456789',
+  roles: ['pkd', 'csca', 'dsc'],
+  adminMnts: { csca: ['EXAMPLE-CSCA-MNT'], dsc: ['EXAMPLE-DSC-MNT'] },
+  csca: { bootstrap: false, keyBits: 2048 },
+  oauthProviders: PROVIDERS,
+}
+
+/** Builds a test configuration from raw (TOML-shaped) overrides. */
+export function makeTestConfig(overrides: RawConfig = {}): AppConfig {
+  return parseConfig(mergeConfig(TEST_CONFIG, overrides))
 }
 
 /** Builds an in-memory application with the fake OIDC driver. */
 export async function makeTestApp(
   oidc: FakeOidc,
-  overrides: Record<string, string> = {},
+  overrides: RawConfig = {},
 ): Promise<BuiltApp & { dbHandle: DbHandle }> {
   const config = makeTestConfig(overrides)
   // Keep generated artifacts out of the repository.
