@@ -110,6 +110,7 @@ export default defineI18nConfig(() => ({
         documentation: 'Document',
         portrait: 'Portrait (DG2)',
         portraitHint: 'Crop to 4:5; encoded in your browser.',
+        portraitTooLarge: 'The photo is still large after compression; consider a smaller image.',
         displayImage: 'Display image (DG5)',
         signatureImage: 'Signature image (DG7)',
         fingerprints: 'Fingerprint template (DG3, encoded file)',
@@ -145,6 +146,7 @@ export default defineI18nConfig(() => ({
         personalizationDevice: 'Personalization device',
         dg13Policy: 'DG13 encoding policy',
         validityYears: 'Document validity (years)',
+        dg2MaxBytes: 'Maximum DG2 size (bytes)',
         jurisdictionTitle: 'Your AS uses its own Document Signer',
         jurisdictionBody:
           'Traffic from AS{asn} is configured to use its own DSC. Apply through your own network’s DSC service instead; you may still continue here with the NIA DSC.',
@@ -208,6 +210,7 @@ export default defineI18nConfig(() => ({
         no_active_dsc: 'No approved DSC is available for this AS yet.',
         no_private_key: 'This certificate has no downloadable private key.',
         private_key_consumed: 'The private key has already been downloaded and deleted.',
+        dg2_too_large: 'The photo is too large; please choose a smaller image.',
       },
     },
   },

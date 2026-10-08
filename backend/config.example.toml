@@ -73,6 +73,8 @@ personalizationDevice = "PKD42"
 dg13Policy = "utf8-text"
 # Document validity (years); the MRZ expiry is computed by the service.
 validityYears = 10
+# Maximum DG2 (face) size in bytes (card42 LDS1 DG2 capacity).
+dg2MaxBytes = 16384
 
 [issuing.security]
 paceEcdhGm3des = true

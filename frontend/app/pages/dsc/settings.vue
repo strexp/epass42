@@ -29,6 +29,7 @@ const profile = ref({
   personalizationDevice: '',
   dg13Policy: '',
   validityYears: 10,
+  dg2MaxBytes: 16384,
   security: {
     paceEcdhGm3des: true,
     paceEcdhGmAes128: true,
@@ -123,6 +124,9 @@ onMounted(async () => {
           </NFormItem>
           <NFormItem :label="$t('dsc.validityYears')">
             <NInputNumber v-model:value="profile.validityYears" :min="1" :max="30" />
+          </NFormItem>
+          <NFormItem :label="$t('dsc.dg2MaxBytes')">
+            <NInputNumber v-model:value="profile.dg2MaxBytes" :min="1024" :step="1024" />
           </NFormItem>
         </NCard>
 

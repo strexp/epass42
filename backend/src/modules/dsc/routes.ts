@@ -472,6 +472,7 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
           personalizationDevice: z.string().max(70).optional(),
           dg13Policy: z.string().max(70).optional(),
           validityYears: z.number().int().min(1).max(30).optional(),
+          dg2MaxBytes: z.number().int().min(1024).optional(),
           endorsements: z.string().max(70).optional(),
           security: z
             .object({

@@ -38,4 +38,5 @@ const ERROR_KEYS = new Set([
   'no_active_dsc',
   'no_private_key',
   'private_key_consumed',
+  'dg2_too_large',
 ])

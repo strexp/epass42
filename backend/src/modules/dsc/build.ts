@@ -38,6 +38,7 @@ import {
   type SecurityInfoSelection,
 } from '@pkd42/pki'
 import type { SignRequest } from '@pkd42/shared'
+import { AppError } from '@pkd42/shared'
 
 /** Server-filled issuing fields (defaults + admin overrides). */
 export interface IssuingDefaults {
@@ -47,6 +48,8 @@ export interface IssuingDefaults {
   dg13Policy: string
   /** Document validity in years, used for the server-computed MRZ expiry. */
   validityYears: number
+  /** Maximum DG2 byte size (card42 LDS1 DG2 capacity by default). */
+  dg2MaxBytes: number
   endorsements?: string
   /** Default security mechanisms applied when the request omits them. */
   security: SecurityInfoSelection
@@ -118,6 +121,13 @@ function buildDataGroups(
 
   const dg2 = buildDg2(fromBase64(request.dg2.jpeg), request.dg2.width, request.dg2.height)
   validateDg2(dg2)
+  if (dg2.length > profile.dg2MaxBytes) {
+    throw new AppError(
+      'dg2_too_large',
+      `DG2 is ${dg2.length} bytes, above the ${profile.dg2MaxBytes}-byte limit`,
+      413,
+    )
+  }
   groups.push({ number: 2, bytes: dg2 })
 
   if (request.dg3) groups.push({ number: 3, bytes: wrapDg3(fromBase64(request.dg3.bytes)) })

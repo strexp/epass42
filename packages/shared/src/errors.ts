@@ -34,6 +34,7 @@ export const ERROR_CODES = [
   'no_active_dsc',
   'no_private_key',
   'private_key_consumed',
+  'dg2_too_large',
   'request_not_found',
   'request_already_consumed',
   'request_not_approved',

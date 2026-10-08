@@ -121,6 +121,11 @@ const configSchema = z.object({
       dg13Policy: z.string().default('utf8-text'),
       /** Document validity, in years, applied to the server-computed expiry. */
       validityYears: z.number().int().min(1).max(30).default(10),
+      /**
+       * Maximum DG2 (face) byte size.  Default matches card42's LDS1 DG2
+       * capacity (16384 B); a larger face is rejected.
+       */
+      dg2MaxBytes: z.number().int().min(1024).default(16384),
       /** Default eMRTD security mechanisms chosen by the administrator. */
       security: z
         .object({

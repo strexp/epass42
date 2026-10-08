@@ -13,6 +13,7 @@ import type { SignRequest } from '@pkd42/shared'
 import { AppError } from '@pkd42/shared'
 import { verifySod } from '@pkd42/pki'
 import type { SecurityInfoSelection } from '@pkd42/pki'
+import { buildDg2, fromBase64, validateDg2 } from '@pkd42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import {
@@ -95,6 +96,10 @@ export class DscService {
         overrides.validityYears ??
         (extra.validityYears as number | undefined) ??
         this.config.issuing.validityYears,
+      dg2MaxBytes:
+        overrides.dg2MaxBytes ??
+        (extra.dg2MaxBytes as number | undefined) ??
+        this.config.issuing.dg2MaxBytes,
       endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
       security: {
         ...this.config.issuing.security,
@@ -137,6 +142,16 @@ export class DscService {
     const selection = this.resolveDscSelection(requester, payload)
     // The document expiry is derived from the issuing profile validity.
     const profile = this.issuingDefaults()
+    // Reject an oversized face before persisting the request.
+    const dg2 = buildDg2(fromBase64(payload.dg2.jpeg), payload.dg2.width, payload.dg2.height)
+    validateDg2(dg2)
+    if (dg2.length > profile.dg2MaxBytes) {
+      throw new AppError(
+        'dg2_too_large',
+        `DG2 is ${dg2.length} bytes, above the ${profile.dg2MaxBytes}-byte limit`,
+        413,
+      )
+    }
     const effectivePayload: SignRequest = {
       ...payload,
       mrz: {

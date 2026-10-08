@@ -423,6 +423,18 @@ describe('M7 DSC signing service', () => {
     expect(Buffer.from(dg1).toString('latin1')).toContain(mrzExpiry(5))
   })
 
+  it('rejects an oversized DG2 face', async () => {
+    const { app } = await harness()
+    const big = Buffer.alloc(20000, 1).toString('base64')
+    const response = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      payload: { ...payload('G1111111'), dg2: { jpeg: big, width: 100, height: 125 } },
+    })
+    expect(response.statusCode).toBe(413)
+    expect(response.json().error).toBe('dg2_too_large')
+  })
+
   it('server-sets the MRZ nationality', async () => {
     const { app, dsc } = await harness()
     const response = await app.inject({
