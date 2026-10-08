@@ -16,6 +16,7 @@ interface RequestRow {
 
 const auth = useAuthStore()
 const api = useApi()
+const { t } = useI18n()
 const requests = ref<RequestRow[]>([])
 
 const signedIn = computed(() => auth.realms.dsc.me !== null)
@@ -35,6 +36,12 @@ const columns = [
   },
   { title: 'Delivery', key: 'deliveryMode' },
   { title: 'DGs', key: 'dataGroups', render: (row: RequestRow) => row.dataGroups.join(', ') },
+  {
+    title: '',
+    key: 'actions',
+    render: (row: RequestRow) =>
+      h('a', { href: `/dsc/status?id=${row.id}` }, () => t('dsc.statusTitle')),
+  },
 ]
 
 onMounted(async () => {

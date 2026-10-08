@@ -11,7 +11,7 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 
 interface RequestPreview {
@@ -28,17 +28,24 @@ const { t } = useI18n()
 const message = useMessage()
 
 const reference = ref((route.query.reference as string) ?? '')
+const id = ref((route.query.id as string) ?? '')
 const metadata = ref<Record<string, unknown> | null>(null)
 const preview = ref<RequestPreview | null>(null)
 const claimed = ref(false)
 const claimedText = ref('')
 
+/** Owner requests may be addressed by id (from the history list) or reference. */
+const base = computed(() =>
+  reference.value ? `/dsc/requests/${reference.value}` : `/dsc/requests/id/${id.value}`,
+)
+
 async function lookup(): Promise<void> {
   metadata.value = null
   preview.value = null
   claimed.value = false
+  if (!reference.value && !id.value) return
   try {
-    metadata.value = await api(`/dsc/requests/${reference.value}`)
+    metadata.value = await api(base.value)
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   }
@@ -46,7 +53,7 @@ async function lookup(): Promise<void> {
 
 async function loadPreview(): Promise<void> {
   try {
-    preview.value = await api(`/dsc/requests/${reference.value}/preview`)
+    preview.value = await api(`${base.value}/preview`)
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   }
@@ -54,7 +61,7 @@ async function loadPreview(): Promise<void> {
 
 async function reveal(): Promise<void> {
   try {
-    claimedText.value = await api(`/dsc/requests/${reference.value}/reveal`, { method: 'POST' })
+    claimedText.value = await api(`${base.value}/reveal`, { method: 'POST' })
     claimed.value = true
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -62,7 +69,7 @@ async function reveal(): Promise<void> {
 }
 
 onMounted(() => {
-  if (reference.value) void lookup()
+  if (reference.value || id.value) void lookup()
 })
 </script>
 

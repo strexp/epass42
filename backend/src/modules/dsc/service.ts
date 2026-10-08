@@ -432,6 +432,21 @@ export class DscService {
   ): { perso: string; row: SignRequestRow } {
     const row = this.getByReference(reference)
     if (!row) throw new AppError('request_not_found', 'request not found', 404)
+    return this.revealApplicant(row, actorAccountId)
+  }
+
+  /** One-time reveal by id for the owner (delivery mode A). */
+  revealOwned(
+    row: SignRequestRow,
+    actorAccountId: number | null,
+  ): { perso: string; row: SignRequestRow } {
+    return this.revealApplicant(row, actorAccountId)
+  }
+
+  private revealApplicant(
+    row: SignRequestRow,
+    actorAccountId: number | null,
+  ): { perso: string; row: SignRequestRow } {
     if (row.status !== 'approved')
       throw new AppError('request_not_approved', 'request not approved', 409)
     if (row.deliveryMode !== 'applicant') {

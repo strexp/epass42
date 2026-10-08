@@ -458,4 +458,63 @@ describe('M7 DSC signing service', () => {
     })
     expect(outOfRange.json()).toMatchObject({ asn: null, notice: false })
   })
+
+  it('lets the owner view status/preview and reveal by id', async () => {
+    const { app, oidc, dsc } = await harness()
+    const user = await login(app, oidc, 'dsc', 'dsc-client', USER)
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: user },
+      payload: payload('F1111111'),
+    })
+    const id = dsc.getByReference(created.json().reference as string)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+
+    const status = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/id/${id}`,
+      headers: { cookie: user },
+    })
+    expect(status.statusCode).toBe(200)
+    expect(status.json().status).toBe('approved')
+
+    const preview = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/id/${id}/preview`,
+      headers: { cookie: user },
+    })
+    expect(preview.statusCode).toBe(200)
+    expect(preview.json().documentNumber.value).toContain('*')
+
+    const reveal = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/id/${id}/reveal`,
+      headers: { cookie: user },
+    })
+    expect(reveal.statusCode).toBe(200)
+    expect(reveal.body).toContain('@dg 1')
+
+    const again = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/id/${id}/reveal`,
+      headers: { cookie: user },
+    })
+    expect(again.statusCode).toBe(410)
+
+    const other = await login(app, oidc, 'dsc', 'dsc-client', AS_REVIEWER)
+    const forbidden = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/id/${id}`,
+      headers: { cookie: other },
+    })
+    expect(forbidden.statusCode).toBe(403)
+  })
 })

@@ -30,6 +30,7 @@ import { requireAdmin, resolvePrincipal, type AuthContext } from '../auth/middle
 import type { SessionStore } from '../auth/session'
 import type { Mailer } from '../../mail/mailer'
 import { DscService, type SignRequestRow } from './service'
+import { buildPreview } from './preview'
 import type { IssuingDefaults } from './build'
 
 /** Dependencies for the DSC routes. */
@@ -96,6 +97,75 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
       const row = service.getByReference(request.params.reference)
       if (!row) return reply.code(404).send({ error: 'request_not_found' })
       return reply.send(service.metadata(row))
+    },
+  )
+
+  // Status/preview/reveal by numeric id for the signed-in owner (and reviewers).
+  const idParams = z.object({ id: z.coerce.number().int().positive() })
+  const accessRow = (
+    request: FastifyRequest,
+    row: SignRequestRow,
+  ): { ok: boolean; status?: number } => {
+    const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
+    if (!principal) return { ok: false, status: 401 }
+    request.principal = principal
+    if (row.requesterAccountId === principal.account.id) return { ok: true }
+    const scope = dscScope(db, deps.config, principal.account)
+    if (scope.kind === 'nia' || canReview(scope, row)) return { ok: true }
+    return { ok: false, status: 403 }
+  }
+
+  server.get('/dsc/requests/id/:id', { schema: { params: idParams } }, async (request, reply) => {
+    const row = service.getById(request.params.id)
+    if (!row) return reply.code(404).send({ error: 'request_not_found' })
+    const access = accessRow(request, row)
+    if (!access.ok) return reply.code(access.status ?? 403).send({ error: 'forbidden' })
+    return reply.send(service.metadata(row))
+  })
+
+  server.get(
+    '/dsc/requests/id/:id/preview',
+    { schema: { params: idParams } },
+    async (request, reply) => {
+      const row = service.getById(request.params.id)
+      if (!row) return reply.code(404).send({ error: 'request_not_found' })
+      const access = accessRow(request, row)
+      if (!access.ok) return reply.code(access.status ?? 403).send({ error: 'forbidden' })
+      const payload = JSON.parse(row.payloadJson) as SignRequest
+      return reply.send(
+        buildPreview(payload, undefined, payload.security ?? service.issuingDefaults().security),
+      )
+    },
+  )
+
+  server.post(
+    '/dsc/requests/id/:id/reveal',
+    { schema: { params: idParams }, config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const row = service.getById(request.params.id)
+      if (!row) return reply.code(404).send({ error: 'request_not_found' })
+      const access = accessRow(request, row)
+      if (!access.ok) return reply.code(access.status ?? 403).send({ error: 'forbidden' })
+      const actor = request.principal!.account.id
+      const scope = dscScope(db, deps.config, request.principal!.account)
+      const result =
+        row.deliveryMode === 'applicant'
+          ? service.revealOwned(row, actor)
+          : scope.kind === 'nia'
+            ? service.revealById(row.id, actor)
+            : null
+      if (!result) return reply.code(403).send({ error: 'reveal_not_allowed' })
+      writeAudit(db, {
+        actorAccountId: actor,
+        realm: 'dsc',
+        action: 'dsc.request.reveal',
+        targetType: 'sign_request',
+        targetId: row.id,
+        ip: request.ip,
+        detail: { channel: row.deliveryMode },
+      })
+      reply.header('cache-control', 'no-store')
+      return reply.type('text/plain').send(result.perso)
     },
   )
 
