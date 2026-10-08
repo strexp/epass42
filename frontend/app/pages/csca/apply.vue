@@ -16,16 +16,16 @@ import {
 import { LogIn, Save } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
-import { useAuthStore } from '~/stores/auth'
+import { useRealm } from '~/composables/useRealm'
 
-definePageMeta({ layout: 'csca' })
+definePageMeta({ layout: 'realm' })
 
 const api = useApi()
-const auth = useAuthStore()
+const { auth, state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
 const message = useMessage()
 
-const signedIn = computed(() => auth.realms.csca.me !== null)
+const signedIn = computed(() => state.value.me !== null)
 
 const form = reactive({
   keyMode: 'nia_generated' as 'nia_generated' | 'user_uploaded',
@@ -88,7 +88,7 @@ async function submit(): Promise<void> {
 }
 
 onMounted(async () => {
-  if (!auth.realms.csca.loaded) await auth.fetchMe('csca')
+  await ensureLoaded()
 })
 </script>
 

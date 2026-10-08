@@ -14,12 +14,12 @@ import {
 } from 'naive-ui'
 import { Save } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
-import { useAuthStore } from '~/stores/auth'
 import { errorMessageKey } from '~/composables/useApi'
+import { useRealm } from '~/composables/useRealm'
 
-definePageMeta({ layout: 'dsc' })
+definePageMeta({ layout: 'realm' })
 
-const auth = useAuthStore()
+const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
 const message = useMessage()
@@ -39,7 +39,7 @@ const profile = ref({
   },
 })
 
-const isAdmin = computed(() => auth.realms.dsc.me?.isAdmin ?? false)
+const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 
 const deliveryOptions = computed(() => [
   { label: t('dsc.deliveryApplicant'), value: 'applicant' },
@@ -89,7 +89,7 @@ async function saveProfile(): Promise<void> {
 }
 
 onMounted(async () => {
-  if (!auth.realms.dsc.loaded) await auth.fetchMe('dsc')
+  await ensureLoaded()
   await load()
 })
 </script>

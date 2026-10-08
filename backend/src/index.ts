@@ -4,7 +4,7 @@
  */
 import { buildApp } from './app'
 import { loadConfig } from './config'
-import { startCrlScheduler } from './jobs/crlScheduler'
+import { startCrlScheduler } from './modules/csca/scheduler'
 import { startLdapServer, type LdapServerHandle } from './modules/pkd/ldap'
 
 async function main(): Promise<void> {

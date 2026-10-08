@@ -1,1 +1,0 @@
-ALTER TABLE `maintainer` ADD `asn` integer;

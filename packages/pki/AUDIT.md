@@ -101,11 +101,11 @@ third-party SODs that use the constructed form.
 The card42 Java sample `perso/emrtd/sample.perso` hard-codes a composite check
 digit of `0` for `L898902C<3UTO6908061F9406236ZE184226B<<<<<`. Per Doc 9303-3
 §4.9 the composite is `4`; the JS generator documents this as a sample bug and
-emits `…14`. pkd42 follows the specification (`mrz.spec.ts`).
+emits `…14`. pkd42 follows the specification (`emrtd/mrz.spec.ts`).
 
 ### 4.2 TLV constructed-bit decoding
 
-The reused `der.ts` decoder computed `constructed` from the combined multi-byte
+The reused `codec/der.ts` decoder computed `constructed` from the combined multi-byte
 tag number (`tag & 0x20`). For a tag such as `5F2B` the low byte `0x2B` has bit
 5 set, so it was mistakenly treated as constructed. pkd42 tests bit 5 of the
 **first tag byte** instead (`parseTlv`), which fixes DG11/DG12 parsing.

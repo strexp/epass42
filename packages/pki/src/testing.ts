@@ -4,8 +4,8 @@
  * These build throwaway keys and certificates so the unit tests can exercise
  * the CMS/CRL/SOD paths without shipping fixtures.
  */
-import { generateRsaKeyPair, type RsaKeyPair } from './crypto'
-import { createCscaRoot, createDsc, type CscaProfile, type DscProfile } from './x509'
+import { generateRsaKeyPair, type RsaKeyPair } from './crypto/crypto'
+import { createCscaRoot, createDsc, type CscaProfile, type DscProfile } from './x509/x509'
 
 export const TEST_CRL_DP = ['ldap://pkd42.local/c=XD']
 

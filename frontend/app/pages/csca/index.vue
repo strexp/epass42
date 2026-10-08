@@ -7,16 +7,16 @@ import {
   NIcon,
   NInput,
   NSpace,
-  NTag,
   NText,
   useMessage,
 } from 'naive-ui'
 import { Check, FilePlus2, KeyRound, RefreshCw, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
-import { useAuthStore } from '~/stores/auth'
 import { errorMessageKey } from '~/composables/useApi'
+import { useRealm } from '~/composables/useRealm'
+import StatusTag from '~/components/common/StatusTag.vue'
 
-definePageMeta({ layout: 'csca' })
+definePageMeta({ layout: 'realm' })
 
 interface Application {
   id: number
@@ -27,7 +27,7 @@ interface Application {
   createdAt: string
 }
 
-const auth = useAuthStore()
+const { state, ensureLoaded } = useRealm('csca')
 const api = useApi()
 const { t } = useI18n()
 const message = useMessage()
@@ -43,7 +43,7 @@ const delegation = ref<{
   hasActiveDsc: boolean
 } | null>(null)
 
-const me = computed(() => auth.realms.csca.me)
+const me = computed(() => state.value.me)
 const isAdmin = computed(() => me.value?.isAdmin ?? false)
 const signedIn = computed(() => me.value !== null)
 const hasAsn = computed(() => (me.value?.account.asn ?? null) !== null)
@@ -123,16 +123,7 @@ const columns = [
   {
     title: 'Status',
     key: 'status',
-    render: (row: Application) =>
-      h(
-        NTag,
-        {
-          size: 'small',
-          type:
-            row.status === 'approved' ? 'success' : row.status === 'rejected' ? 'error' : 'default',
-        },
-        () => row.status,
-      ),
+    render: (row: Application) => h(StatusTag, { status: row.status }),
   },
   {
     title: '',
@@ -152,7 +143,7 @@ const columns = [
 ]
 
 onMounted(async () => {
-  if (!auth.realms.csca.loaded) await auth.fetchMe('csca')
+  await ensureLoaded()
   await loadDelegation()
   // Admins see every application; other users see their own.
   if (signedIn.value) await loadApplications()

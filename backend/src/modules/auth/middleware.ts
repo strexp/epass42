@@ -4,7 +4,7 @@
  * `principal` is resolved from the realm session and attached to the request;
  * `requireSession` and `requireAdmin` are pre-handlers for protected routes.
  */
-import type { FastifyReply, FastifyRequest, preHandlerHookHandler } from 'fastify'
+import type { FastifyRequest, preHandlerHookHandler } from 'fastify'
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
@@ -96,9 +96,4 @@ export function sanitizeRedirect(target: unknown): string | undefined {
   if (!target.startsWith('/') || target.startsWith('//')) return undefined
   if (target.includes('\\') || target.includes('\n') || target.includes('\r')) return undefined
   return target
-}
-
-/** Sends an error response and stops the reply lifecycle. */
-export async function deny(reply: FastifyReply, status: number, error: string): Promise<void> {
-  await reply.code(status).send({ error })
 }

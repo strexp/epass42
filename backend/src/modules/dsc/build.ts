@@ -29,6 +29,7 @@ import {
   fromBase64,
   generateP256KeyPair,
   generateRsaKeyPair,
+  pemToDer,
   renderEmrtdScript,
   sha256,
   validateDg2,
@@ -235,7 +236,7 @@ export async function buildPersoSigning(
 
   // EF.SOD over the SHA-256 hashes of every DG.
   const hashes = groups.map((group) => ({ number: group.number, hash: sha256(group.bytes) }))
-  const sod = await buildSod(hashes, fromBase64Pem(dsc.certPem), dsc.keyPair.privateKey)
+  const sod = await buildSod(hashes, pemToDer(dsc.certPem), dsc.keyPair.privateKey)
 
   const sections: Parameters<typeof renderEmrtdScript>[0] = [
     {
@@ -266,7 +267,7 @@ export async function buildPersoSigning(
     const securityObject = buildSecurityObject(lds2Access, ca.spki, profile.lds2.caKeyId)
     const lds2CardSecurity = await buildCardSecurity(
       securityObject,
-      fromBase64Pem(dsc.certPem),
+      pemToDer(dsc.certPem),
       dsc.keyPair.privateKey,
     )
     for (const role of profile.lds2.roles) {
@@ -293,10 +294,4 @@ export async function buildPersoSigning(
     cardAccess,
     sha256: bytesToHex(sha256(ascii(perso))),
   }
-}
-
-/** Decodes a PEM certificate into DER bytes. */
-function fromBase64Pem(pem: string): Uint8Array {
-  const body = pem.replace(/-----[A-Z0-9 ]+-----/g, '').replace(/\s/g, '')
-  return fromBase64(body)
 }

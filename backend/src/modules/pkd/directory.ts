@@ -29,12 +29,6 @@ export function baseDn(config: AppConfig): string {
   return config.pkd.baseDn ?? `c=${config.countryAlpha2},dc=data,dc=download,dc=pkd,dc=icao,dc=int`
 }
 
-/** The organisational-unit DN for a kind. */
-export function ouDn(config: AppConfig, kind: PkdObjectKind): string {
-  const ou = kind === 'csca' ? 'csca' : kind === 'crl' ? 'crl' : 'masterlist'
-  return `ou=${ou},${baseDn(config)}`
-}
-
 /** Lists every published object. */
 export function listObjects(db: Db, config: AppConfig): PkdObject[] {
   void config
@@ -66,9 +60,4 @@ export function listObjects(db: Db, config: AppConfig): PkdObject[] {
     })
   }
   return objects
-}
-
-/** Finds a published object by id. */
-export function findObject(db: Db, config: AppConfig, id: string): PkdObject | undefined {
-  return listObjects(db, config).find((object) => object.id === id)
 }

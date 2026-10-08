@@ -1,10 +1,11 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'csca' })
+definePageMeta({ layout: 'realm' })
 
-import { NButton, NCard, NDataTable, NTag, useDialog, useMessage } from 'naive-ui'
+import { NButton, NCard, NDataTable, useDialog, useMessage } from 'naive-ui'
 import { computed, h, onMounted, ref } from 'vue'
-import { useAuthStore } from '~/stores/auth'
 import { errorMessageKey } from '~/composables/useApi'
+import { useRealm } from '~/composables/useRealm'
+import StatusTag from '~/components/common/StatusTag.vue'
 
 interface Certificate {
   id: number
@@ -18,7 +19,7 @@ interface Certificate {
 }
 
 const api = useApi()
-const auth = useAuthStore()
+const { state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
 const message = useMessage()
 const dialog = useDialog()
@@ -26,12 +27,12 @@ const config = useRuntimeConfig()
 const certificates = ref<Certificate[]>([])
 
 const apiBase = (config.public.apiBase as string) || ''
-const isCscaAdmin = computed(() => auth.realms.csca.me?.isAdmin ?? false)
-const myAsn = computed(() => auth.realms.csca.me?.account.asn ?? null)
+const isCscaAdmin = computed(() => state.value.me?.isAdmin ?? false)
+const myAsn = computed(() => state.value.me?.account.asn ?? null)
 
 /** Whether the current user may download this certificate's private key. */
 function canDownloadKey(row: Certificate): boolean {
-  if (!row.hasPrivateKey || auth.realms.csca.me === null) return false
+  if (!row.hasPrivateKey || state.value.me === null) return false
   return isCscaAdmin.value || (row.asn !== null && row.asn === myAsn.value)
 }
 
@@ -84,7 +85,7 @@ const columns = computed(() => [
   {
     title: 'Status',
     key: 'status',
-    render: (row: Certificate) => h(NTag, { size: 'small' }, () => row.status),
+    render: (row: Certificate) => h(StatusTag, { status: row.status }),
   },
   { title: 'SHA-256', key: 'fingerprintSha256', ellipsis: { tooltip: true } },
   {
@@ -107,7 +108,7 @@ const columns = computed(() => [
 ])
 
 onMounted(async () => {
-  if (!auth.realms.csca.loaded) await auth.fetchMe('csca')
+  await ensureLoaded()
   await load()
 })
 </script>

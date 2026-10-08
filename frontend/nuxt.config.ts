@@ -20,8 +20,8 @@ export default defineNuxtConfig({
 
   modules: ['@pinia/nuxt', '@nuxtjs/i18n', '@nuxtjs/color-mode'],
 
-  // Register components by file name (no directory prefix) so `<MrzEditor>`
-  // and `<FileField>` resolve; names are unique across directories.
+  // Register components by file name (no directory prefix) so `<FileField>`
+  // resolves; names are unique across directories.
   components: [{ path: '~/components', pathPrefix: false }],
 
   css: ['~/assets/css/main.css'],

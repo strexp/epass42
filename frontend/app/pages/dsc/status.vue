@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'dsc' })
+definePageMeta({ layout: 'realm' })
 
 import {
   NAlert,

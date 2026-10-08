@@ -18,18 +18,6 @@ export type Role = (typeof ROLES)[number]
 export const REALMS = ['csca', 'dsc'] as const
 export type Realm = (typeof REALMS)[number]
 
-/** Cryptographic defaults. */
-export const CRYPTO = {
-  /** Default CSCA RSA modulus size. */
-  cscaRsaBits: 4096,
-  /** Default DSC RSA modulus size. */
-  dscRsaBits: 2048,
-  /** Default hash algorithm. */
-  hash: 'SHA-256',
-  /** Default eMRTD digest (LDS Security Object) algorithm. */
-  ldsDigest: 'SHA-256',
-} as const
-
 /** Maximum sizes for DSC signing requests (bytes). */
 export const LIMITS = {
   /** DG2 (face) content. */

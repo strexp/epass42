@@ -23,7 +23,7 @@ import type { EncodedFile } from '~/components/common/FileField.vue'
 import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
 
-definePageMeta({ layout: 'dsc' })
+definePageMeta({ layout: 'realm' })
 
 const api = useApi()
 const { t } = useI18n()

@@ -6,7 +6,7 @@
  * reported by presence, never returned as bytes.
  */
 import type { SignRequest } from '@pkd42/shared'
-import { dataGroupList } from './service'
+import { dataGroupList } from './dataGroups'
 
 /** The preview mask rules. */
 export interface MaskRules {

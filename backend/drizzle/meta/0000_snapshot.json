@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3a6d59a9-0cef-4df5-a03b-4617ecc53ad8",
+  "id": "8dbe22b8-1797-4841-9f8c-79b65ad0eeac",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -81,7 +81,11 @@
       "indexes": {
         "ux_account": {
           "name": "ux_account",
-          "columns": ["realm", "provider_id", "subject"],
+          "columns": [
+            "realm",
+            "provider_id",
+            "subject"
+          ],
           "isUnique": true
         }
       },
@@ -90,8 +94,12 @@
           "name": "account_provider_id_oauth_provider_id_fk",
           "tableFrom": "account",
           "tableTo": "oauth_provider",
-          "columnsFrom": ["provider_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "provider_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -276,7 +284,9 @@
       "indexes": {
         "ix_audit_created": {
           "name": "ix_audit_created",
-          "columns": ["created_at"],
+          "columns": [
+            "created_at"
+          ],
           "isUnique": false
         }
       },
@@ -285,8 +295,12 @@
           "name": "audit_log_actor_account_id_account_id_fk",
           "tableFrom": "audit_log",
           "tableTo": "account",
-          "columnsFrom": ["actor_account_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "actor_account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -362,8 +376,12 @@
           "name": "crl_csca_key_id_csca_key_id_fk",
           "tableFrom": "crl",
           "tableTo": "csca_key",
-          "columnsFrom": ["csca_key_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "csca_key_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -458,7 +476,9 @@
       "indexes": {
         "csca_key_serial_unique": {
           "name": "csca_key_serial_unique",
-          "columns": ["serial"],
+          "columns": [
+            "serial"
+          ],
           "isUnique": true
         }
       },
@@ -604,8 +624,12 @@
           "name": "dsc_application_applicant_account_id_account_id_fk",
           "tableFrom": "dsc_application",
           "tableTo": "account",
-          "columnsFrom": ["applicant_account_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "applicant_account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -680,8 +704,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "private_key_pem_enc": {
-          "name": "private_key_pem_enc",
+        "key_mode": {
+          "name": "key_mode",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -748,7 +772,9 @@
       "indexes": {
         "dsc_cert_serial_unique": {
           "name": "dsc_cert_serial_unique",
-          "columns": ["serial"],
+          "columns": [
+            "serial"
+          ],
           "isUnique": true
         }
       },
@@ -757,8 +783,12 @@
           "name": "dsc_cert_csca_key_id_csca_key_id_fk",
           "tableFrom": "dsc_cert",
           "tableTo": "csca_key",
-          "columnsFrom": ["csca_key_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "csca_key_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -841,80 +871,16 @@
           "name": "issuing_profile_updated_by_account_id_fk",
           "tableFrom": "issuing_profile",
           "tableTo": "account",
-          "columnsFrom": ["updated_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "job": {
-      "name": "job",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "payload": {
-          "name": "payload",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "run_at": {
-          "name": "run_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -995,6 +961,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "asn": {
+          "name": "asn",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "note": {
           "name": "note",
           "type": "text",
@@ -1007,7 +980,11 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "maintainer_mnt_realm_role_pk": {
-          "columns": ["mnt", "realm", "role"],
+          "columns": [
+            "mnt",
+            "realm",
+            "role"
+          ],
           "name": "maintainer_mnt_realm_role_pk"
         }
       },
@@ -1122,7 +1099,9 @@
       "indexes": {
         "ix_oauth_flow_expires": {
           "name": "ix_oauth_flow_expires",
-          "columns": ["expires_at"],
+          "columns": [
+            "expires_at"
+          ],
           "isUnique": false
         }
       },
@@ -1162,13 +1141,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "secret_ref": {
-          "name": "secret_ref",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "scopes": {
           "name": "scopes",
           "type": "text",
@@ -1195,7 +1167,11 @@
       "indexes": {
         "ux_oauth_provider": {
           "name": "ux_oauth_provider",
-          "columns": ["realm", "issuer", "client_id"],
+          "columns": [
+            "realm",
+            "issuer",
+            "client_id"
+          ],
           "isUnique": true
         }
       },
@@ -1256,8 +1232,12 @@
           "name": "reveal_token_sign_request_id_sign_request_id_fk",
           "tableFrom": "reveal_token",
           "tableTo": "sign_request",
-          "columnsFrom": ["sign_request_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "sign_request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1315,7 +1295,9 @@
       "indexes": {
         "ix_session_expires": {
           "name": "ix_session_expires",
-          "columns": ["expires_at"],
+          "columns": [
+            "expires_at"
+          ],
           "isUnique": false
         }
       },
@@ -1324,8 +1306,12 @@
           "name": "session_account_id_account_id_fk",
           "tableFrom": "session",
           "tableTo": "account",
-          "columnsFrom": ["account_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1372,13 +1358,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "ip_asn": {
-          "name": "ip_asn",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "dsc_selection": {
           "name": "dsc_selection",
           "type": "text",
@@ -1416,14 +1395,6 @@
           "autoincrement": false,
           "default": "'applicant'"
         },
-        "delivery_override": {
-          "name": "delivery_override",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
         "profile_overrides": {
           "name": "profile_overrides",
           "type": "text",
@@ -1445,13 +1416,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "mail_token_hash": {
-          "name": "mail_token_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "reviewed_by": {
           "name": "reviewed_by",
           "type": "integer",
@@ -1462,13 +1426,6 @@
         "reviewed_at": {
           "name": "reviewed_at",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "released_to": {
-          "name": "released_to",
-          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1519,7 +1476,9 @@
       "indexes": {
         "sign_request_reference_hash_unique": {
           "name": "sign_request_reference_hash_unique",
-          "columns": ["reference_hash"],
+          "columns": [
+            "reference_hash"
+          ],
           "isUnique": true
         }
       },
@@ -1528,8 +1487,12 @@
           "name": "sign_request_requester_account_id_account_id_fk",
           "tableFrom": "sign_request",
           "tableTo": "account",
-          "columnsFrom": ["requester_account_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "requester_account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1537,8 +1500,12 @@
           "name": "sign_request_dsc_cert_id_dsc_cert_id_fk",
           "tableFrom": "sign_request",
           "tableTo": "dsc_cert",
-          "columnsFrom": ["dsc_cert_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "dsc_cert_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1585,8 +1552,12 @@
           "name": "system_setting_updated_by_account_id_fk",
           "tableFrom": "system_setting",
           "tableTo": "account",
-          "columnsFrom": ["updated_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

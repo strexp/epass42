@@ -124,26 +124,3 @@ export const signRequestSchema = z.object({
 export type MrzFields = z.infer<typeof mrzFieldsSchema>
 export type SignRequest = z.infer<typeof signRequestSchema>
 export type SecurityOptions = z.infer<typeof securityOptionsSchema>
-export type DscSelection = z.infer<typeof dscSelectionSchema>
-
-/** dn42 OAuth claims we consume. */
-export const dn42ClaimsSchema = z.object({
-  sub: z.string(),
-  iss: z.string(),
-  email: z.string().optional(),
-  name: z.string().optional(),
-  preferred_username: z.string().optional(),
-  dn42: z
-    .object({
-      asn: z.number().int().optional(),
-      active_mnt: z.string().optional(),
-      active_name: z.string().optional(),
-      mnt_by: z.array(z.string()).optional(),
-      route: z.array(z.string()).optional(),
-      route6: z.array(z.string()).optional(),
-      timestamp: z.number().optional(),
-    })
-    .optional(),
-})
-
-export type Dn42Claims = z.infer<typeof dn42ClaimsSchema>

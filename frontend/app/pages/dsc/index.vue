@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NTag, NText } from 'naive-ui'
+import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText } from 'naive-ui'
 import { FilePlus2, ListChecks, Search, Settings } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
-import { useAuthStore } from '~/stores/auth'
+import { useRealm } from '~/composables/useRealm'
+import StatusTag from '~/components/common/StatusTag.vue'
 
-definePageMeta({ layout: 'dsc' })
+definePageMeta({ layout: 'realm' })
 
 interface RequestRow {
   id: number
@@ -14,25 +15,20 @@ interface RequestRow {
   createdAt: string
 }
 
-const auth = useAuthStore()
+const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
 const requests = ref<RequestRow[]>([])
 
-const signedIn = computed(() => auth.realms.dsc.me !== null)
-const isAdmin = computed(() => auth.realms.dsc.me?.isAdmin ?? false)
+const signedIn = computed(() => state.value.me !== null)
+const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 
 const columns = [
   { title: '#', key: 'id' },
   {
     title: 'Status',
     key: 'status',
-    render: (row: RequestRow) =>
-      h(
-        NTag,
-        { size: 'small', type: row.status === 'approved' ? 'success' : 'default' },
-        () => row.status,
-      ),
+    render: (row: RequestRow) => h(StatusTag, { status: row.status }),
   },
   { title: 'Delivery', key: 'deliveryMode' },
   { title: 'DGs', key: 'dataGroups', render: (row: RequestRow) => row.dataGroups.join(', ') },
@@ -45,7 +41,7 @@ const columns = [
 ]
 
 onMounted(async () => {
-  if (!auth.realms.dsc.loaded) await auth.fetchMe('dsc')
+  await ensureLoaded()
   if (!signedIn.value) return
   try {
     requests.value = (await api<{ items: RequestRow[] }>('/dsc/requests')).items ?? []

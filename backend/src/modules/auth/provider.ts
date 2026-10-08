@@ -126,7 +126,6 @@ export function seedProviders(db: Db, config: AppConfig): ProviderRecord[] {
       realm: provider.realm,
       issuer: provider.issuer,
       clientId: provider.clientId,
-      secretRef: provider.clientSecret ? 'config' : null,
       scopes: provider.scopes.join(' '),
       claimMap: JSON.stringify(provider.claimMap),
       enabled: provider.enabled,

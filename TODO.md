@@ -282,7 +282,7 @@ pkd42/
 -- 认证
 CREATE TABLE oauth_provider (
   id INTEGER PRIMARY KEY, realm TEXT NOT NULL CHECK(realm IN ('csca','dsc')),
-  issuer TEXT NOT NULL, client_id TEXT NOT NULL, secret_ref TEXT,
+  issuer TEXT NOT NULL, client_id TEXT NOT NULL,
   scopes TEXT, claim_map TEXT, enabled INTEGER NOT NULL DEFAULT 1,
   UNIQUE(realm, issuer, client_id));
 CREATE TABLE account (
@@ -293,7 +293,7 @@ CREATE TABLE session (
   id TEXT PRIMARY KEY, realm TEXT NOT NULL, account_id INTEGER REFERENCES account(id),
   data TEXT, created_at TEXT NOT NULL, expires_at TEXT NOT NULL);
 CREATE TABLE maintainer (
-  mnt TEXT NOT NULL, realm TEXT NOT NULL, role TEXT NOT NULL, note TEXT,
+  mnt TEXT NOT NULL, realm TEXT NOT NULL, role TEXT NOT NULL, asn INTEGER, note TEXT,
   PRIMARY KEY (mnt, realm, role));
 
 -- CSCA
@@ -311,7 +311,7 @@ CREATE TABLE dsc_application (
 CREATE TABLE dsc_cert (
   id INTEGER PRIMARY KEY, csca_key_id INTEGER REFERENCES csca_key(id),
   serial TEXT NOT NULL UNIQUE, subject_dn TEXT NOT NULL, asn INTEGER, mnt TEXT,
-  source TEXT NOT NULL, cert_pem TEXT NOT NULL, key_ref TEXT, private_key_pem_enc TEXT,
+  source TEXT NOT NULL, cert_pem TEXT NOT NULL, key_ref TEXT,
   issuance_policy TEXT, application_url TEXT,
   status TEXT NOT NULL DEFAULT 'active', not_before TEXT, not_after TEXT,
   revoked_at TEXT, revoke_reason TEXT, created_at TEXT NOT NULL);
@@ -329,15 +329,14 @@ CREATE TABLE master_list (
 CREATE TABLE sign_request (
   id INTEGER PRIMARY KEY, reference_hash TEXT NOT NULL UNIQUE,
   requester_account_id INTEGER REFERENCES account(id), asn INTEGER,
-  ip TEXT, ip_asn INTEGER, dsc_selection TEXT NOT NULL, dsc_cert_id INTEGER REFERENCES dsc_cert(id),
+  ip TEXT, dsc_selection TEXT NOT NULL, dsc_cert_id INTEGER REFERENCES dsc_cert(id),
   payload_json TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'submitted',
   delivery_mode TEXT NOT NULL DEFAULT 'applicant'
     CHECK(delivery_mode IN ('applicant','reviewer')),
-  delivery_override INTEGER NOT NULL DEFAULT 0,
   profile_overrides TEXT,
-  result_artifact_id INTEGER, email TEXT, mail_token_hash TEXT,
+  result_artifact_id INTEGER, email TEXT,
   reviewed_by INTEGER, reviewed_at TEXT,
-  released_to INTEGER, consumed_at TEXT, consumed_by INTEGER, consumed_channel TEXT,
+  consumed_at TEXT, consumed_by INTEGER, consumed_channel TEXT,
   regenerated_from INTEGER,
   created_at TEXT NOT NULL, expires_at TEXT);
 -- 同一签发 AS 内证件号唯一（BAC 口令唯一性）
@@ -379,10 +378,6 @@ CREATE TABLE reveal_token (
   kind TEXT NOT NULL CHECK(kind IN ('confirm','consume')),
   sign_request_id INTEGER REFERENCES sign_request(id),
   expires_at TEXT NOT NULL, used_at TEXT);
-CREATE TABLE job (
-  id INTEGER PRIMARY KEY, kind TEXT NOT NULL, payload TEXT, run_at TEXT NOT NULL,
-  attempts INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'pending',
-  last_error TEXT, created_at TEXT NOT NULL);
 ```
 
 > 全部时间列使用 `YYYY-MM-DDTHH:MM:SSZ`。私钥绝不进 `dsc_cert.cert_pem` 之类的明文字段。

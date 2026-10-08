@@ -26,7 +26,6 @@ export const oauthProvider = sqliteTable(
     realm: text('realm', { enum: ['csca', 'dsc'] }).notNull(),
     issuer: text('issuer').notNull(),
     clientId: text('client_id').notNull(),
-    secretRef: text('secret_ref'),
     scopes: text('scopes'),
     claimMap: text('claim_map'),
     enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
@@ -146,7 +145,6 @@ export const dscCert = sqliteTable('dsc_cert', {
   source: text('source').notNull(),
   certPem: text('cert_pem').notNull(),
   keyRef: text('key_ref'),
-  privateKeyPemEnc: text('private_key_pem_enc'),
   /** `nia_generated` (system key) or `user_uploaded` (no stored key). */
   keyMode: text('key_mode'),
   issuancePolicy: text('issuance_policy'),
@@ -192,7 +190,6 @@ export const signRequest = sqliteTable('sign_request', {
   requesterAccountId: integer('requester_account_id').references(() => account.id),
   asn: integer('asn'),
   ip: text('ip'),
-  ipAsn: integer('ip_asn'),
   dscSelection: text('dsc_selection').notNull(),
   dscCertId: integer('dsc_cert_id').references(() => dscCert.id),
   payloadJson: text('payload_json').notNull(),
@@ -200,14 +197,11 @@ export const signRequest = sqliteTable('sign_request', {
   deliveryMode: text('delivery_mode', { enum: ['applicant', 'reviewer'] })
     .notNull()
     .default('applicant'),
-  deliveryOverride: integer('delivery_override', { mode: 'boolean' }).notNull().default(false),
   profileOverrides: text('profile_overrides'),
   resultArtifactId: integer('result_artifact_id'),
   email: text('email'),
-  mailTokenHash: text('mail_token_hash'),
   reviewedBy: integer('reviewed_by'),
   reviewedAt: text('reviewed_at'),
-  releasedTo: integer('released_to'),
   consumedAt: text('consumed_at'),
   consumedBy: integer('consumed_by'),
   consumedChannel: text('consumed_channel'),
@@ -293,15 +287,4 @@ export const revealToken = sqliteTable('reveal_token', {
   signRequestId: integer('sign_request_id').references(() => signRequest.id),
   expiresAt: text('expires_at').notNull(),
   usedAt: text('used_at'),
-})
-
-export const job = sqliteTable('job', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  kind: text('kind').notNull(),
-  payload: text('payload'),
-  runAt: text('run_at').notNull(),
-  attempts: integer('attempts').notNull().default(0),
-  status: text('status').notNull().default('pending'),
-  lastError: text('last_error'),
-  createdAt: text('created_at').notNull(),
 })

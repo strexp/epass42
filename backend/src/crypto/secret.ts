@@ -2,13 +2,7 @@
  * Secret and token helpers: hashing, random tokens and AES-256-GCM envelope
  * encryption for secrets stored at rest (M13 groundwork).
  */
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-  timingSafeEqual,
-} from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 
 /** SHA-256 hex digest of a UTF-8 string. */
 export function sha256Hex(value: string): string {
@@ -23,14 +17,6 @@ export function randomToken(bytes = 32): string {
 /** Hashes a session/reference/token value before it is persisted. */
 export function hashToken(token: string): string {
   return sha256Hex(token)
-}
-
-/** Constant-time comparison of two hex/base64 strings. */
-export function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a)
-  const bufB = Buffer.from(b)
-  if (bufA.length !== bufB.length) return false
-  return timingSafeEqual(bufA, bufB)
 }
 
 /** Decodes a base64 key and validates its length. */

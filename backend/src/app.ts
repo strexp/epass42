@@ -26,8 +26,8 @@ import type { AppConfig } from './config'
 import { openDatabase, type DbHandle } from './db/client'
 import { runMigrations } from './db/migrate'
 import { resolveKeks } from './crypto/keyring'
-import { registerConfigRoutes } from './routes/config'
-import { registerHealthRoutes } from './routes/health'
+import { registerConfigRoutes } from './modules/system/config'
+import { registerHealthRoutes } from './modules/system/health'
 import {
   seedProviders,
   AuthProviders,

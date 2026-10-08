@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'dsc' })
+definePageMeta({ layout: 'realm' })
 
 import { NAlert, NCard, NDescriptions, NDescriptionsItem, NTag, useMessage } from 'naive-ui'
 import { onMounted, ref } from 'vue'

@@ -9,11 +9,6 @@ export function nowIso(): string {
   return formatIso(new Date())
 }
 
-/** Adds seconds to an ISO timestamp and returns the canonical ISO string. */
-export function addSeconds(iso: string, seconds: number): string {
-  return formatIso(new Date(new Date(iso).getTime() + seconds * 1000))
-}
-
 /** Returns the canonical ISO string for `now + seconds`. */
 export function isoInSeconds(seconds: number): string {
   return formatIso(new Date(Date.now() + seconds * 1000))
