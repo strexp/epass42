@@ -4,6 +4,7 @@
 > 模块的任务、验收标准、规范依据与风险。
 >
 > **契约约定**
+>
 > - 代码注释、变量名、API 文档、提交信息使用**英文**；本文与 `PLAN.md` 使用中文。
 > - 前端 i18n 仅提供英语（`en`），但所有文案必须走 i18n key，不硬编码。
 > - 项目性质：dn42 内部模拟/角色扮演，**不得用于真实证件**，所有产物需带明确标识。
@@ -29,11 +30,11 @@
 
 ### 0.1 角色
 
-| 角色 | 职责 | 关键产物 |
-|---|---|---|
-| **PKD** | 证书目录（类比 ICAO PKD 只读区） | CSCA 证书、CRL、Master List 的 LDAP/REST/LDIF |
-| **CSCA** | NIA 的 Country Signing CA | 签发/吊销 DSC；维护 CRL；支持密钥轮换 |
-| **DSC Signing Service** | 用 DSC 私钥签护照数据并组卡 | card42 `.perso`（DG1–DG16 + EF.CardAccess/Security + EF.SOD）；一次性交付 |
+| 角色                    | 职责                             | 关键产物                                                                  |
+| ----------------------- | -------------------------------- | ------------------------------------------------------------------------- |
+| **PKD**                 | 证书目录（类比 ICAO PKD 只读区） | CSCA 证书、CRL、Master List 的 LDAP/REST/LDIF                             |
+| **CSCA**                | NIA 的 Country Signing CA        | 签发/吊销 DSC；维护 CRL；支持密钥轮换                                     |
+| **DSC Signing Service** | 用 DSC 私钥签护照数据并组卡      | card42 `.perso`（DG1–DG16 + EF.CardAccess/Security + EF.SOD）；一次性交付 |
 
 > 术语区分：文中的 **DSC** 若指证书写 `DSC`（Document Signer Certificate），
 > 若指服务写 `DSC Signing Service`。
@@ -70,39 +71,39 @@ pkd42/
 
 ## 1. 里程碑总表
 
-| 里程碑 | 内容 | 依赖 |
-|---|---|---|
-| M0 | 仓库脚手架、ESLint/Prettier、CI、常量 | — |
-| M1 | `packages/pki`（证书/CRL/CMS/SOD/perso 内核） | M0 |
-| M2 | `scripts/gen-csca` + `scripts/verify` | M1 |
-| M3 | 后端骨架 + SQLite + 迁移 + 配置 | M0 |
-| M4 | 双 realm 多 OAuth + 会话 + MNT 授权 | M3 |
-| M5 | CSCA 角色：DSC 申请/审核/签发/吊销 | M1,M4 |
-| M6 | CRL 生成与发布 | M1,M5 |
-| M7 | DSC Signing Service（建 DG、生成 AA/CA、perso） | M1,M4 |
-| M8 | 交付：预览 / 一次性领取 / 邮件 / 历史 / 交付模式 | M7 |
-| M9 | PKD 角色：REST + LDIF + 只读 LDAP | M1,M5,M6 |
-| M10 | Master List | M1,M9 |
-| M11 | 前端（表单/暗色/i18n/后台） | M4–M8 |
-| M12 | 单角色模式（各 AS 自建 DSC） | M7,M11 |
-| M13 | 安全加固、审计、限流、加密落盘 | M3–M12 |
-| M14 | 测试与交叉验证 | 贯穿 |
-| M15 | 部署、文档、发布 | 全部 |
+| 里程碑 | 内容                                             | 依赖     |
+| ------ | ------------------------------------------------ | -------- |
+| M0     | 仓库脚手架、ESLint/Prettier、CI、常量            | —        |
+| M1     | `packages/pki`（证书/CRL/CMS/SOD/perso 内核）    | M0       |
+| M2     | `scripts/gen-csca` + `scripts/verify`            | M1       |
+| M3     | 后端骨架 + SQLite + 迁移 + 配置                  | M0       |
+| M4     | 双 realm 多 OAuth + 会话 + MNT 授权              | M3       |
+| M5     | CSCA 角色：DSC 申请/审核/签发/吊销               | M1,M4    |
+| M6     | CRL 生成与发布                                   | M1,M5    |
+| M7     | DSC Signing Service（建 DG、生成 AA/CA、perso）  | M1,M4    |
+| M8     | 交付：预览 / 一次性领取 / 邮件 / 历史 / 交付模式 | M7       |
+| M9     | PKD 角色：REST + LDIF + 只读 LDAP                | M1,M5,M6 |
+| M10    | Master List                                      | M1,M9    |
+| M11    | 前端（表单/暗色/i18n/后台）                      | M4–M8    |
+| M12    | 单角色模式（各 AS 自建 DSC）                     | M7,M11   |
+| M13    | 安全加固、审计、限流、加密落盘                   | M3–M12   |
+| M14    | 测试与交叉验证                                   | 贯穿     |
+| M15    | 部署、文档、发布                                 | 全部     |
 
 ---
 
 ## 2. M0 — 仓库脚手架
 
-- [ ] T0.1 采用 pnpm workspace：`packages/*`、`backend`、`frontend`、`scripts`。
-- [ ] T0.2 根 `package.json` 增加脚本：`lint`、`format`、`typecheck`、`test`、`check`、`dev`、`build`。
-- [ ] T0.3 ESLint flat config（`@eslint/js` + `typescript-eslint` + `@vue/eslint-config-typescript` + `@vue/eslint-config-prettier` + `eslint-plugin-vue`），参考 `card42-perso-generator/eslint.config.ts`。
-- [ ] T0.4 Prettier 配置（`.prettierrc.json`）与 `.prettierignore`。
-- [ ] T0.5 TypeScript `~5.9.x`（注意：TS 7 原生编译器和 `vue-tsc` 尚不兼容，参考 generator 的 `docs/library-analysis.md`）。
-- [ ] T0.6 `packages/shared`：`COUNTRY_ALPHA2='XD'`、`COUNTRY_ALPHA3='UDN'`、OID 常量表（附录 A）、错误码 enum、zod 基础 schema。
-- [ ] T0.7 CI（GitHub Actions 或等价）：`pnpm check`（format + lint + typecheck + test）。
-- [ ] T0.8 `.gitignore` 补齐：`node_modules`、`*.db`、`*.sqlite*`、`build/`、`dist/`、`.env*`、`secrets/`。
-- [ ] T0.9 根 README：项目性质、免责声明、架构图、快速开始。
-- [ ] T0.10 `pnpm install` 通过，`pnpm check` 全绿（空测试也可）。
+- [x] T0.1 采用 pnpm workspace：`packages/*`、`backend`、`frontend`、`scripts`。
+- [x] T0.2 根 `package.json` 增加脚本：`lint`、`format`、`typecheck`、`test`、`check`、`dev`、`build`。
+- [x] T0.3 ESLint flat config（`@eslint/js` + `typescript-eslint` + `@vue/eslint-config-typescript` + `@vue/eslint-config-prettier` + `eslint-plugin-vue`），参考 `card42-perso-generator/eslint.config.ts`。
+- [x] T0.4 Prettier 配置（`.prettierrc.json`）与 `.prettierignore`。
+- [x] T0.5 TypeScript `~5.9.x`（注意：TS 7 原生编译器和 `vue-tsc` 尚不兼容，参考 generator 的 `docs/library-analysis.md`）。
+- [x] T0.6 `packages/shared`：`COUNTRY_ALPHA2='XD'`、`COUNTRY_ALPHA3='UDN'`、OID 常量表（附录 A）、错误码 enum、zod 基础 schema。
+- [x] T0.7 CI（GitHub Actions 或等价）：`pnpm check`（format + lint + typecheck + test）。
+- [x] T0.8 `.gitignore` 补齐：`node_modules`、`*.db`、`*.sqlite*`、`build/`、`dist/`、`.env*`、`secrets/`。
+- [x] T0.9 根 README：项目性质、免责声明、架构图、快速开始。
+- [x] T0.10 `pnpm install` 通过，`pnpm check` 全绿（空测试也可）。
 
 **验收**：`pnpm check` 通过；目录结构建立。
 
@@ -115,114 +116,117 @@ pkd42/
 
 ### 3.1 X.509 证书
 
-- [ ] T1.1.1 基于 `@peculiar/x509`（或 `pkijs` + `asn1js`）封装 `createCscaRoot()`。
-- [ ] T1.1.2 实现通用 Profile 校验（§7.1.1 Table 5）：
-  - [ ] version v3；serial 正整数、≤20 字节、最小 2's complement。
-  - [ ] validity 秒必须存在；≤2049 `UTCTime` `YYMMDDHHMMSSZ`，≥2050 `GeneralizedTime`，均 `Z`。
-  - [ ] issuer/subject：`countryName` 必须存在且大写 PrintableString；`commonName` 必须存在；DirectoryString 用 PrintableString/UTF8String；issuer/subject 的 countryName 一致。
-  - [ ] 默认值扩展不得编码。
-- [ ] T1.1.3 CSCA Root 扩展（§7.1.1 Table 6）：
-  - [ ] `SubjectKeyIdentifier` 必须（nc）。
-  - [ ] `AuthorityKeyIdentifier` 可选（nc；自签含 keyid）。
-  - [ ] `KeyUsage` 必须 **critical**：`keyCertSign`、`cRLSign`。
-  - [ ] `PrivateKeyUsagePeriod` 必须（nc，GeneralizedTime）。
-  - [ ] `BasicConstraints` 必须 **critical**：`cA=TRUE`、`pathLenConstraint=0`。
-  - [ ] `SubjectAltName` 必须（nc）：`directoryName` 含 `localityName=UDN`；不唯一时用 `stateOrProvinceName`。
-  - [ ] `IssuerAltName` 必须（nc），自签时**与 SAN 完全相同**。
-  - [ ] `CRLDistributionPoints` 必须（nc），ldap/http/https。
-  - [ ] `CertificatePolicies` 可选；`NameChange` 可选（轮换时）。
-- [ ] T1.1.4 DSC 扩展（§7.1.1 Table 6）：
-  - [ ] `AuthorityKeyIdentifier` 必须（nc）。
-  - [ ] `SubjectKeyIdentifier` 可选（nc）。
-  - [ ] `KeyUsage` 必须 **critical**：仅 `digitalSignature`。
-  - [ ] `PrivateKeyUsagePeriod` 必须（nc）。
-  - [ ] `DocumentType` 必须 **nc**：`DocumentTypeListSyntax = SEQUENCE{version=0, SET OF PrintableString(1..2)}`，默认 `P`。
-  - [ ] `SubjectAltName`/`IssuerAltName` 必须（nc）。
-  - [ ] `CRLDistributionPoints` 必须（nc）。
-  - [ ] **不得**含 EKU、BasicConstraints（DSC 的 ExtKeyUsage 列为 `x`）。
+- [x] T1.1.1 基于 `@peculiar/x509`（或 `pkijs` + `asn1js`）封装 `createCscaRoot()`。
+- [x] T1.1.2 实现通用 Profile 校验（§7.1.1 Table 5）：
+  - [x] version v3；serial 正整数、≤20 字节、最小 2's complement。
+  - [x] validity 秒必须存在；≤2049 `UTCTime` `YYMMDDHHMMSSZ`，≥2050 `GeneralizedTime`，均 `Z`。
+  - [x] issuer/subject：`countryName` 必须存在且大写 PrintableString；`commonName` 必须存在；DirectoryString 用 PrintableString/UTF8String；issuer/subject 的 countryName 一致。
+  - [x] 默认值扩展不得编码。
+- [x] T1.1.3 CSCA Root 扩展（§7.1.1 Table 6）：
+  - [x] `SubjectKeyIdentifier` 必须（nc）。
+  - [x] `AuthorityKeyIdentifier` 可选（nc；自签含 keyid）。
+  - [x] `KeyUsage` 必须 **critical**：`keyCertSign`、`cRLSign`。
+  - [x] `PrivateKeyUsagePeriod` 必须（nc，GeneralizedTime）。
+  - [x] `BasicConstraints` 必须 **critical**：`cA=TRUE`、`pathLenConstraint=0`。
+  - [x] `SubjectAltName` 必须（nc）：`directoryName` 含 `localityName=UDN`；不唯一时用 `stateOrProvinceName`。
+  - [x] `IssuerAltName` 必须（nc），自签时**与 SAN 完全相同**。
+  - [x] `CRLDistributionPoints` 必须（nc），ldap/http/https。
+  - [x] `CertificatePolicies` 可选；`NameChange` 可选（轮换时）。
+- [x] T1.1.4 DSC 扩展（§7.1.1 Table 6）：
+  - [x] `AuthorityKeyIdentifier` 必须（nc）。
+  - [x] `SubjectKeyIdentifier` 可选（nc）。
+  - [x] `KeyUsage` 必须 **critical**：仅 `digitalSignature`。
+  - [x] `PrivateKeyUsagePeriod` 必须（nc）。
+  - [x] `DocumentType` 必须 **nc**：`DocumentTypeListSyntax = SEQUENCE{version=0, SET OF PrintableString(1..2)}`，默认 `P`。
+  - [x] `SubjectAltName`/`IssuerAltName` 必须（nc）。
+  - [x] `CRLDistributionPoints` 必须（nc）。
+  - [x] **不得**含 EKU、BasicConstraints（DSC 的 ExtKeyUsage 列为 `x`）。
 - [ ] T1.1.5 ECDSA 支持：显式 ECParameters（**禁止 named curve/implicit，必须含 cofactor**），点非压缩（§4.1.6.3）。默认仍 RSA。
-- [ ] T1.1.6 算法：哈希仅 SHA-224/256/384/512；RSA 默认 RSASSA-PSS，同时支持 PKCS#1 v1.5；`signature` 字段与 `signatureAlgorithm` 一致。
-- [ ] T1.1.7 `parseCertificate()`：提取 serial、SKI、指纹、issuer/subject、扩展。
-- [ ] T1.1.8 serial 生成：≥64 bit 随机 + 唯一性约束（DB 层）。
-- [ ] T1.1.9 CSCA Link 证书（轮换）：issuer=旧 DN、subject=新 DN、签名用旧私钥、认证新公钥；含 `NameChange` 时置位。
-- [ ] T1.1.10 单测：固定向量 + 逐扩展存在性/临界性/编码断言；`openssl x509 -text` 对照。
+- [x] T1.1.6 算法：哈希仅 SHA-224/256/384/512；RSA 默认 RSASSA-PSS，同时支持 PKCS#1 v1.5；`signature` 字段与 `signatureAlgorithm` 一致。
+- [x] T1.1.7 `parseCertificate()`：提取 serial、SKI、指纹、issuer/subject、扩展。
+- [x] T1.1.8 serial 生成：≥64 bit 随机 + 唯一性约束（DB 层）。
+- [x] T1.1.9 CSCA Link 证书（轮换）：issuer=旧 DN、subject=新 DN、签名用旧私钥、认证新公钥；含 `NameChange` 时置位。
+- [x] T1.1.10 单测：固定向量 + 逐扩展存在性/临界性/编码断言；`openssl x509 -text` 对照。
 
 ### 3.2 CRL（§7.1.4）
 
-- [ ] T1.2.1 `createCrl()`：v2、issuer、thisUpdate/nextUpdate（秒+Z）。
-- [ ] T1.2.2 `revokedCertificates` 有则不空、无则不出现。
-- [ ] T1.2.3 crlExtensions：`AuthorityKeyIdentifier` 必须（nc，等于签证 SKI）、`cRLNumber` 必须（nc，非负、≤20 字节最小补码）。
-- [ ] T1.2.4 禁止：deltaCRLIndicator、issuingDistributionPoint、freshestCRL；条目级 reasonCode/holdInstructionCode/invalidityDate/certificateIssuer。
-- [ ] T1.2.5 签名用**最新** CSCA 私钥；支持包含旧 CSCA 签发的吊销项。
-- [ ] T1.2.6 `parseCrl()` / `isRevoked(cert, crl)`。
-- [ ] T1.2.7 单测：空 CRL、含吊销、CRL number 递增、`openssl crl -text` 对照。
+- [x] T1.2.1 `createCrl()`：v2、issuer、thisUpdate/nextUpdate（秒+Z）。
+- [x] T1.2.2 `revokedCertificates` 有则不空、无则不出现。
+- [x] T1.2.3 crlExtensions：`AuthorityKeyIdentifier` 必须（nc，等于签证 SKI）、`cRLNumber` 必须（nc，非负、≤20 字节最小补码）。
+- [x] T1.2.4 禁止：deltaCRLIndicator、issuingDistributionPoint、freshestCRL；条目级 reasonCode/holdInstructionCode/invalidityDate/certificateIssuer。
+- [x] T1.2.5 签名用**最新** CSCA 私钥；支持包含旧 CSCA 签发的吊销项。
+- [x] T1.2.6 `parseCrl()` / `isRevoked(cert, crl)`。
+- [x] T1.2.7 单测：空 CRL、含吊销、CRL number 递增、`openssl crl -text` 对照。
 
 ### 3.3 CMS SignedData / LDS Security Object / EF.SOD（Doc 9303-10 §4.6.2）
 
-- [ ] T1.3.1 `ldsSecurityObject(hashes)`：`SEQUENCE{version=0, AlgorithmIdentifier(SHA-256), SEQUENCE{ {dgNumber, OCTET STRING hash}... }}`。
-- [ ] T1.3.2 `buildCms(eContentType, eContent, certPem, keyRef)`：`SignedData`，`signerInfos` 的 `sid` 用 IssuerAndSerialNumber；`signedAttrs` 含 `content-type` + `message-digest`。
-- [ ] T1.3.3 `buildSod(hashes, dsc)`：外层 `77` 包 CMS（contentType `2.23.136.1.1.1`）。
-- [ ] T1.3.4 `buildCardSecurity(securityObject, dsc)`：裸 SignedData（contentType `0.4.0.127.0.7.3.2.1`）。
-- [ ] T1.3.5 单测：`pkijs.verify` 自验 + `openssl cms -verify`（CI 允许则跑）。
-- [ ] T1.3.6 **审计 card42-perso-generator 的 `cms.ts`**：逐字段对照 RFC 5652 与 Doc 9303-10；特别核对 signedAttrs 的 DER SET OF 重编码、eContent OCTET STRING 包装、`77` 外层。
+- [x] T1.3.1 `ldsSecurityObject(hashes)`：`SEQUENCE{version=0, AlgorithmIdentifier(SHA-256), SEQUENCE{ {dgNumber, OCTET STRING hash}... }}`。
+- [x] T1.3.2 `buildCms(eContentType, eContent, certPem, keyRef)`：`SignedData`，`signerInfos` 的 `sid` 用 IssuerAndSerialNumber；`signedAttrs` 含 `content-type` + `message-digest`。
+- [x] T1.3.3 `buildSod(hashes, dsc)`：外层 `77` 包 CMS（contentType `2.23.136.1.1.1`）。
+- [x] T1.3.4 `buildCardSecurity(securityObject, dsc)`：裸 SignedData（contentType `0.4.0.127.0.7.3.2.1`）。
+- [x] T1.3.5 单测：`pkijs.verify` 自验 + `openssl cms -verify`（CI 允许则跑）。
+- [x] T1.3.6 **审计 card42-perso-generator 的 `cms.ts`**：逐字段对照 RFC 5652 与 Doc 9303-10；特别核对 signedAttrs 的 DER SET OF 重编码、eContent OCTET STRING 包装、`77` 外层。
 
 ### 3.4 Master List（Doc 9303-12 §9）
 
-- [ ] T1.4.1 `buildMasterList(certs, signerCert, signerKey)`：`ContentInfo{SignedData}`，`eContentType=2.23.136.1.1.2`，`eContent=CscaMasterList{version=0, SET OF Certificate}`；`certificates` 必须含 ML Signer、应含 CSCA；`signedAttrs` 必须含 `signingTime`。
-- [ ] T1.4.2 `DigestAlgorithmIdentifiers` 省略 NULL，`SignatureAlgorithmIdentifier` 无参时含 NULL（§9 Note）。
-- [ ] T1.4.3 单测 + `openssl cms -verify`。
+- [x] T1.4.1 `buildMasterList(certs, signerCert, signerKey)`：`ContentInfo{SignedData}`，`eContentType=2.23.136.1.1.2`，`eContent=CscaMasterList{version=0, SET OF Certificate}`；`certificates` 必须含 ML Signer、应含 CSCA；`signedAttrs` 必须含 `signingTime`。
+- [x] T1.4.2 `DigestAlgorithmIdentifiers` 省略 NULL，`SignatureAlgorithmIdentifier` 无参时含 NULL（§9 Note）。
+- [x] T1.4.3 单测 + `openssl cms -verify`。
 
 ### 3.5 数据组 / perso（构建、校验与移植审计）
 
 #### 3.5.1 DG 范围与生成方（Doc 9303-10 §4.7）
 
-| DG | 外层 tag | 内容 | 生成方 | 申请者 UI |
-|---|---|---|---|---|
-| DG1 | `61` | MRZ | 服务端（结构化字段） | MRZ 表单 |
-| DG2 | `75` | 人脸 CBEFF/ISO 19794-5 | 前端编码，服务端校验 | 照片上传+裁切 |
-| DG3 | `63` | 指纹 CBEFF/ISO 19794-2/-4 | 用户上传已编码 BDB，服务端包装/校验 | 文件上传 |
-| DG4 | `76` | 虹膜 CBEFF/ISO 19794-6 | 同上 | 文件上传 |
-| DG5 | `65` | 显示头像（JPEG `5F40`） | 前端编码 | 照片上传 |
-| DG6 | `66` | 保留 | — | — |
-| DG7 | `67` | 显示签名/标记（JPEG `5F43`） | 前端编码 | 签名图片上传 |
-| DG8/9/10 | `68/69/6A` | 特征数据（未定义/专有） | 暂不支持（高级可选） | — |
-| DG11 | `6B` | 附加个人信息 | 服务端（结构化字段） | 结构化表单 |
-| DG12 | `6C` | 附加证件信息 | 服务端（结构化字段） | 结构化表单 |
-| DG13 | `6D` | 可选项（发行国自定义） | 用户提交自由文本/结构化 JSON | 文本/JSON 表单 |
-| DG14 | `6E` | SecurityInfos（CA/PACE） | 服务端（与 EF.CardAccess 一致） | 机制开关 |
-| DG15 | `6F` | AA 公钥（SPKI） | 服务端生成 | 开关 |
-| DG16 | `70` | 通知人 | 服务端（结构化列表） | 结构化列表 |
+| DG       | 外层 tag   | 内容                         | 生成方                              | 申请者 UI      |
+| -------- | ---------- | ---------------------------- | ----------------------------------- | -------------- |
+| DG1      | `61`       | MRZ                          | 服务端（结构化字段）                | MRZ 表单       |
+| DG2      | `75`       | 人脸 CBEFF/ISO 19794-5       | 前端编码，服务端校验                | 照片上传+裁切  |
+| DG3      | `63`       | 指纹 CBEFF/ISO 19794-2/-4    | 用户上传已编码 BDB，服务端包装/校验 | 文件上传       |
+| DG4      | `76`       | 虹膜 CBEFF/ISO 19794-6       | 同上                                | 文件上传       |
+| DG5      | `65`       | 显示头像（JPEG `5F40`）      | 前端编码                            | 照片上传       |
+| DG6      | `66`       | 保留                         | —                                   | —              |
+| DG7      | `67`       | 显示签名/标记（JPEG `5F43`） | 前端编码                            | 签名图片上传   |
+| DG8/9/10 | `68/69/6A` | 特征数据（未定义/专有）      | 暂不支持（高级可选）                | —              |
+| DG11     | `6B`       | 附加个人信息                 | 服务端（结构化字段）                | 结构化表单     |
+| DG12     | `6C`       | 附加证件信息                 | 服务端（结构化字段）                | 结构化表单     |
+| DG13     | `6D`       | 可选项（发行国自定义）       | 用户提交自由文本/结构化 JSON        | 文本/JSON 表单 |
+| DG14     | `6E`       | SecurityInfos（CA/PACE）     | 服务端（与 EF.CardAccess 一致）     | 机制开关       |
+| DG15     | `6F`       | AA 公钥（SPKI）              | 服务端生成                          | 开关           |
+| DG16     | `70`       | 通知人                       | 服务端（结构化列表）                | 结构化列表     |
 
-- [ ] T1.5.1 `buildDg1`（`61{5F1F MRZ}`）。
-- [ ] T1.5.2 `buildDg2`（`75{7F61{02 01 01,7F60{A1 SBH,5F2E ISO19794-5}}}`）+ `validateDg2()`。
-- [ ] T1.5.3 `wrapDg3()`/`validateDg3()`：外层 `63{7F61{…}}`，内层 `5F2E`/`7F2E` 的 BDB 原样透传，仅校验外层与实例数（§4.7.3）。
-- [ ] T1.5.4 `wrapDg4()`/`validateDg4()`（§4.7.4）。
-- [ ] T1.5.5 `buildDg5`（`65{02 01 01,5F40 JPEG}`）、`buildDg7`（`67{02 01 01,5F43 JPEG}`）。
-- [ ] T1.5.6 `buildDg11(fields)`：`6B{5C taglist, 5F0E, [A0{02 01 n,5F0F…}], 5F10, 5F2B(yyyymmdd), 5F11, 5F42, 5F12, 5F13, 5F14, 5F15, [5F16 公民证明图像], 5F17, 5F18}`；长度/字符集/`<` 填充校验（§4.7.11 Table 71/72）。
-- [ ] T1.5.7 `buildDg12(fields)`：`6C{5C, 5F19, 5F26(yyyymmdd), [A0{02 01 n,5F1A…}], 5F1B, 5F1C, [5F1D 正面], [5F1E 背面], 5F55(yyyymmddhhmmss), 5F56}`（§4.7.12 Table 73/74）。
-- [ ] T1.5.8 `buildDg13(data)`：`6D{…}`，发行国自定义；申请者提交自由文本/结构化 JSON，编码策略可配置（§4.7.13）。
-- [ ] T1.5.9 `buildDg14(securityInfo)` / `buildCardAccess(securityInfo)`：与 CA/PACE 选择一致（§4.7.14、Doc 9303-11）。
-- [ ] T1.5.10 `buildDg15(spki)`（§4.7.15、Doc 9303-11 §6.1.5）。
-- [ ] T1.5.11 `buildDg16(persons)`：`70{02 01 n, A1{5F50,5F51,5F52,5F53}, …}`（§4.7.16 Table 80/81）。
-- [ ] T1.5.12 `mrz.ts`：TD3 组装与 7-3-1 校验位（含复合校验位），供 DG1 复用。
-- [ ] T1.5.13 `buildSecurityObject`（EF.CardSecurity 的 eContent）。
-- [ ] T1.5.14 `renderEmrtdScript()`：`@instance/@doc/@dob/@doe/@dg n/@sod/@aa/@ca/@cardaccess/@cardsecurity/@record/@transparent`。
-- [ ] T1.5.15 **审计任务（逐条对照规范）**：
-  - [ ] DG1/DG2/DG3/DG4/DG5/DG7/DG11/DG12/DG13/DG14/DG15/DG16 的 tag/长度/编码/填充。
-  - [ ] `SecurityInfo` OID/版本/profile（Doc 9303-10 §3.11、Doc 9303-11 §9.2）。
-  - [ ] perso 指令语义与 `card42.host.emrtd.perso.LdsScript` 一致（含 `@aa` 的 `modLen‖modulus‖expLen‖exponent`）。
-  - [ ] EF.COM 由卡侧生成，不在本工具输出中伪造（Doc 9303-10 §4.6.1）。
-  - [ ] LDS2 记录/透明 EF 的 `fid`/内容编码（Doc 9303-10 §5）。
-  - [ ] 把每条审计结论记入 `packages/pki/AUDIT.md`。
-- [ ] T1.5.16 单测：MRZ 被 `mrz` parser 校验；各 DG 构建器有固定向量；DG/SOD 跨 card42 模拟器 PA 验证。
+- [x] T1.5.1 `buildDg1`（`61{5F1F MRZ}`）。
+- [x] T1.5.2 `buildDg2`（`75{7F61{02 01 01,7F60{A1 SBH,5F2E ISO19794-5}}}`）+ `validateDg2()`。
+- [x] T1.5.3 `wrapDg3()`/`validateDg3()`：外层 `63{7F61{…}}`，内层 `5F2E`/`7F2E` 的 BDB 原样透传，仅校验外层与实例数（§4.7.3）。
+- [x] T1.5.4 `wrapDg4()`/`validateDg4()`（§4.7.4）。
+- [x] T1.5.5 `buildDg5`（`65{02 01 01,5F40 JPEG}`）、`buildDg7`（`67{02 01 01,5F43 JPEG}`）。
+- [x] T1.5.6 `buildDg11(fields)`：`6B{5C taglist, 5F0E, [A0{02 01 n,5F0F…}], 5F10, 5F2B(yyyymmdd), 5F11, 5F42, 5F12, 5F13, 5F14, 5F15, [5F16 公民证明图像], 5F17, 5F18}`；长度/字符集/`<` 填充校验（§4.7.11 Table 71/72）。
+- [x] T1.5.7 `buildDg12(fields)`：`6C{5C, 5F19, 5F26(yyyymmdd), [A0{02 01 n,5F1A…}], 5F1B, 5F1C, [5F1D 正面], [5F1E 背面], 5F55(yyyymmddhhmmss), 5F56}`（§4.7.12 Table 73/74）。
+- [x] T1.5.8 `buildDg13(data)`：`6D{…}`，发行国自定义；申请者提交自由文本/结构化 JSON，编码策略可配置（§4.7.13）。
+- [x] T1.5.9 `buildDg14(securityInfo)` / `buildCardAccess(securityInfo)`：与 CA/PACE 选择一致（§4.7.14、Doc 9303-11）。
+- [x] T1.5.10 `buildDg15(spki)`（§4.7.15、Doc 9303-11 §6.1.5）。
+- [x] T1.5.11 `buildDg16(persons)`：`70{02 01 n, A1{5F50,5F51,5F52,5F53}, …}`（§4.7.16 Table 80/81）。
+- [x] T1.5.12 `mrz.ts`：TD3 组装与 7-3-1 校验位（含复合校验位），供 DG1 复用。
+- [x] T1.5.13 `buildSecurityObject`（EF.CardSecurity 的 eContent）。
+- [x] T1.5.14 `renderEmrtdScript()`：`@instance/@doc/@dob/@doe/@dg n/@sod/@aa/@ca/@cardaccess/@cardsecurity/@record/@transparent`。
+- [x] T1.5.15 **审计任务（逐条对照规范）**：
+  - [x] DG1/DG2/DG3/DG4/DG5/DG7/DG11/DG12/DG13/DG14/DG15/DG16 的 tag/长度/编码/填充。
+  - [x] `SecurityInfo` OID/版本/profile（Doc 9303-10 §3.11、Doc 9303-11 §9.2）。
+  - [x] perso 指令语义与 `card42.host.emrtd.perso.LdsScript` 一致（含 `@aa` 的 `modLen‖modulus‖expLen‖exponent`）。
+  - [x] EF.COM 由卡侧生成，不在本工具输出中伪造（Doc 9303-10 §4.6.1）。
+  - [x] LDS2 记录/透明 EF 的 `fid`/内容编码（Doc 9303-10 §5）。
+  - [x] 把每条审计结论记入 `packages/pki/AUDIT.md`。
+- [x] T1.5.16 单测：MRZ 被 `mrz` parser 校验；各 DG 构建器有固定向量；DG/SOD 跨 card42 模拟器 PA 验证。
 
 ### 3.6 验证模块
 
-- [ ] T1.6.1 `verifyDscAgainstCsca(dsc, cscaList)`。
-- [ ] T1.6.2 `verifySod(sod, dgHashes)`。
-- [ ] T1.6.3 `validateCertProfile(cert, kind)`：返回 profile 偏差列表（供审核用）。
+- [x] T1.6.1 `verifyDscAgainstCsca(dsc, cscaList)`。
+- [x] T1.6.2 `verifySod(sod, dgHashes)`。
+- [x] T1.6.3 `validateCertProfile(cert, kind)`：返回 profile 偏差列表（供审核用）。
 
 **M1 验收**：`packages/pki` 单测全绿；`openssl verify`/`cms -verify` 通过；`AUDIT.md` 完成对移植代码的规范对照。
+
+> 说明：ECDSA（T1.1.5）暂未实现，默认 RSA；card42 模拟器 PA（T1.5.16）需要
+> Java 工具链，改为在 `scripts` 端到端测试中对生成的 SOD 做 `openssl cms -verify`。
 
 ---
 
@@ -230,20 +234,20 @@ pkd42/
 
 ### 4.1 `scripts/gen-csca`
 
-- [ ] T2.1.1 CLI 参数：`--out`、`--cn`、`--country XD`、`--locality UDN`、`--validity-years`、`--key-rsa-bits 4096`、`--hash sha256`、`--pss`、`--private-key-usage-years`、`--crl-dp`。
-- [ ] T2.1.2 用 `packages/pki` 生成（保证扩展完整，尤其 `PrivateKeyUsagePeriod`，OpenSSL `req` 不支持）。
-- [ ] T2.1.3 输出：`csca.key`（加密 PKCS#8，口令交互）、`csca.crt`（DER+PEM）、`csca.json`（serial/SKI/SHA-256 指纹）。
-- [ ] T2.1.4 提供对比用 OpenSSL 脚本 `scripts/gen-csca-openssl.sh`（含 `-param_enc explicit` 的 ECDSA 变体）。
-- [ ] T2.1.5 文档说明离线生成流程与私钥保护。
+- [x] T2.1.1 CLI 参数：`--out`、`--cn`、`--country XD`、`--locality UDN`、`--validity-years`、`--key-rsa-bits 4096`、`--hash sha256`、`--pss`、`--private-key-usage-years`、`--crl-dp`。
+- [x] T2.1.2 用 `packages/pki` 生成（保证扩展完整，尤其 `PrivateKeyUsagePeriod`，OpenSSL `req` 不支持）。
+- [x] T2.1.3 输出：`csca.key`（加密 PKCS#8，口令交互）、`csca.crt`（DER+PEM）、`csca.json`（serial/SKI/SHA-256 指纹）。
+- [x] T2.1.4 提供对比用 OpenSSL 脚本 `scripts/gen-csca-openssl.sh`（含 `-param_enc explicit` 的 ECDSA 变体）。
+- [x] T2.1.5 文档说明离线生成流程与私钥保护。
 
 ### 4.2 `scripts/verify`
 
-- [ ] T2.2.1 校验单张证书是否符合 CSCA/DSC profile。
-- [ ] T2.2.2 `openssl verify -CAfile` 验 DSC 链。
-- [ ] T2.2.3 校验 CRL/ML/SOD。
-- [ ] T2.2.4 退出码：0 通过，非 0 输出 `error: <msg>`。
+- [x] T2.2.1 校验单张证书是否符合 CSCA/DSC profile。
+- [x] T2.2.2 `openssl verify -CAfile` 验 DSC 链。
+- [x] T2.2.3 校验 CRL/ML/SOD。
+- [x] T2.2.4 退出码：0 通过，非 0 输出 `error: <msg>`。
 
-- [ ] T2.3 CI 中跑 `scripts/verify` 针对生成的测试证书。
+- [x] T2.3 CI 中跑 `scripts/verify` 针对生成的测试证书。
 
 **M2 验收**：生成一张通过 `scripts/verify` 的 CSCA；DSC 由它签发并能 `openssl verify`。
 
@@ -588,48 +592,52 @@ pkd42/
 
 ## 附录 A — OID 常量表
 
-| 名称 | OID |
-|---|---|
-| id-icao | 2.23.136 |
-| id-icao-mrtd | 2.23.136.1 |
-| id-icao-mrtd-security | 2.23.136.1.1 |
-| LDS Security Object | 2.23.136.1.1.1 |
-| id-icao-cscaMasterList | 2.23.136.1.1.2 |
-| id-icao-cscaMasterListSigningKey（ML Signer EKU） | 2.23.136.1.1.3 |
-| id-icao-mrtd-security-extensions | 2.23.136.1.1.6 |
-| NameChange | 2.23.136.1.1.6.1 |
-| DocumentTypeList | 2.23.136.1.1.6.2 |
-| id-icao-DeviationList | 2.23.136.1.1.7 |
-| DeviationListSigningKey（DL Signer EKU） | 2.23.136.1.1.8 |
-| id-icao-lds2 | 2.23.136.1.1.9 |
-| id-icao-lds2Signer | 2.23.136.1.1.9.8 |
-| LDS2-TS / LDS2-V / LDS2-B Signer | 2.23.136.1.1.9.8.1 / .2 / .3 |
-| id-icao-vds / vdsSigner | 2.23.136.1.1.11 / .11.1 |
-| securityObject（EF.CardSecurity） | 0.4.0.127.0.7.3.2.1 |
-| CMS signedData | 1.2.840.113549.1.7.2 |
-| CMS contentType / messageDigest | 1.2.840.113549.1.9.3 / .9.4 |
-| SHA-256 | 2.16.840.1.101.3.4.2.1 |
+| 名称                                              | OID                          |
+| ------------------------------------------------- | ---------------------------- |
+| id-icao                                           | 2.23.136                     |
+| id-icao-mrtd                                      | 2.23.136.1                   |
+| id-icao-mrtd-security                             | 2.23.136.1.1                 |
+| LDS Security Object                               | 2.23.136.1.1.1               |
+| id-icao-cscaMasterList                            | 2.23.136.1.1.2               |
+| id-icao-cscaMasterListSigningKey（ML Signer EKU） | 2.23.136.1.1.3               |
+| id-icao-mrtd-security-extensions                  | 2.23.136.1.1.6               |
+| NameChange                                        | 2.23.136.1.1.6.1             |
+| DocumentTypeList                                  | 2.23.136.1.1.6.2             |
+| id-icao-DeviationList                             | 2.23.136.1.1.7               |
+| DeviationListSigningKey（DL Signer EKU）          | 2.23.136.1.1.8               |
+| id-icao-lds2                                      | 2.23.136.1.1.9               |
+| id-icao-lds2Signer                                | 2.23.136.1.1.9.8             |
+| LDS2-TS / LDS2-V / LDS2-B Signer                  | 2.23.136.1.1.9.8.1 / .2 / .3 |
+| id-icao-vds / vdsSigner                           | 2.23.136.1.1.11 / .11.1      |
+| securityObject（EF.CardSecurity）                 | 0.4.0.127.0.7.3.2.1          |
+| CMS signedData                                    | 1.2.840.113549.1.7.2         |
+| CMS contentType / messageDigest                   | 1.2.840.113549.1.9.3 / .9.4  |
+| SHA-256                                           | 2.16.840.1.101.3.4.2.1       |
 
 ---
 
 ## 附录 B — Profile 速查（必须项）
 
 ### B.1 CSCA Self-Signed Root（§7.1.1）
+
 - 必须：v3；serial 唯一；UTCTime/GeneralizedTime+Z+秒；C 大写、CN；SKI(nc)、KeyUsage(c, keyCertSign+cRLSign)、PrivateKeyUsagePeriod(nc)、BasicConstraints(c, cA=TRUE, pathlen=0)、SAN(nc, locality=UDN)、IAN(nc, 同 SAN)、CRLDP(nc)。
 - 可选：AKI(nc)、CertificatePolicies、NameChange。
 - 禁止：EKU、其他 CA 扩展、Netscape、NameConstraints/PolicyConstraints/InhibitAnyPolicy/FreshestCRL。
 
 ### B.2 DSC
+
 - 必须：AKI(nc)、KeyUsage(c, 仅 digitalSignature)、PrivateKeyUsagePeriod(nc)、DocumentType(nc)、SAN(nc)、IAN(nc)、CRLDP(nc)。
 - 可选：SKI(nc)、CertificatePolicies。
 - 禁止：EKU、BasicConstraints。
 - Subject：C + CN。
 
 ### B.3 CRL
+
 - v2；thisUpdate/nextUpdate 秒+Z；revokedCertificates 有则不空无则不出现；AKI(nc)、cRLNumber(nc)。
 - 禁止：deltaCRLIndicator、IDP、freshestCRL、条目级四扩展。
 
 ### B.4 生命周期（Table 1，可配）
+
 - CSCA 私钥 3–5 年；CSCA 证书 13–15 年。
 - DSC 私钥 ≤ 3 个月；DSC 证书 ≈ 10 年（+私钥期）。
 - CRL：≥90 天一张、≤48 小时一张、吊销后 48 小时内。
@@ -753,10 +761,12 @@ CREATE TABLE job (
 ## 附录 D — API 草案
 
 ### 认证
+
 - `GET  /auth/{realm}/login`、`GET /auth/{realm}/callback`、`POST /auth/{realm}/logout`
 - `GET  /auth/{realm}/me`
 
 ### CSCA
+
 - `POST /csca/applications`、`GET /csca/applications`、`GET /csca/applications/:id`
 - `POST /csca/applications/:id/approve`、`POST /csca/applications/:id/reject`
 - `POST /csca/certificates/:id/revoke`
@@ -765,6 +775,7 @@ CREATE TABLE job (
 - `POST /csca/keys/rollover`
 
 ### DSC Signing
+
 - `POST /dsc/requests`
 - `GET  /dsc/requests/:reference`（元数据，非破坏）
 - `GET  /dsc/requests/:reference/preview`（masked 预览，非破坏）
@@ -779,36 +790,38 @@ CREATE TABLE job (
 - `GET/PUT /dsc/settings/issuing-profile`（DSC 管理员）
 
 ### PKD
+
 - `GET /pkd/certificates`、`GET /pkd/crls`、`GET /pkd/masterlists`
 - `GET /pkd/objects/:id.(der|pem)`
 - `GET /pkd/ldif`
 
 ### 配置
+
 - `GET /api/config`（角色开关、可用 oauth provider、国家码）
 
 ---
 
 ## 附录 E — 风险与未决项
 
-| # | 项 | 状态 | 处理 |
-|---|---|---|---|
-| E1 | DSC 签名输入契约 | 已定 | 结构化字段；前端编码 DG2/DG5/DG7；DG3/DG4 上传已编码 BLOB；AA/CA 服务端生成 |
-| E2 | `as_config` 由 AS 管理员配置 | 已定 | 前端提供配置页（DSC realm 登录后） |
-| E3 | 国家码 `UDN` / `XD` | 已定 | 全局常量 |
-| E4 | CSCA 在线私钥 | 已定 | 信封加密 + 二次确认 + 审计；预留 HSM 适配 |
-| E5 | ECDSA 显式参数 | 待定 | 默认 RSA；需要时再实现 |
-| E6 | LDAP 只读实现（ldapjs 维护度） | 待定 | 以 LDIF+OpenLDAP 为主，只读 LDAP 为兼容层 |
-| E7 | 复用 generator 代码正确性 | 进行中 | M1.5.5 审计并记录 `AUDIT.md` |
-| E8 | 邮件可达性 | 待定 | SPF/DKIM/DMARC + 重试 |
-| E9 | 隐私与保留期 | 待定 | M13 落地 |
-| E10 | 项目定位/免责 | 已定 | 全链路标注 dn42 模拟用途 |
-| E11 | DG3/DG4 编码归属 | 已定 | 用户上传 ISO 19794 已编码数据，服务端仅包外层并校验 |
-| E12 | 预览 mask 字段清单 | 已定 | 掩码证件号/个人号/完整生日/地址电话邮箱/DG16 姓名；生物特征用占位 |
-| E13 | 前端编码需安全上下文 | 已定 | 必须有 HTTPS/localhost；**不降级** |
-| E14 | LDS2 具体范围 | 已定 | 默认空、申请者不输入；记录由管理员/后续授权终端写入 |
-| E15 | 一次性领取 UX 边界 | 已定 | 预览非破坏；领取破坏并删除；仅管理员可重新生成 |
-| E16 | AA/CA 私钥外泄风险 | 已接受 | 本轮忽略；仅保留加密落盘/构建后删除/审计 |
-| E17 | 服务端填写字段可定制 | 已定 | `issuing_profile` 系统默认 + 审批单请求覆盖 + 审计 |
+| #   | 项                             | 状态   | 处理                                                                        |
+| --- | ------------------------------ | ------ | --------------------------------------------------------------------------- |
+| E1  | DSC 签名输入契约               | 已定   | 结构化字段；前端编码 DG2/DG5/DG7；DG3/DG4 上传已编码 BLOB；AA/CA 服务端生成 |
+| E2  | `as_config` 由 AS 管理员配置   | 已定   | 前端提供配置页（DSC realm 登录后）                                          |
+| E3  | 国家码 `UDN` / `XD`            | 已定   | 全局常量                                                                    |
+| E4  | CSCA 在线私钥                  | 已定   | 信封加密 + 二次确认 + 审计；预留 HSM 适配                                   |
+| E5  | ECDSA 显式参数                 | 待定   | 默认 RSA；需要时再实现                                                      |
+| E6  | LDAP 只读实现（ldapjs 维护度） | 待定   | 以 LDIF+OpenLDAP 为主，只读 LDAP 为兼容层                                   |
+| E7  | 复用 generator 代码正确性      | 进行中 | M1.5.5 审计并记录 `AUDIT.md`                                                |
+| E8  | 邮件可达性                     | 待定   | SPF/DKIM/DMARC + 重试                                                       |
+| E9  | 隐私与保留期                   | 待定   | M13 落地                                                                    |
+| E10 | 项目定位/免责                  | 已定   | 全链路标注 dn42 模拟用途                                                    |
+| E11 | DG3/DG4 编码归属               | 已定   | 用户上传 ISO 19794 已编码数据，服务端仅包外层并校验                         |
+| E12 | 预览 mask 字段清单             | 已定   | 掩码证件号/个人号/完整生日/地址电话邮箱/DG16 姓名；生物特征用占位           |
+| E13 | 前端编码需安全上下文           | 已定   | 必须有 HTTPS/localhost；**不降级**                                          |
+| E14 | LDS2 具体范围                  | 已定   | 默认空、申请者不输入；记录由管理员/后续授权终端写入                         |
+| E15 | 一次性领取 UX 边界             | 已定   | 预览非破坏；领取破坏并删除；仅管理员可重新生成                              |
+| E16 | AA/CA 私钥外泄风险             | 已接受 | 本轮忽略；仅保留加密落盘/构建后删除/审计                                    |
+| E17 | 服务端填写字段可定制           | 已定   | `issuing_profile` 系统默认 + 审批单请求覆盖 + 审计                          |
 
 ---
 
@@ -826,20 +839,20 @@ CREATE TABLE job (
 
 ## 附录 G — 数据组 tag 速查（Doc 9303-10 §4.7）
 
-| DG | 外层 | 主要内层 tag |
-|---|---|---|
-| DG1 | `61` | `5F1F` MRZ |
-| DG2 | `75` | `7F61{ 7F60{ A1 SBH, 5F2E } }` |
-| DG3 | `63` | `7F61{ 7F60{ A1, 5F2E/7F2E } }`（ISO 19794-2/-4） |
-| DG4 | `76` | `7F61{ 7F60{ A1, 5F2E/7F2E } }`（ISO 19794-6） |
-| DG5 | `65` | `02` 数量、`5F40` 图像 |
-| DG7 | `67` | `02` 数量、`5F43` 图像 |
-| DG8/9/10 | `68/69/6A` | 未定义/专有（暂不支持） |
-| DG11 | `6B` | `5C`、`5F0E` 全名、`A0{02,5F0F}` 别名、`5F10` 个人号、`5F2B` 完整生日、`5F11` 出生地、`5F42` 地址、`5F12` 电话、`5F13` 职业、`5F14` 头衔、`5F15` 摘要、`5F16` 公民证明图像、`5F17` 其他旅行证件、`5F18` 监护信息 |
-| DG12 | `6C` | `5C`、`5F19` 签发机关、`5F26` 签发日期、`A0{02,5F1A}` 其他人、`5F1B` 备注、`5F1C` 税务/出境、`5F1D` 正面图像、`5F1E` 背面图像、`5F55` 个性化时间、`5F56` 个性化设备序列号 |
-| DG13 | `6D` | 发行国自定义 |
-| DG14 | `6E` | SecurityInfos（见 §4.7.14.2） |
-| DG15 | `6F` | SubjectPublicKeyInfo（Doc 9303-11 §6.1.5） |
-| DG16 | `70` | `02` 数量、`A1…{5F50,5F51,5F52,5F53}` |
+| DG       | 外层       | 主要内层 tag                                                                                                                                                                                                     |
+| -------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DG1      | `61`       | `5F1F` MRZ                                                                                                                                                                                                       |
+| DG2      | `75`       | `7F61{ 7F60{ A1 SBH, 5F2E } }`                                                                                                                                                                                   |
+| DG3      | `63`       | `7F61{ 7F60{ A1, 5F2E/7F2E } }`（ISO 19794-2/-4）                                                                                                                                                                |
+| DG4      | `76`       | `7F61{ 7F60{ A1, 5F2E/7F2E } }`（ISO 19794-6）                                                                                                                                                                   |
+| DG5      | `65`       | `02` 数量、`5F40` 图像                                                                                                                                                                                           |
+| DG7      | `67`       | `02` 数量、`5F43` 图像                                                                                                                                                                                           |
+| DG8/9/10 | `68/69/6A` | 未定义/专有（暂不支持）                                                                                                                                                                                          |
+| DG11     | `6B`       | `5C`、`5F0E` 全名、`A0{02,5F0F}` 别名、`5F10` 个人号、`5F2B` 完整生日、`5F11` 出生地、`5F42` 地址、`5F12` 电话、`5F13` 职业、`5F14` 头衔、`5F15` 摘要、`5F16` 公民证明图像、`5F17` 其他旅行证件、`5F18` 监护信息 |
+| DG12     | `6C`       | `5C`、`5F19` 签发机关、`5F26` 签发日期、`A0{02,5F1A}` 其他人、`5F1B` 备注、`5F1C` 税务/出境、`5F1D` 正面图像、`5F1E` 背面图像、`5F55` 个性化时间、`5F56` 个性化设备序列号                                        |
+| DG13     | `6D`       | 发行国自定义                                                                                                                                                                                                     |
+| DG14     | `6E`       | SecurityInfos（见 §4.7.14.2）                                                                                                                                                                                    |
+| DG15     | `6F`       | SubjectPublicKeyInfo（Doc 9303-11 §6.1.5）                                                                                                                                                                       |
+| DG16     | `70`       | `02` 数量、`A1…{5F50,5F51,5F52,5F53}`                                                                                                                                                                            |
 
 > 以上 tag/结构在各 DG 构建器实现时**仍须逐条对照 Doc 9303-10 §4.7 对应小节**（记入 `AUDIT.md`）。

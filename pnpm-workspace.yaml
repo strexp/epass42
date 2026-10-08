@@ -1,0 +1,12 @@
+packages:
+  - 'packages/*'
+  - 'backend'
+  - 'frontend'
+  - 'scripts'
+
+onlyBuiltDependencies:
+  - esbuild
+
+# The workspace is checked explicitly with `pnpm check`; do not re-run a deps
+# status check before every script (it treats ignored optional builds as fatal).
+verifyDepsBeforeRun: false

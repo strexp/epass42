@@ -1,2 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+!reference/**
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local reference material (not part of the delivered repo)
 reference/
 PLAN.md

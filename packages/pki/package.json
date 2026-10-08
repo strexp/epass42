@@ -1,0 +1,30 @@
+{
+  "name": "@pkd42/pki",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit false --outDir dist --declaration",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
+    "@peculiar/x509": "^2.1.0",
+    "@pkd42/shared": "workspace:*",
+    "asn1js": "^3.0.10",
+    "pkijs": "^3.4.1",
+    "pvtsutils": "^1.3.6",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.2"
+  }
+}
