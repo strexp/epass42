@@ -78,6 +78,8 @@ export function makeTestConfig(overrides: Record<string, string> = {}): AppConfi
       PKD42_ROLES: 'pkd,csca,dsc',
       PKD42_CSCA_ADMIN_MNTS: 'EXAMPLE-CSCA-MNT',
       PKD42_DSC_ADMIN_MNTS: 'EXAMPLE-DSC-MNT',
+      PKD42_CSCA_BOOTSTRAP: 'false',
+      PKD42_CSCA_KEY_BITS: '2048',
       PKD42_OAUTH_PROVIDERS: JSON.stringify(PROVIDERS),
       ...overrides,
     },

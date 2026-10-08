@@ -55,6 +55,8 @@ export function rsaSigningAlgorithm(
 export interface CscaProfile {
   commonName: string
   country?: string
+  /** Optional organisation name (encoded as an `O` attribute). */
+  organization?: string
   /** Locality used in the SAN directoryName (profiled as `UDN`). */
   locality?: string
   /** Optional state/province when the locality alone is not unique. */
@@ -95,9 +97,12 @@ export interface GeneratedCertificate {
   fingerprintSha256: string
 }
 
-/** Encodes a name string (`CN=...,C=...`). */
-function nameOf(commonName: string, country = 'XD'): x509.Name {
-  return new x509.Name(`CN=${commonName},C=${country}`)
+/** Encodes a name string (`CN=...,C=...`, with an optional `O`). */
+function nameOf(commonName: string, country = 'XD', organization?: string): x509.Name {
+  const parts = [`CN=${commonName}`]
+  if (organization) parts.push(`O=${organization}`)
+  parts.push(`C=${country}`)
+  return new x509.Name(parts.join(','))
 }
 
 /** Wraps a `@peculiar/x509` certificate with its encodings and fingerprint. */
@@ -141,7 +146,7 @@ export async function createCscaRoot(
   ]
   const certificate = await x509.X509CertificateGenerator.createSelfSigned({
     keys: { publicKey: key.publicKey, privateKey: key.privateKey },
-    name: nameOf(profile.commonName, profile.country),
+    name: nameOf(profile.commonName, profile.country, profile.organization),
     serialNumber: bytesToHex(profile.serial ?? randomSerial()),
     notBefore: profile.notBefore,
     notAfter: profile.notAfter,
@@ -151,6 +156,13 @@ export async function createCscaRoot(
   return describeCertificate(certificate)
 }
 
+/** The public-key material needed to certify a subject. */
+export interface SubjectPublicKey {
+  publicKey: CryptoKey
+  /** Whether the subject key is an RSA-PSS key (signature algorithm hint). */
+  pss?: boolean
+}
+
 /**
  * Creates a Document Signer certificate signed by the CSCA (Doc 9303-12
  * §7.1.1 Table 6).  The DSC profile forbids ExtendedKeyUsage and
@@ -158,11 +170,11 @@ export async function createCscaRoot(
  */
 export async function createDsc(
   profile: DscProfile,
-  subjectKey: RsaKeyPair,
+  subjectKey: SubjectPublicKey,
   issuer: { certificate: x509.X509Certificate; key: RsaKeyPair },
 ): Promise<GeneratedCertificate> {
   const hash = profile.hash ?? 'SHA-256'
-  const pss = profile.pss ?? subjectKey.pss
+  const pss = profile.pss ?? subjectKey.pss ?? issuer.key.pss
   const extensions = [
     await authorityKeyIdentifier(issuer.key.publicKey),
     await subjectKeyIdentifier(subjectKey.publicKey),

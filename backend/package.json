@@ -25,6 +25,7 @@
     "fastify-type-provider-zod": "^7.0.0",
     "nodemailer": "^10.0.16",
     "openid-client": "^6.8.8",
+    "pkijs": "^3.4.1",
     "smol-toml": "^1.9.0",
     "zod": "^4.1.12"
   },

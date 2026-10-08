@@ -52,10 +52,10 @@ export function realmEnabled(config: AppConfig, realm: Realm): boolean {
 }
 
 /** pre-handler: reject when no session principal is present (401). */
-export function requireSession(context: AuthContext): preHandlerHookHandler {
+export function requireSession(context: AuthContext, fixedRealm?: Realm): preHandlerHookHandler {
   return async (request, reply) => {
-    const realm = request.params as { realm: Realm }
-    const principal = resolvePrincipal(context, request, realm.realm)
+    const realm = fixedRealm ?? (request.params as { realm: Realm }).realm
+    const principal = resolvePrincipal(context, request, realm)
     if (!principal) {
       await reply.code(401).send({ error: 'unauthorized' })
       return
@@ -65,10 +65,10 @@ export function requireSession(context: AuthContext): preHandlerHookHandler {
 }
 
 /** pre-handler: reject when the principal is not an administrator (403). */
-export function requireAdmin(context: AuthContext): preHandlerHookHandler {
+export function requireAdmin(context: AuthContext, fixedRealm?: Realm): preHandlerHookHandler {
   return async (request, reply) => {
-    const realm = request.params as { realm: Realm }
-    const principal = resolvePrincipal(context, request, realm.realm)
+    const realm = fixedRealm ?? (request.params as { realm: Realm }).realm
+    const principal = resolvePrincipal(context, request, realm)
     if (!principal) {
       await reply.code(401).send({ error: 'unauthorized' })
       return

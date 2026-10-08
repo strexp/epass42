@@ -24,6 +24,7 @@ import { AppError } from '@pkd42/shared'
 import type { AppConfig } from './config'
 import { openDatabase, type DbHandle } from './db/client'
 import { runMigrations } from './db/migrate'
+import { resolveKek } from './crypto/keyring'
 import { registerConfigRoutes } from './routes/config'
 import { registerHealthRoutes } from './routes/health'
 import {
@@ -34,6 +35,9 @@ import {
 } from './modules/auth/provider'
 import { SessionStore } from './modules/auth/session'
 import { registerAuthRoutes } from './modules/auth/routes'
+import { realmEnabled } from './modules/auth/middleware'
+import { CscaService } from './modules/csca/service'
+import { registerCscaRoutes } from './modules/csca/routes'
 
 /** Options for {@link buildApp}. */
 export interface BuildAppOptions {
@@ -53,6 +57,7 @@ export interface BuiltApp {
   dbHandle: DbHandle
   providers: AuthProviders
   sessions: SessionStore
+  csca: CscaService
 }
 
 const defaultDriverFactory: OidcDriverFactory = (provider, redirectUri) => {
@@ -163,11 +168,19 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
     config.publicUrl,
   )
   const sessions = new SessionStore(dbHandle.db, config)
+  const kek = resolveKek(config)
+  const csca = new CscaService({ db: dbHandle.db, config, kek })
+  if (realmEnabled(config, 'csca')) {
+    await csca.ensureCscaKey()
+  }
 
   registerHealthRoutes(app, dbHandle)
   registerConfigRoutes(app, { config, providers })
   registerAuthRoutes(app, { config, db: dbHandle.db, sessions, providers })
+  if (realmEnabled(config, 'csca')) {
+    registerCscaRoutes(app, { config, db: dbHandle.db, sessions, service: csca })
+  }
 
   await app.ready()
-  return { app, config, dbHandle, providers, sessions }
+  return { app, config, dbHandle, providers, sessions, csca }
 }

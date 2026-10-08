@@ -28,6 +28,30 @@ export const oauthProviderSchema = z.object({
 })
 export type OAuthProviderConfig = z.infer<typeof oauthProviderSchema>
 
+const niaDscSchema = z.object({
+  commonName: z.string().default('pkd42 NIA DSC'),
+  documentTypes: z.array(z.string()).default(['P']),
+  validityYears: z.number().int().min(1).default(10),
+  privateKeyUsageYears: z.number().int().min(1).default(3),
+  keyBits: z.number().int().default(2048),
+  pss: z.boolean().default(false),
+})
+
+const cscaSchema = z.object({
+  commonName: z.string().default('pkd42 CSCA'),
+  organization: z.string().optional(),
+  locality: z.string().default(COUNTRY_ALPHA3),
+  validityYears: z.number().int().min(1).default(13),
+  privateKeyUsageYears: z.number().int().min(1).default(4),
+  keyBits: z.number().int().default(4096),
+  hash: z.enum(['SHA-256', 'SHA-384', 'SHA-512']).default('SHA-256'),
+  pss: z.boolean().default(false),
+  crlDistributionPoints: z.array(z.string()).default([`ldap://pkd42.local/c=${COUNTRY_ALPHA2}`]),
+  /** Generate a CSCA key at startup when none exists. */
+  bootstrap: z.boolean().default(true),
+  niaDsc: niaDscSchema.prefault({}),
+})
+
 const configSchema = z.object({
   env: z.enum(['development', 'test', 'production']).default('development'),
   host: z.string().default('127.0.0.1'),
@@ -70,6 +94,7 @@ const configSchema = z.object({
   /** Also treat any `mnt_by` entry as an admin MNT. */
   adminIncludeMntBy: z.boolean().default(false),
   oauthProviders: z.array(oauthProviderSchema).default([]),
+  csca: cscaSchema.prefault({}),
   logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 })
 
@@ -154,6 +179,19 @@ function fromEnv(env: NodeJS.ProcessEnv): RawConfig {
   const includeMntBy = envBool(env.PKD42_ADMIN_INCLUDE_MNT_BY)
   if (includeMntBy !== undefined) raw.adminIncludeMntBy = includeMntBy
   if (env.PKD42_LOG_LEVEL) raw.logLevel = env.PKD42_LOG_LEVEL
+  if (
+    env.PKD42_CSCA_CN ||
+    env.PKD42_CSCA_KEY_BITS ||
+    env.PKD42_CSCA_CRL_DP ||
+    env.PKD42_CSCA_BOOTSTRAP
+  ) {
+    raw.csca = {
+      commonName: env.PKD42_CSCA_CN,
+      keyBits: envInt(env.PKD42_CSCA_KEY_BITS),
+      crlDistributionPoints: envList(env.PKD42_CSCA_CRL_DP),
+      bootstrap: envBool(env.PKD42_CSCA_BOOTSTRAP),
+    }
+  }
   if (env.PKD42_OAUTH_PROVIDERS) {
     raw.oauthProviders = JSON.parse(env.PKD42_OAUTH_PROVIDERS)
   }

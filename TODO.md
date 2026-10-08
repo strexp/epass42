@@ -298,42 +298,42 @@ pkd42/
 
 ### 7.1 数据与状态
 
-- [ ] T5.1.1 `csca_key`（在线私钥，信封加密；见 M13）。
-- [ ] T5.1.2 `dsc_application`：提交字段、自带 CSR/公钥或系统生成、发证策略、申请页 URL、申请人 account/asn/mnt。
-- [ ] T5.1.3 `dsc_cert`：序列号、subject、issuer、状态（active/revoked/expired）、私钥引用/来源。
-- [ ] T5.1.4 状态机：`submitted → approved|rejected`；证书 `active → revoked`。
+- [x] T5.1.1 `csca_key`（在线私钥，信封加密；见 M13）。
+- [x] T5.1.2 `dsc_application`：提交字段、自带 CSR/公钥或系统生成、发证策略、申请页 URL、申请人 account/asn/mnt。
+- [x] T5.1.3 `dsc_cert`：序列号、subject、issuer、状态（active/revoked/expired）、私钥引用/来源。
+- [x] T5.1.4 状态机：`submitted → approved|rejected`；证书 `active → revoked`。
 
 ### 7.2 申请与审核
 
-- [ ] T5.2.1 `POST /csca/applications`（登录 AS 管理员）：提交 DSC 申请。
-  - [ ] 支持 `key_mode=nia_generated`（系统生成）或 `user_uploaded`（上传 CSR/公钥；**不接收明文私钥**用于 CSCA 签发，签名服务另说）。
-  - [ ] 字段：subject CN（≤ 规范长度）、DocumentType、有效期、发证策略、申请页 URL、备注。
-  - [ ] oauth 预填 `asn`/`active_mnt`/`email`。
-- [ ] T5.2.2 `GET /csca/applications/:id`（申请人/管理员）。
-- [ ] T5.2.3 `GET /csca/applications`（管理员，过滤/分页）。
-- [ ] T5.2.4 `POST /csca/applications/:id/approve`（管理员）：在线签发 DSC。
+- [x] T5.2.1 `POST /csca/applications`（登录 AS 管理员）：提交 DSC 申请。
+  - [x] 支持 `key_mode=nia_generated`（系统生成）或 `user_uploaded`（上传 CSR/公钥；**不接收明文私钥**用于 CSCA 签发，签名服务另说）。
+  - [x] 字段：subject CN（≤ 规范长度）、DocumentType、有效期、发证策略、申请页 URL、备注。
+  - [x] oauth 预填 `asn`/`active_mnt`/`email`。
+- [x] T5.2.2 `GET /csca/applications/:id`（申请人/管理员）。
+- [x] T5.2.3 `GET /csca/applications`（管理员，过滤/分页）。
+- [x] T5.2.4 `POST /csca/applications/:id/approve`（管理员）：在线签发 DSC。
   - [ ] 校验 CSR（若上传）与 profile 相关约束。
-  - [ ] 生成 DSC（§7.1.1），Subject `C=XD`，`CN`，嵌入 DocumentType。
-  - [ ] 保存证书 + 私钥引用（系统生成时）。
-  - [ ] 审计。
-- [ ] T5.2.5 `POST /csca/applications/:id/reject`（管理员，需理由）。
-- [ ] T5.2.6 列表/详情返回证书 PEM/DER/指纹。
+  - [x] 生成 DSC（§7.1.1），Subject `C=XD`，`CN`，嵌入 DocumentType。
+  - [x] 保存证书 + 私钥引用（系统生成时）。
+  - [x] 审计。
+- [x] T5.2.5 `POST /csca/applications/:id/reject`（管理员，需理由）。
+- [x] T5.2.6 列表/详情返回证书 PEM/DER/指纹。
 
 ### 7.3 吊销
 
-- [ ] T5.3.1 `POST /csca/certificates/:id/revoke`（管理员）。
+- [x] T5.3.1 `POST /csca/certificates/:id/revoke`（管理员）。
 - [ ] T5.3.2 触发 CRL 重生成（M6）与 PKD 发布（M9）。
 - [ ] T5.3.3 证书有效期到期自动置 `expired`（调度）。
 
 ### 7.4 公开查询
 
-- [ ] T5.4.1 `GET /csca/certificates`（公开列表：serial、subject、状态、指纹）。
-- [ ] T5.4.2 `GET /csca/certificates/:id.(pem|der)`。
+- [x] T5.4.1 `GET /csca/certificates`（公开列表：serial、subject、状态、指纹）。
+- [x] T5.4.2 `GET /csca/certificates/:id.(pem|der)`。
 - [ ] T5.4.3 `GET /csca/crl.(pem|der)`。
 
 ### 7.5 密钥轮换
 
-- [ ] T5.5.1 `POST /csca/keys/rollover`（管理员，双人确认）：生成新 CSCA、签发 Link 证书、CRL 改用新键。
+- [x] T5.5.1 `POST /csca/keys/rollover`（管理员，双人确认）：生成新 CSCA、签发 Link 证书、CRL 改用新键。
 - [ ] T5.5.2 90 天前通知机制（站内公告/邮件，可选）。
 
 **验收**：AS 管理员提交申请→管理员批准→得到可 `openssl verify` 的 DSC；吊销后 CRL 含该序列号。
