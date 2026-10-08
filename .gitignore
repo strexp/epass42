@@ -14,6 +14,9 @@ coverage/
 *.db-wal
 *.db-shm
 
+# Generated artifacts (perso scripts, etc.)
+backend/data/
+
 # Environment and secrets
 .env
 .env.*

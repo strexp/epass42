@@ -10,10 +10,12 @@ import * as pkijs from 'pkijs'
 import { and, desc, eq } from 'drizzle-orm'
 
 import {
+  buildMasterList,
   createCrl,
   createCscaLink,
   createCscaRoot,
   createDsc,
+  createMasterListSigner,
   generateRsaKeyPair,
   importRsaKeyPair,
   parseCertificatePem,
@@ -26,7 +28,7 @@ import {
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { crl, cscaKey, dscApplication, dscCert } from '../../db/schema'
+import { crl, cscaKey, dscApplication, dscCert, masterList } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
 
@@ -400,6 +402,103 @@ export class CscaService {
   async maybeGenerateCrl(now: Date = new Date()): Promise<CrlRow | undefined> {
     if (!this.ctx.config.crl.autoGenerate) return undefined
     return this.crlSchedule(now).issue ? this.generateCrl(now) : undefined
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Master List (M10)
+   * ---------------------------------------------------------------- */
+
+  /** The active Master List Signer certificate, or undefined. */
+  currentMasterListSigner(): DscCertRow | undefined {
+    return this.ctx.db
+      .select()
+      .from(dscCert)
+      .where(and(eq(dscCert.source, 'ml-signer'), eq(dscCert.status, 'active')))
+      .get()
+  }
+
+  /** Ensures a Master List Signer exists (EKU id-icao-cscaMasterListSigningKey). */
+  async ensureMasterListSigner(): Promise<DscCertRow> {
+    const existing = this.currentMasterListSigner()
+    if (existing) return existing
+    const { config, db, kek } = this.ctx
+    const csca = await this.ensureCscaKey()
+    if (!csca) throw new Error('no CSCA key available')
+    const cscaPair = await this.loadKeyPair(csca)
+    const now = new Date()
+    const key = await generateRsaKeyPair({ modulusLength: config.csca.niaDsc.keyBits, pss: false })
+    const generated = await createMasterListSigner(
+      {
+        commonName: `${config.csca.commonName} ML Signer`,
+        country: config.countryAlpha2,
+        documentTypes: ['P'],
+        notBefore: now,
+        notAfter: addYears(now, config.csca.niaDsc.validityYears),
+        crlDistributionPoints: config.csca.crlDistributionPoints,
+        pss: false,
+      },
+      key,
+      { certificate: parseCertificatePem(csca.certPem), key: cscaPair },
+    )
+    const result = db
+      .insert(dscCert)
+      .values({
+        cscaKeyId: csca.id,
+        serial: generated.serialHex,
+        subjectDn: generated.certificate.subject,
+        asn: null,
+        mnt: null,
+        source: 'ml-signer',
+        certPem: generated.pem,
+        keyRef: sealPrivateKey(key.pkcs8, kek),
+        status: 'active',
+        notBefore: generated.certificate.notBefore.toISOString(),
+        notAfter: generated.certificate.notAfter.toISOString(),
+        createdAt: nowIso(),
+      })
+      .run()
+    return db
+      .select()
+      .from(dscCert)
+      .where(eq(dscCert.id, Number(result.lastInsertRowid)))
+      .get() as DscCertRow
+  }
+
+  /** The most recent Master List, or undefined. */
+  latestMasterList(): typeof masterList.$inferSelect | undefined {
+    return this.ctx.db.select().from(masterList).orderBy(desc(masterList.id)).get()
+  }
+
+  /** Builds and stores a new CSCA Master List (Doc 9303-12 §9). */
+  async generateMasterList(): Promise<typeof masterList.$inferSelect> {
+    const { db } = this.ctx
+    const signer = await this.ensureMasterListSigner()
+    const signerPair = await this.loadDscKeyPair(signer)
+    const cscaCertificates = db
+      .select()
+      .from(cscaKey)
+      .all()
+      .map((row) => new Uint8Array(parseCertificatePem(row.certPem).rawData))
+    const der = await buildMasterList({
+      cscaCertificates,
+      signerCertificate: new Uint8Array(parseCertificatePem(signer.certPem).rawData),
+      signerPrivateKey: signerPair.privateKey,
+      signingTime: new Date(),
+    })
+    const result = db
+      .insert(masterList)
+      .values({
+        signerDscId: signer.id,
+        der: Buffer.from(der),
+        publishedAt: nowIso(),
+        createdAt: nowIso(),
+      })
+      .run()
+    return db
+      .select()
+      .from(masterList)
+      .where(eq(masterList.id, Number(result.lastInsertRowid)))
+      .get() as typeof masterList.$inferSelect
   }
 
   /** Rolls the CSCA key over, emitting a link certificate signed by the old key. */

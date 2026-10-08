@@ -477,23 +477,23 @@ pkd42/
 
 ## 11. M9 — PKD 角色（REST + LDIF + 只读 LDAP）
 
-- [ ] T9.1 数据聚合：CSCA 证书、CRL、Master List；DSC（可选发布）。
-- [ ] T9.2 REST：
-  - [ ] `GET /pkd/certificates`（CSCA，按 `C=XD`）。
-  - [ ] `GET /pkd/crls`、`GET /pkd/masterlists`。
-  - [ ] `GET /pkd/objects/:id.(der|pem)`。
-- [ ] T9.3 LDIF：
-  - [ ] `GET /pkd/ldif`（全量，供 OpenLDAP `slapadd`）。
-  - [ ] 对象类与属性：
-    - [ ] DS/证书用 `inetOrgPerson` + `userCertificate;binary`。
-    - [ ] CRL 用 `cRLDistributionPoint` + `certificateRevocationList;binary`。
-    - [ ] Master List 用自定义 schema：`attributeType 2.23.136.1.1.2 (CscaMasterListData)`、`objectClass 2.23.136.2 (CscaMasterList)` SUP person。
-  - [ ] DN 路径（下载区）：`c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int`。
-- [ ] T9.4 只读 LDAP：
-  - [ ] 用 `ldapjs` 实现只读 server，暴露同一 DIT；查询映射到 DB。
-  - [ ] 支持查询：`(objectclass=inetOrgPerson)`、`(objectclass=cRLDistributionPoint)`、`(objectclass=pkdMasterList)`。
-  - [ ] 只提供 Search/Bind（简单匿名或只读 bind），**不支持写**（上传走应用 API）。
-  - [ ] 在 `deploy/` 提供 OpenLDAP schema/`slapd.conf` 示例。
+- [x] T9.1 数据聚合：CSCA 证书、CRL、Master List；DSC（可选发布）。
+- [x] T9.2 REST：
+  - [x] `GET /pkd/certificates`（CSCA，按 `C=XD`）。
+  - [x] `GET /pkd/crls`、`GET /pkd/masterlists`。
+  - [x] `GET /pkd/objects/:id.(der|pem)`。
+- [x] T9.3 LDIF：
+  - [x] `GET /pkd/ldif`（全量，供 OpenLDAP `slapadd`）。
+  - [x] 对象类与属性：
+    - [x] DS/证书用 `inetOrgPerson` + `userCertificate;binary`。
+    - [x] CRL 用 `cRLDistributionPoint` + `certificateRevocationList;binary`。
+    - [x] Master List 用自定义 schema：`attributeType 2.23.136.1.1.2 (CscaMasterListData)`、`objectClass 2.23.136.2 (CscaMasterList)` SUP person。
+  - [x] DN 路径（下载区）：`c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int`。
+- [x] T9.4 只读 LDAP：
+  - [x] 用 `ldapjs` 实现只读 server，暴露同一 DIT；查询映射到 DB。
+  - [x] 支持查询：`(objectclass=inetOrgPerson)`、`(objectclass=cRLDistributionPoint)`、`(objectclass=pkdMasterList)`。
+  - [x] 只提供 Search/Bind（简单匿名或只读 bind），**不支持写**（上传走应用 API）。
+  - [x] 在 `deploy/` 提供 OpenLDAP schema/`slapd.conf` 示例。
 - [ ] T9.5 可选：`deploy/docker-compose.yml` 跑 OpenLDAP 并用 LDIF 同步（作为兼容性验证）。
 - [ ] T9.6 浏览 UI（M11 呈现）。
 
@@ -503,10 +503,10 @@ pkd42/
 
 ## 12. M10 — Master List
 
-- [ ] T10.1 Master List Signer 证书（走 CSCA 签发，EKU `2.23.136.1.1.3`）。
-- [ ] T10.2 `POST /pkd/masterlists`（管理员）生成：纳入 CSCA（含 Link），含 MLS 证书，`signingTime`。
-- [ ] T10.3 发布到 PKD 目录与 LDIF。
-- [ ] T10.4 单测 + `openssl cms -verify`。
+- [x] T10.1 Master List Signer 证书（走 CSCA 签发，EKU `2.23.136.1.1.3`）。
+- [x] T10.2 `POST /pkd/masterlists`（管理员）生成：纳入 CSCA（含 Link），含 MLS 证书，`signingTime`。
+- [x] T10.3 发布到 PKD 目录与 LDIF。
+- [x] T10.4 单测 + `openssl cms -verify`。
 
 ---
 

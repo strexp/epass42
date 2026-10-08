@@ -69,6 +69,16 @@ issuingAuthority = "NIA"
 personalizationDevice = "PKD42"
 dg13Policy = "utf8-text"
 
+# PKD directory (M9).
+[pkd]
+# baseDn = "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int"
+
+# Read-only LDAP compatibility layer (M9).
+[ldap]
+enabled = false
+host = "127.0.0.1"
+port = 3890
+
 # Administrator maintainers per realm (M4/T4.7).
 [adminMnts]
 csca = ["EXAMPLE-CSCA-MNT"]

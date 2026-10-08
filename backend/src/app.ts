@@ -40,6 +40,7 @@ import { CscaService } from './modules/csca/service'
 import { registerCscaRoutes } from './modules/csca/routes'
 import { DscService } from './modules/dsc/service'
 import { registerDscRoutes } from './modules/dsc/routes'
+import { registerPkdRoutes } from './modules/pkd/rest'
 import { createMailer } from './mail/mailer'
 
 /** Options for {@link buildApp}. */
@@ -188,6 +189,9 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   if (realmEnabled(config, 'dsc')) {
     const mailer = createMailer(config, (message) => app.log.info(message))
     registerDscRoutes(app, { config, db: dbHandle.db, sessions, service: dsc, mailer })
+  }
+  if ((config.roles as readonly string[]).includes('pkd')) {
+    registerPkdRoutes(app, { config, db: dbHandle.db, sessions, csca })
   }
 
   await app.ready()

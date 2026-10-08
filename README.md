@@ -89,5 +89,7 @@ pnpm --filter @pkd42/scripts exec tsx src/verify.ts \
 - **M6** CRL generation with schedule-based refresh — done.
 - **M7** DSC signing service: structured requests, DG/AA/CA/SOD/perso build — done.
 - **M8** delivery: masked preview, one-time reveal, delivery modes and history — done.
+- **M9** PKD role: REST, LDIF dump, read-only LDAP server and OpenLDAP schema — done.
+- **M10** CSCA Master List generation, publication and verification — done.
 
 See [`TODO.md`](TODO.md) for the full milestone plan.

@@ -12,6 +12,9 @@ import { runMigrations } from './db/migrate'
 import { buildApp, type BuiltApp } from './app'
 import type { OidcDriver, OidcDriverFactory, OidcFlowStart } from './modules/auth/provider'
 import type { OAuthProviderConfig } from './config'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 /** A fake identity keyed by provider client id. */
 export interface FakeIdentity {
@@ -92,6 +95,8 @@ export async function makeTestApp(
   overrides: Record<string, string> = {},
 ): Promise<BuiltApp & { dbHandle: DbHandle }> {
   const config = makeTestConfig(overrides)
+  // Keep generated artifacts out of the repository.
+  config.dataDir = mkdtempSync(join(tmpdir(), 'pkd42-artifacts-'))
   const dbHandle = openDatabase(':memory:')
   runMigrations(dbHandle)
   return buildApp({ config, dbHandle, driverFactory: oidc.factory, logger: false })

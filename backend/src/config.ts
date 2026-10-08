@@ -112,6 +112,19 @@ const configSchema = z.object({
       minIntervalHours: z.number().int().min(1).default(48),
     })
     .prefault({}),
+  pkd: z
+    .object({
+      /** Directory base DN (defaults to the ICAO PKD download area). */
+      baseDn: z.string().optional(),
+    })
+    .prefault({}),
+  ldap: z
+    .object({
+      enabled: z.boolean().default(false),
+      host: z.string().default('127.0.0.1'),
+      port: z.number().int().min(1).max(65535).default(3890),
+    })
+    .prefault({}),
   logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 })
 
@@ -168,6 +181,7 @@ function fromEnv(env: NodeJS.ProcessEnv): RawConfig {
   if (env.PKD42_COUNTRY_ALPHA2) raw.countryAlpha2 = env.PKD42_COUNTRY_ALPHA2
   if (env.PKD42_COUNTRY_ALPHA3) raw.countryAlpha3 = env.PKD42_COUNTRY_ALPHA3
   if (env.PKD42_DB_PATH) raw.databasePath = env.PKD42_DB_PATH
+  if (env.PKD42_DATA_DIR) raw.dataDir = env.PKD42_DATA_DIR
   const runMigrations = envBool(env.PKD42_RUN_MIGRATIONS)
   if (runMigrations !== undefined) raw.runMigrations = runMigrations
   if (env.PKD42_SESSION_SECRET) raw.sessionSecret = env.PKD42_SESSION_SECRET
@@ -207,6 +221,18 @@ function fromEnv(env: NodeJS.ProcessEnv): RawConfig {
       keyBits: envInt(env.PKD42_CSCA_KEY_BITS),
       crlDistributionPoints: envList(env.PKD42_CSCA_CRL_DP),
       bootstrap: envBool(env.PKD42_CSCA_BOOTSTRAP),
+    }
+  }
+  if (env.PKD42_PKD_BASE_DN) raw.pkd = { baseDn: env.PKD42_PKD_BASE_DN }
+  if (
+    env.PKD42_LDAP_ENABLED !== undefined ||
+    env.PKD42_LDAP_PORT !== undefined ||
+    env.PKD42_LDAP_HOST
+  ) {
+    raw.ldap = {
+      enabled: envBool(env.PKD42_LDAP_ENABLED),
+      host: env.PKD42_LDAP_HOST,
+      port: envInt(env.PKD42_LDAP_PORT),
     }
   }
   if (env.PKD42_OAUTH_PROVIDERS) {
