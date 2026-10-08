@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NAvatar, NButton, NCard, NIcon, NSpace, NTag, NText } from 'naive-ui'
+import { NAvatar, NButton, NCard, NIcon, NTag, NText } from 'naive-ui'
 import { LogIn, LogOut, ShieldCheck, ShieldOff } from '@lucide/vue'
 import { computed, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
@@ -27,8 +27,8 @@ async function logout(): Promise<void> {
 
 <template>
   <NCard size="small" class="realm-session" :bordered="false">
-    <NSpace align="center" justify="space-between">
-      <NSpace align="center" size="medium">
+    <div class="realm-session-row">
+      <div class="realm-session-info">
         <NAvatar
           round
           size="small"
@@ -36,37 +36,56 @@ async function logout(): Promise<void> {
         >
           <NIcon><ShieldCheck v-if="me" /><ShieldOff v-else /></NIcon>
         </NAvatar>
-        <NText strong>{{ label }}</NText>
+        <NText strong class="realm-session-label">{{ label }}</NText>
         <NTag v-if="me" size="small" type="success">
           {{ $t('auth.signedInAs') }} {{ me.account.name ?? me.account.asn ?? me.account.id }}
         </NTag>
-        <NText v-if="!me" depth="3">{{ $t('auth.signInTo', { realm: label }) }}</NText>
-        <NTag v-if="me && me.account.asn" size="small"
-          >{{ $t('auth.asn') }} {{ me.account.asn }}</NTag
-        >
-        <NTag v-if="me && me.account.activeMnt" size="small" :bordered="false">
+        <NText v-else depth="3">{{ $t('auth.signInTo', { realm: label }) }}</NText>
+        <NTag v-if="me?.account.asn" size="small">{{ $t('auth.asn') }} {{ me.account.asn }}</NTag>
+        <NTag v-if="me?.account.activeMnt" size="small" :bordered="false">
           {{ me.account.activeMnt }}
         </NTag>
         <NTag v-if="me?.isAdmin" size="small" type="info">{{ $t('auth.admin') }}</NTag>
-      </NSpace>
-      <NButton v-if="!me" type="primary" size="small" @click="login">
+      </div>
+      <NButton v-if="!me" type="primary" size="small" class="realm-session-action" @click="login">
         <template #icon
           ><NIcon><LogIn /></NIcon
         ></template>
         {{ $t('common.login') }}
       </NButton>
-      <NButton v-else size="small" @click="logout">
+      <NButton v-else size="small" class="realm-session-action" @click="logout">
         <template #icon
           ><NIcon><LogOut /></NIcon
         ></template>
         {{ $t('common.logout') }}
       </NButton>
-    </NSpace>
+    </div>
   </NCard>
 </template>
 
 <style scoped>
 .realm-session {
   margin: 12px 16px 0;
+}
+.realm-session-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.realm-session-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.realm-session-label {
+  white-space: nowrap;
+}
+.realm-session-action {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 </style>
