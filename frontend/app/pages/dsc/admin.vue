@@ -4,16 +4,13 @@ import {
   NCard,
   NDataTable,
   NEmpty,
-  NFormItem,
   NIcon,
-  NInput,
-  NSelect,
   NSpace,
   NTag,
   NText,
   useMessage,
 } from 'naive-ui'
-import { Check, Download, RefreshCw, Save, X } from '@lucide/vue'
+import { Check, Download, RefreshCw, Settings, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { errorMessageKey } from '~/composables/useApi'
@@ -35,16 +32,9 @@ const message = useMessage()
 
 const requests = ref<RequestRow[]>([])
 const queue = ref<RequestRow[]>([])
-const deliveryMode = ref<'applicant' | 'reviewer'>('applicant')
-const profile = ref({ issuingAuthority: '', personalizationDevice: '', dg13Policy: '' })
 const revealText = ref('')
 
 const isAdmin = computed(() => auth.realms.dsc.me?.isAdmin ?? false)
-
-const deliveryOptions = computed(() => [
-  { label: t('dsc.deliveryApplicant'), value: 'applicant' },
-  { label: t('dsc.deliveryReviewer'), value: 'reviewer' },
-])
 
 async function load(): Promise<void> {
   try {
@@ -57,18 +47,6 @@ async function load(): Promise<void> {
     queue.value = (await api<{ items: RequestRow[] }>('/dsc/admin/requests')).items ?? []
   } catch {
     queue.value = []
-  }
-  try {
-    deliveryMode.value = (
-      await api<{ deliveryMode: 'applicant' | 'reviewer' }>('/dsc/settings/delivery-mode')
-    ).deliveryMode
-  } catch {
-    /* ignore */
-  }
-  try {
-    profile.value = await api('/dsc/settings/issuing-profile')
-  } catch {
-    /* ignore */
   }
 }
 
@@ -98,18 +76,6 @@ async function adminReveal(id: number): Promise<void> {
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   }
-}
-
-async function saveDeliveryMode(value: string): Promise<void> {
-  const mode = value === 'reviewer' ? 'reviewer' : 'applicant'
-  await api('/dsc/settings/delivery-mode', { method: 'PUT', body: { deliveryMode: mode } })
-  deliveryMode.value = mode
-  message.success(t('common.success'))
-}
-
-async function saveProfile(): Promise<void> {
-  await api('/dsc/settings/issuing-profile', { method: 'PUT', body: profile.value })
-  message.success(t('common.success'))
 }
 
 const columns = [
@@ -187,51 +153,32 @@ onMounted(async () => {
 
       <NCard :title="$t('dsc.reviewQueue')" size="small">
         <template #action>
-          <NButton size="small" @click="load">
-            <template #icon
-              ><NIcon><RefreshCw /></NIcon
-            ></template>
-            {{ $t('common.reload') }}
-          </NButton>
+          <NSpace>
+            <NuxtLink v-if="isAdmin" to="/dsc/settings">
+              <NButton size="small">
+                <template #icon
+                  ><NIcon><Settings /></NIcon
+                ></template>
+                {{ $t('dsc.settingsTitle') }}
+              </NButton>
+            </NuxtLink>
+            <NButton size="small" @click="load">
+              <template #icon
+                ><NIcon><RefreshCw /></NIcon
+              ></template>
+              {{ $t('common.reload') }}
+            </NButton>
+          </NSpace>
         </template>
         <NDataTable v-if="requests.length" :columns="columns" :data="requests" size="small" />
         <NEmpty v-else :description="$t('common.empty')" />
       </NCard>
 
-      <template v-if="isAdmin">
-        <NCard :title="$t('dsc.pendingQueue')" size="small">
-          <NDataTable v-if="queue.length" :columns="queueColumns" :data="queue" size="small" />
-          <NEmpty v-else :description="$t('common.empty')" />
-          <pre v-if="revealText" class="pkd42-mono">{{ revealText }}</pre>
-        </NCard>
-
-        <NCard :title="$t('dsc.deliveryMode')" size="small">
-          <NSelect
-            :value="deliveryMode"
-            :options="deliveryOptions"
-            style="max-width: 320px"
-            @update:value="saveDeliveryMode"
-          />
-        </NCard>
-
-        <NCard :title="$t('dsc.issuanceAuthority')" size="small">
-          <NFormItem :label="$t('dsc.issuanceAuthority')">
-            <NInput v-model:value="profile.issuingAuthority" />
-          </NFormItem>
-          <NFormItem :label="$t('dsc.personalizationDevice')">
-            <NInput v-model:value="profile.personalizationDevice" />
-          </NFormItem>
-          <NFormItem :label="$t('dsc.dg13Policy')">
-            <NInput v-model:value="profile.dg13Policy" />
-          </NFormItem>
-          <NButton size="small" type="primary" @click="saveProfile">
-            <template #icon
-              ><NIcon><Save /></NIcon
-            ></template>
-            {{ $t('common.save') }}
-          </NButton>
-        </NCard>
-      </template>
+      <NCard v-if="isAdmin" :title="$t('dsc.pendingQueue')" size="small">
+        <NDataTable v-if="queue.length" :columns="queueColumns" :data="queue" size="small" />
+        <NEmpty v-else :description="$t('common.empty')" />
+        <pre v-if="revealText" class="pkd42-mono">{{ revealText }}</pre>
+      </NCard>
     </NSpace>
   </div>
 </template>

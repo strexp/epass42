@@ -148,6 +148,10 @@ export default defineI18nConfig(() => ({
         asDelegationHint: 'Delegate this AS to the NIA DSC and review its requests.',
         useNiaDsc: 'Delegate to NIA DSC',
         reviewerOnly: 'As a delegated reviewer you can approve or reject only.',
+        settingsTitle: 'Settings',
+        settingsHint: 'DSC service settings (NIA administrators only).',
+        deliveryModeHint: 'Who may claim the produced personalization data.',
+        issuingProfile: 'Issuing profile',
         statuses: {
           submitted: 'Submitted',
           approved: 'Approved',

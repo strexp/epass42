@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NTag, NText } from 'naive-ui'
-import { FilePlus2, ListChecks, Search } from '@lucide/vue'
+import { FilePlus2, ListChecks, Search, Settings } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 
@@ -19,6 +19,7 @@ const api = useApi()
 const requests = ref<RequestRow[]>([])
 
 const signedIn = computed(() => auth.realms.dsc.me !== null)
+const isAdmin = computed(() => auth.realms.dsc.me?.isAdmin ?? false)
 
 const columns = [
   { title: '#', key: 'id' },
@@ -78,6 +79,14 @@ onMounted(async () => {
               ><NIcon><ListChecks /></NIcon
             ></template>
             {{ $t('dsc.reviewQueue') }}
+          </NButton>
+        </NuxtLink>
+        <NuxtLink v-if="isAdmin" to="/dsc/settings">
+          <NButton>
+            <template #icon
+              ><NIcon><Settings /></NIcon
+            ></template>
+            {{ $t('dsc.settingsTitle') }}
           </NButton>
         </NuxtLink>
       </NSpace>
