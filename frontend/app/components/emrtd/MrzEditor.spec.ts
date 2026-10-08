@@ -30,5 +30,9 @@ describe('MrzEditor', () => {
     expect(line1).toHaveLength(44)
     expect(line2).toHaveLength(44)
     expect(line2.startsWith('X1234567')).toBe(true)
+    // Regression: the form fields must actually render (Naive UI NGrid without
+    // NGi children renders empty).
+    expect(wrapper.text()).toContain('Surname')
+    expect(wrapper.text()).toContain('Document number')
   })
 })

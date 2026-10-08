@@ -7,7 +7,6 @@ import {
   NDivider,
   NForm,
   NFormItem,
-  NGrid,
   NIcon,
   NInput,
   NSelect,
@@ -134,7 +133,7 @@ async function submit(): Promise<void> {
 
       <NDivider>{{ $t('dsc.personalDetails') }}</NDivider>
       <NForm label-placement="top">
-        <NGrid :cols="2" :x-gap="12">
+        <div class="pkd42-grid">
           <NFormItem :label="$t('dsc.documentation')">
             <NSelect v-model:value="mrz.documentCode" :options="documentTypeOptions" />
           </NFormItem>
@@ -159,7 +158,7 @@ async function submit(): Promise<void> {
           <NFormItem label="Nationality">
             <NInput v-model:value="mrz.nationality" maxlength="3" />
           </NFormItem>
-        </NGrid>
+        </div>
       </NForm>
 
       <NDivider>{{ $t('dsc.photoSection') }}</NDivider>

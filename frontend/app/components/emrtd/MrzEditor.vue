@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NForm, NFormItem, NGrid, NInput, NSelect, NTag, NText } from 'naive-ui'
+import { NCard, NForm, NFormItem, NInput, NSelect, NTag, NText } from 'naive-ui'
 import { computed } from 'vue'
 import type { MrzFields } from '@pkd42/shared'
 import { buildMrzLines, validMrzLines } from '~/utils/mrz'
@@ -18,7 +18,7 @@ const sexOptions = [
 <template>
   <NCard :title="$t('dsc.mrz')" size="small">
     <NForm label-placement="top" size="small">
-      <NGrid :cols="2" :x-gap="12">
+      <div class="pkd42-grid">
         <NFormItem :label="$t('dsc.documentation') + ' code'">
           <NInput v-model:value="model.documentCode" maxlength="2" />
         </NFormItem>
@@ -49,7 +49,7 @@ const sexOptions = [
         <NFormItem label="Personal number">
           <NInput v-model:value="model.personalNumber" maxlength="14" />
         </NFormItem>
-      </NGrid>
+      </div>
     </NForm>
     <template #footer>
       <NTag :type="valid ? 'success' : 'warning'" size="small">
