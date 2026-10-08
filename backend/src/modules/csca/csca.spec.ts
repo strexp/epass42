@@ -234,7 +234,8 @@ describe('M5 CSCA role', () => {
       headers: { cookie: cscaCookie },
     })
     expect(before.statusCode).toBe(200)
-    expect(before.json().useNiaDsc).toBe(false)
+    // Default is delegation to the NIA DSC.
+    expect(before.json().useNiaDsc).toBe(true)
     expect(before.json().hasActiveDsc).toBe(false)
 
     const enable = await app.inject({

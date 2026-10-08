@@ -406,7 +406,7 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
     return {
       asn: principal.account.asn,
       activeMnt: principal.account.activeMnt,
-      useNiaDsc: row?.useNiaDsc ?? false,
+      useNiaDsc: row ? row.useNiaDsc : true,
     }
   })
 

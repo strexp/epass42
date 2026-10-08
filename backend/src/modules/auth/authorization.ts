@@ -111,10 +111,13 @@ export function isAdmin(db: Db, config: AppConfig, realm: Realm, row: AccountRow
  */
 export type DscScope = { kind: 'nia' } | { kind: 'as'; asn: number } | { kind: 'none' }
 
-/** True when the AS has delegated its DSC issuance to the NIA DSC. */
+/**
+ * True when the AS has delegated its DSC issuance to the NIA DSC.  A missing
+ * row means the default (delegated to the NIA DSC).
+ */
 export function asDelegatesToNia(db: Db, asn: number): boolean {
   const row = db.select().from(asConfig).where(eq(asConfig.asn, asn)).get()
-  return row?.useNiaDsc === true
+  return row ? row.useNiaDsc : true
 }
 
 /** The ASes for which this MNT is recorded as a delegated AS admin. */

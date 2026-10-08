@@ -60,11 +60,16 @@ describe('DSC delegated AS review scope', () => {
     // Not yet recorded as an AS admin.
     expect(dscScope(db, config, asUser)).toEqual({ kind: 'none' })
 
+    // The default (no as_config row) is delegation to the NIA DSC.
     recordAsAdmin(db, 'AS1-MNT', 4242420001)
-    // Delegation is off, so still no scope.
+    expect(dscScope(db, config, asUser)).toEqual({ kind: 'as', asn: 4242420001 })
+
+    // Opting out of delegation removes the scope.
+    db.insert(asConfig).values({ asn: 4242420001, useNiaDsc: false, updatedAt: nowIso() }).run()
     expect(dscScope(db, config, asUser)).toEqual({ kind: 'none' })
 
-    db.insert(asConfig).values({ asn: 4242420001, useNiaDsc: true, updatedAt: nowIso() }).run()
+    // Opting back in restores it.
+    db.update(asConfig).set({ useNiaDsc: true }).run()
     expect(dscScope(db, config, asUser)).toEqual({ kind: 'as', asn: 4242420001 })
     expect(asAdminAsns(db, 'AS1-MNT')).toEqual([4242420001])
     expect(canManageSettings({ kind: 'as', asn: 4242420001 })).toBe(false)

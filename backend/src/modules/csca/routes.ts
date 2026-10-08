@@ -346,7 +346,8 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
     return {
       asn: principal.account.asn,
       activeMnt: principal.account.activeMnt,
-      useNiaDsc: row?.useNiaDsc ?? false,
+      // Default (no row) is delegation to the NIA DSC.
+      useNiaDsc: row ? row.useNiaDsc : true,
       // Switching to the AS's own DSC requires an approved, active DSC.
       hasActiveDsc: active !== undefined,
     }
