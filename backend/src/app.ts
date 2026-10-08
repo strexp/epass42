@@ -40,6 +40,7 @@ import { CscaService } from './modules/csca/service'
 import { registerCscaRoutes } from './modules/csca/routes'
 import { DscService } from './modules/dsc/service'
 import { registerDscRoutes } from './modules/dsc/routes'
+import { createMailer } from './mail/mailer'
 
 /** Options for {@link buildApp}. */
 export interface BuildAppOptions {
@@ -185,7 +186,8 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
     registerCscaRoutes(app, { config, db: dbHandle.db, sessions, service: csca })
   }
   if (realmEnabled(config, 'dsc')) {
-    registerDscRoutes(app, { config, db: dbHandle.db, sessions, service: dsc })
+    const mailer = createMailer(config, (message) => app.log.info(message))
+    registerDscRoutes(app, { config, db: dbHandle.db, sessions, service: dsc, mailer })
   }
 
   await app.ready()

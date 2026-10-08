@@ -17,8 +17,9 @@ import { writeAudit } from '../../audit/audit'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { canReview, dscScope, type DscScope } from '../auth/authorization'
-import { resolvePrincipal, type AuthContext } from '../auth/middleware'
+import { requireAdmin, resolvePrincipal, type AuthContext } from '../auth/middleware'
 import type { SessionStore } from '../auth/session'
+import type { Mailer } from '../../mail/mailer'
 import { DscService, type SignRequestRow } from './service'
 import type { IssuingDefaults } from './build'
 
@@ -28,6 +29,7 @@ export interface DscRouteDeps {
   db: Db
   sessions: SessionStore
   service: DscService
+  mailer?: Mailer
 }
 
 const referenceParams = z.object({ reference: z.string().min(8).max(128) })
@@ -158,6 +160,30 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
         targetId: row.id,
         ip: request.ip,
       })
+
+      // Email notification with a two-step (non-consuming) landing link.
+      if (updated.email && deps.mailer) {
+        const confirmToken = service.createRevealToken(updated.id, 'confirm', 7 * 86_400)
+        service.createMailToken(updated.id, 'approved', 7 * 86_400)
+        const link = `${deps.config.publicUrl.replace(/\/$/, '')}/dsc/reveal/${confirmToken}`
+        await deps.mailer
+          .send({
+            to: updated.email,
+            subject: 'pkd42: your signing request was approved',
+            text:
+              `Your signing request was approved.\n\n` +
+              `Open this link to view the details before claiming (claiming is one-time):\n${link}\n`,
+          })
+          .catch(() => undefined)
+        writeAudit(db, {
+          actorAccountId: principal.account.id,
+          realm: 'dsc',
+          action: 'dsc.request.email',
+          targetType: 'sign_request',
+          targetId: row.id,
+          ip: request.ip,
+        })
+      }
       return reply.send({ id: updated.id, ...service.metadata(updated) })
     },
   )
@@ -189,6 +215,175 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
         ip: request.ip,
       })
       return reply.send({ id: row.id, status: 'rejected' })
+    },
+  )
+
+  /* ---------------------------------------------------------------- *
+   * Delivery (M8)
+   * ---------------------------------------------------------------- */
+
+  server.get(
+    '/dsc/requests/:reference/preview',
+    {
+      schema: { params: referenceParams },
+      config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    },
+    async (request, reply) => {
+      const preview = service.preview(request.params.reference)
+      if (!preview) return reply.code(404).send({ error: 'request_not_found' })
+      return reply.send(preview)
+    },
+  )
+
+  server.post(
+    '/dsc/requests/:reference/reveal',
+    {
+      schema: { params: referenceParams },
+      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    },
+    async (request, reply) => {
+      const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
+      const result = service.revealByReference(
+        request.params.reference,
+        principal?.account.id ?? null,
+      )
+      writeAudit(db, {
+        actorAccountId: principal?.account.id ?? null,
+        realm: 'dsc',
+        action: 'dsc.request.reveal',
+        targetType: 'sign_request',
+        targetId: result.row.id,
+        ip: request.ip,
+        detail: { channel: 'applicant' },
+      })
+      reply.header('cache-control', 'no-store')
+      return reply.type('text/plain').send(result.perso)
+    },
+  )
+
+  // Two-step email landing: view metadata without consuming.
+  server.post(
+    '/dsc/reveal/:token',
+    { schema: { params: z.object({ token: z.string().min(8).max(128) }) } },
+    async (request, reply) => {
+      const row = service.resolveRevealToken(request.params.token)
+      reply.header('cache-control', 'no-store')
+      return reply.send(service.metadata(row))
+    },
+  )
+
+  server.post(
+    '/dsc/requests/:id/regenerate',
+    {
+      schema: {
+        params: z.object({ id: z.coerce.number().int().positive() }),
+        body: z.object({}).default({}),
+      },
+      preHandler: requireAdmin(deps as AuthContext, 'dsc'),
+    },
+    async (request, reply) => {
+      const row = service.getById(request.params.id)
+      if (!row) return reply.code(404).send({ error: 'request_not_found' })
+      if (row.status !== 'approved') return reply.code(409).send({ error: 'request_not_approved' })
+      const updated = await service.regenerate(row, request.principal!.account.id)
+      writeAudit(db, {
+        actorAccountId: request.principal!.account.id,
+        realm: 'dsc',
+        action: 'dsc.request.regenerate',
+        targetType: 'sign_request',
+        targetId: row.id,
+        ip: request.ip,
+      })
+      return reply.send({ id: updated.id, ...service.metadata(updated) })
+    },
+  )
+
+  server.get(
+    '/dsc/admin/requests',
+    { preHandler: requireAdmin(deps as AuthContext, 'dsc') },
+    async () => {
+      const items = service.adminQueue().map((row) => service.metadata(row))
+      return { items }
+    },
+  )
+
+  server.post(
+    '/dsc/admin/requests/:id/reveal',
+    {
+      schema: { params: z.object({ id: z.coerce.number().int().positive() }) },
+      preHandler: requireAdmin(deps as AuthContext, 'dsc'),
+    },
+    async (request, reply) => {
+      const result = service.revealById(request.params.id, request.principal!.account.id)
+      writeAudit(db, {
+        actorAccountId: request.principal!.account.id,
+        realm: 'dsc',
+        action: 'dsc.request.reveal',
+        targetType: 'sign_request',
+        targetId: result.row.id,
+        ip: request.ip,
+        detail: { channel: 'reviewer' },
+      })
+      reply.header('cache-control', 'no-store')
+      return reply.type('text/plain').send(result.perso)
+    },
+  )
+
+  server.get(
+    '/dsc/settings/delivery-mode',
+    { preHandler: requireAdmin(deps as AuthContext, 'dsc') },
+    async () => ({ deliveryMode: service.getDeliveryMode() }),
+  )
+
+  server.put(
+    '/dsc/settings/delivery-mode',
+    {
+      schema: { body: z.object({ deliveryMode: z.enum(['applicant', 'reviewer']) }) },
+      preHandler: requireAdmin(deps as AuthContext, 'dsc'),
+    },
+    async (request) => {
+      service.setDeliveryMode(request.body.deliveryMode, request.principal!.account.id)
+      writeAudit(db, {
+        actorAccountId: request.principal!.account.id,
+        realm: 'dsc',
+        action: 'dsc.settings.delivery-mode',
+        ip: request.ip,
+        detail: { deliveryMode: request.body.deliveryMode },
+      })
+      return { deliveryMode: service.getDeliveryMode() }
+    },
+  )
+
+  server.get(
+    '/dsc/settings/issuing-profile',
+    { preHandler: requireAdmin(deps as AuthContext, 'dsc') },
+    async () => service.issuingDefaults(),
+  )
+
+  server.put(
+    '/dsc/settings/issuing-profile',
+    {
+      schema: {
+        body: z.object({
+          issuingState: z.string().length(3).optional(),
+          issuingAuthority: z.string().max(70).optional(),
+          personalizationDevice: z.string().max(70).optional(),
+          dg13Policy: z.string().max(70).optional(),
+          endorsements: z.string().max(70).optional(),
+        }),
+      },
+      preHandler: requireAdmin(deps as AuthContext, 'dsc'),
+    },
+    async (request) => {
+      const updated = service.updateIssuingProfile(request.body, request.principal!.account.id)
+      writeAudit(db, {
+        actorAccountId: request.principal!.account.id,
+        realm: 'dsc',
+        action: 'dsc.settings.issuing-profile',
+        ip: request.ip,
+        detail: request.body,
+      })
+      return updated
     },
   )
 }

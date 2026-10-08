@@ -423,53 +423,53 @@ pkd42/
 
 ### 10.1 reference ID 与查询（非破坏）
 
-- [ ] T8.1.1 提交成功返回高熵 `reference_id`（≥16 字节，base32/crockford；库内仅存哈希）。
-- [ ] T8.1.2 `GET /dsc/requests/:reference`：仅回**元数据**（状态、时间、DSC、DG 清单、SOD 指纹、交付模式），可反复调用。
+- [x] T8.1.1 提交成功返回高熵 `reference_id`（≥16 字节，base32/crockford；库内仅存哈希）。
+- [x] T8.1.2 `GET /dsc/requests/:reference`：仅回**元数据**（状态、时间、DSC、DG 清单、SOD 指纹、交付模式），可反复调用。
   - [ ] 常量时间比较 + 严格限流。
-- [ ] T8.1.3 `GET /dsc/requests/:reference/preview`：**非破坏性**预览，服务端用结构化请求重建 DG1/DG2(+可选 DG) 示意。
-  - [ ] **mask 规则**（可配）：证件号、个人号、完整出生日期、地址/电话/邮箱、DG16 通知人姓名；照片/签名/指纹用占位或模糊缩略图。
-  - [ ] 预览展示"字段存在性 + 掩码值 + 图像占位"，不返回完整敏感字节。
+- [x] T8.1.3 `GET /dsc/requests/:reference/preview`：**非破坏性**预览，服务端用结构化请求重建 DG1/DG2(+可选 DG) 示意。
+  - [x] **mask 规则**（可配）：证件号、个人号、完整出生日期、地址/电话/邮箱、DG16 通知人姓名；照片/签名/指纹用占位或模糊缩略图。
+  - [x] 预览展示"字段存在性 + 掩码值 + 图像占位"，不返回完整敏感字节。
 
 ### 10.2 一次性领取（破坏性）
 
-- [ ] T8.2.1 `POST /dsc/requests/:reference/reveal`：原子消费
+- [x] T8.2.1 `POST /dsc/requests/:reference/reveal`：原子消费
   - [ ] `UPDATE sign_request SET consumed_at=now, consumed_by=… WHERE consumed_at IS NULL`（单一事务）。
-  - [ ] 首次成功返回 `.perso`（可选 EF.SOD/DSC 证书）；后续一律 `410 Gone`。
-  - [ ] 响应 `Cache-Control: no-store`；不可缓存/不可代理。
-- [ ] T8.2.2 **两步领取（防邮件预取）**：
-  - [ ] 邮件链接只落到"确认页"，**不消费**。
-  - [ ] 确认页展示元数据 + **警告确认弹窗**："数据仅可领取一次；确认后请立即保存/制作。"
-  - [ ] 用户确认后前端才 `POST …/reveal`。
-- [ ] T8.2.3 "查看"与"下载"**都算消费**；离开页面即失效。
+  - [x] 首次成功返回 `.perso`（可选 EF.SOD/DSC 证书）；后续一律 `410 Gone`。
+  - [x] 响应 `Cache-Control: no-store`；不可缓存/不可代理。
+- [x] T8.2.2 **两步领取（防邮件预取）**：
+  - [x] 邮件链接只落到"确认页"，**不消费**。
+  - [x] 确认页展示元数据 + **警告确认弹窗**："数据仅可领取一次；确认后请立即保存/制作。"
+  - [x] 用户确认后前端才 `POST …/reveal`。
+- [x] T8.2.3 "查看"与"下载"**都算消费**；离开页面即失效。
 - [ ] T8.2.4 未领取产物 TTL 到期清理；拒绝无产物。
-- [ ] T8.2.5 消费后**不可原样重发**；仅管理员可 `POST /dsc/requests/:id/regenerate`（重新构建，AA/CA 换新，生成新卡），审计。
-- [ ] T8.2.6 领取审计：who/when/channel/IP；不记内容。
+- [x] T8.2.5 消费后**不可原样重发**；仅管理员可 `POST /dsc/requests/:id/regenerate`（重新构建，AA/CA 换新，生成新卡），审计。
+- [x] T8.2.6 领取审计：who/when/channel/IP；不记内容。
 
 ### 10.3 邮件
 
-- [ ] T8.3.1 `email` 可选；审批结果邮件；通过时附**两步链接**（见 T8.2.2）。
-- [ ] T8.3.2 `mail_token`：HMAC 签名 + 过期 + 用途 scope + 一次性（确认页 token；消费用另一个短时 token）。
+- [x] T8.3.1 `email` 可选；审批结果邮件；通过时附**两步链接**（见 T8.2.2）。
+- [x] T8.3.2 `mail_token`：HMAC 签名 + 过期 + 用途 scope + 一次性（确认页 token；消费用另一个短时 token）。
 - [ ] T8.3.3 `nodemailer` + SMTP；job worker 重试。
 - [ ] T8.3.4 SPF/DKIM/DMARC 文档化。
-- [ ] T8.3.5 交付模式 B 下，申请人邮件为纯状态通知（无领取能力）。
+- [x] T8.3.5 交付模式 B 下，申请人邮件为纯状态通知（无领取能力）。
 
 ### 10.4 交付模式（管理员配置）
 
-- [ ] T8.4.1 系统级设置 `delivery_mode ∈ {applicant, reviewer}`（默认 `applicant`），仅 DSC 管理员可改。
-- [ ] T8.4.2 审批时把当前模式**快照**到 `sign_request.delivery_mode`；审批表单允许**对单请求覆盖**。
-- [ ] T8.4.3 模式 A（applicant）：申请人可领取。
-- [ ] T8.4.4 模式 B（reviewer）：申请人**不可领取**（`reveal` 返回 `403`），reference/邮件仅用于查状态；管理员在"待制作"队列一次性领取。
-- [ ] T8.4.5 管理员"待制作"视图：状态、筛选、领取、重新生成；领取同样一次性 + 审计。
+- [x] T8.4.1 系统级设置 `delivery_mode ∈ {applicant, reviewer}`（默认 `applicant`），仅 DSC 管理员可改。
+- [x] T8.4.2 审批时把当前模式**快照**到 `sign_request.delivery_mode`；审批表单允许**对单请求覆盖**。
+- [x] T8.4.3 模式 A（applicant）：申请人可领取。
+- [x] T8.4.4 模式 B（reviewer）：申请人**不可领取**（`reveal` 返回 `403`），reference/邮件仅用于查状态；管理员在"待制作"队列一次性领取。
+- [x] T8.4.5 管理员"待制作"视图：状态、筛选、领取、重新生成；领取同样一次性 + 审计。
 - [ ] T8.4.6 通知：模式 B 下通知管理员（站内 queue + 可选邮件）。
 
 ### 10.5 历史与后台
 
-- [ ] T8.5.1 登录用户历史：`GET /dsc/requests`（自己的，按 account 关联，元数据）。
-- [ ] T8.5.2 `GET /dsc/requests`（管理员，过滤/分页；**委派 AS 评审仅见本 AS 且
+- [x] T8.5.1 登录用户历史：`GET /dsc/requests`（自己的，按 account 关联，元数据）。
+- [x] T8.5.2 `GET /dsc/requests`（管理员，过滤/分页；**委派 AS 评审仅见本 AS 且
       `dsc_selection='nia'` 的申请**，NIA 管理员见全部）。
-- [ ] T8.5.3 `POST /dsc/requests/:id/approve|reject`（管理员；NIA 可带交付模式与签发字段覆盖，
+- [x] T8.5.3 `POST /dsc/requests/:id/approve|reject`（管理员；NIA 可带交付模式与签发字段覆盖，
       **委派 AS 评审不得修改全局设定，仅审批/拒绝本 AS 申请**）。
-- [ ] T8.5.4 处理记录与审计。
+- [x] T8.5.4 处理记录与审计。
 
 **验收**：匿名提交→状态查询→预览（masked）→确认领取→下载；二次访问 `410`；模式 B 下申请人 `403`、管理员可领取；管理员可重新生成。
 

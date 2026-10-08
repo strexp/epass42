@@ -13,6 +13,8 @@ roles = ["pkd", "csca", "dsc"]
 
 databasePath = "./data/pkd42.db"
 runMigrations = true
+# Directory for generated artifacts (perso scripts).
+dataDir = "./data"
 
 # Minimum 16 characters.  Must be changed for production.
 sessionSecret = "change-me-to-a-long-random-secret"
@@ -34,6 +36,38 @@ windowMs = 60000
 [smtp]
 # url = "smtps://user:pass@smtp.example.net:465"
 from = "pkd42 <no-reply@localhost>"
+
+# CSCA (M5): bootstrap a self-signed online CSCA key when none exists.
+[csca]
+commonName = "pkd42 CSCA"
+validityYears = 13
+privateKeyUsageYears = 4
+keyBits = 4096
+hash = "SHA-256"
+pss = false
+bootstrap = true
+crlDistributionPoints = ["ldap://pkd42.local/c=XD"]
+
+[csca.niaDsc]
+commonName = "pkd42 NIA DSC"
+documentTypes = ["P"]
+validityYears = 10
+privateKeyUsageYears = 3
+keyBits = 2048
+pss = false
+
+# CRL scheduling (M6).
+[crl]
+autoGenerate = true
+maxAgeDays = 90
+minIntervalHours = 48
+
+# Server-filled issuing fields (M7/M8), editable by NIA DSC admins.
+[issuing]
+issuingState = "UDN"
+issuingAuthority = "NIA"
+personalizationDevice = "PKD42"
+dg13Policy = "utf8-text"
 
 # Administrator maintainers per realm (M4/T4.7).
 [adminMnts]

@@ -82,6 +82,12 @@ pnpm --filter @pkd42/scripts exec tsx src/verify.ts \
 - **M3** backend skeleton: Fastify + zod/OpenAPI, SQLite/Drizzle schema and
   migrations, configuration, logging, health checks — done.
 - **M4** dual-realm OIDC authentication (`/auth/{realm}/login|callback|logout|me`),
-  SQLite sessions, dn42 claim mapping and MNT-based admin authorization — done.
+  SQLite sessions, dn42 claim mapping and MNT-based admin authorization
+  (including delegated AS reviewers) — done.
+- **M5** CSCA role: DSC applications, online issuance, revocation and key
+  rollover — done.
+- **M6** CRL generation with schedule-based refresh — done.
+- **M7** DSC signing service: structured requests, DG/AA/CA/SOD/perso build — done.
+- **M8** delivery: masked preview, one-time reveal, delivery modes and history — done.
 
 See [`TODO.md`](TODO.md) for the full milestone plan.
