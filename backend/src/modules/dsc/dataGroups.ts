@@ -13,6 +13,6 @@ export function dataGroupList(
   if (payload.dg11) groups.push(11)
   if (payload.dg13) groups.push(13)
   if (payload.dg16) groups.push(16)
-  if (security?.aa) groups.push(15)
+  if (security?.aa.enabled) groups.push(15)
   return [...new Set(groups)].sort((a, b) => a - b)
 }

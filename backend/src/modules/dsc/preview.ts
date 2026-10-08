@@ -5,8 +5,9 @@
  * and masks the sensitive fields configured for the deployment.  Images are
  * reported by presence, never returned as bytes.
  */
-import type { SignRequest } from '@epass42/shared'
+import type { SecurityOptions, SignRequest } from '@epass42/shared'
 import { dataGroupList } from './dataGroups'
+import { DEFAULT_SECURITY, mergeSecurity, toSecurityOverlay } from './securityOptions'
 
 /** The preview mask rules. */
 export interface MaskRules {
@@ -54,12 +55,7 @@ export interface RequestPreview {
   dataGroups: number[]
   images: { dg2: boolean; dg5: boolean; dg7: boolean }
   biometrics: { dg3: boolean; dg4: boolean }
-  security: {
-    paceEcdhGm3des: boolean
-    paceEcdhGmAes128: boolean
-    aa: boolean
-    ca: boolean
-  }
+  security: SecurityOptions
   /** Masked optional fields. */
   additional: {
     dg11: boolean
@@ -77,13 +73,7 @@ export function buildPreview(
 ): RequestPreview {
   const mask = (value: string | undefined): ReturnType<typeof field> => field(value, true)
   void rules
-  const resolved = security ?? {
-    paceEcdhGm3des: true,
-    paceEcdhGmAes128: true,
-    aa: false,
-    ca: false,
-    caKeyId: 1,
-  }
+  const resolved = mergeSecurity(DEFAULT_SECURITY, toSecurityOverlay(security))
   return {
     documentCode: payload.mrz.documentCode,
     issuingState: payload.mrz.issuingState,
@@ -97,12 +87,7 @@ export function buildPreview(
     dataGroups: dataGroupList(payload, resolved),
     images: { dg2: true, dg5: Boolean(payload.dg5), dg7: Boolean(payload.dg7) },
     biometrics: { dg3: Boolean(payload.dg3), dg4: Boolean(payload.dg4) },
-    security: {
-      paceEcdhGm3des: resolved.paceEcdhGm3des,
-      paceEcdhGmAes128: resolved.paceEcdhGmAes128,
-      aa: resolved.aa,
-      ca: resolved.ca,
-    },
+    security: resolved,
     additional: {
       dg11: Boolean(payload.dg11),
       dg12: true,

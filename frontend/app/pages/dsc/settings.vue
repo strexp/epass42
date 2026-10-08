@@ -33,11 +33,9 @@ const profile = ref({
   dg2MaxBytes: 16384,
   lds2: { enabled: false, roles: ['travel', 'visa', 'biometrics'] as string[] },
   security: {
-    paceEcdhGm3des: true,
-    paceEcdhGmAes128: true,
-    aa: false,
-    ca: false,
-    caKeyId: 1,
+    pace: { ecdhGm3des: true, ecdhGmAes128: true },
+    aa: { enabled: false, algorithm: 'rsaSha1' as const },
+    ca: { enabled: false, algorithm: 'ecdh3des' as const, keyId: 1 },
   },
 })
 
@@ -141,16 +139,9 @@ onMounted(async () => {
           <NText depth="3">{{ $t('dsc.securityDefaultsHint') }}</NText>
           <SecurityOptions
             v-model="profile.security"
-            :ca-disabled="profile.security.ca && profile.lds2.enabled"
+            :lds2-enabled="profile.lds2.enabled"
             style="margin-top: 12px"
           />
-          <NFormItem
-            v-if="profile.security.ca || profile.lds2.enabled"
-            :label="$t('dsc.caKeyId')"
-            style="margin-top: 8px"
-          >
-            <NInputNumber v-model:value="profile.security.caKeyId" :min="0" :max="255" />
-          </NFormItem>
         </NCard>
 
         <NCard :title="$t('dsc.lds2Title')" size="small">
@@ -158,7 +149,7 @@ onMounted(async () => {
           <div style="margin-top: 8px">
             <NSwitch
               v-model:value="profile.lds2.enabled"
-              :disabled="!profile.security.ca && !profile.lds2.enabled"
+              :disabled="!profile.security.ca.enabled && !profile.lds2.enabled"
             />
           </div>
           <NSelect

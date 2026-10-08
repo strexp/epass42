@@ -13,6 +13,8 @@ export const ERROR_CODES = [
   'internal',
   // Validation
   'validation_failed',
+  'no_security_mechanism',
+  'pace_required',
   // CSCA / DSC
   'application_not_found',
   'application_already_reviewed',

@@ -9,6 +9,7 @@
  * are never persisted.
  */
 import {
+  AA_SIGNATURE_ALG_OIDS,
   aaPrivateKeyValue,
   ascii,
   buildCardAccess,
@@ -40,6 +41,8 @@ import {
 import type { SecurityOptions, SignRequest } from '@epass42/shared'
 import { AppError } from '@epass42/shared'
 
+import { mergeSecurity, toSecurityOverlay } from './securityOptions'
+
 /** The LDS2 roles a document may emit (empty applications by default). */
 export type Lds2Role = 'travel' | 'visa' | 'biometrics'
 
@@ -57,8 +60,9 @@ export interface IssuingDefaults {
   lds2: { enabled: boolean; roles: Lds2Role[] }
   endorsements?: string
   /**
-   * Default LDS1 security mechanisms applied when the request omits them.
-   * Chip Authentication is shared by LDS1 and LDS2 through the master file.
+   * Default security mechanisms and algorithms applied when the request omits
+   * them.  PACE and Chip Authentication are shared by LDS1 and LDS2 through the
+   * master file; AA is LDS1-only.
    */
   security: SecurityOptions
 }
@@ -208,26 +212,38 @@ export async function buildPersoSigning(
 ): Promise<PersoBuildResult> {
   const groups = buildDataGroups(request, profile)
   // Security mechanisms are administrator defaults the applicant does not see.
-  const security = request.security ?? profile.security
+  const security = mergeSecurity(profile.security, toSecurityOverlay(request.security))
 
   const lds2Enabled = profile.lds2.enabled && profile.lds2.roles.length > 0
+  const paceEnabled = security.pace.ecdhGm3des || security.pace.ecdhGmAes128
   // EF.CardAccess and EF.CardSecurity live in the master file (Doc 9303-10
   // §3.11.3/§3.11.4), so LDS1 and the LDS2 applications share one CA key pair
   // and one EF.CardSecurity.  Chip Authentication is emitted when the
   // administrator enables it for LDS1 or when any LDS2 application (which
-  // always carries it) is emitted.
-  const caEnabled = security.ca || lds2Enabled
-  const caKeyId = security.caKeyId ?? 1
+  // always carries it) is emitted, and it always needs PACE to read
+  // EF.CardSecurity.
+  const caEnabled = security.ca.enabled || lds2Enabled
+  if (caEnabled && !paceEnabled) {
+    throw new AppError(
+      'pace_required',
+      'Chip Authentication requires at least one PACE profile',
+      400,
+    )
+  }
+  if (!paceEnabled && !caEnabled && !security.aa.enabled) {
+    throw new AppError('no_security_mechanism', 'at least one security mechanism is required', 400)
+  }
 
   // EF.CardAccess advertises the selected PACE mechanisms, AA (if enabled) and
   // Chip Authentication (if enabled).
   const cardAccess = buildCardAccess({
-    paceEcdhGm3des: security.paceEcdhGm3des,
-    paceEcdhGmAes128: security.paceEcdhGmAes128,
+    paceEcdhGm3des: security.pace.ecdhGm3des,
+    paceEcdhGmAes128: security.pace.ecdhGmAes128,
     caEcdh3des: caEnabled,
     caEcdhAes128: false,
-    caKeyId,
-    aa: security.aa,
+    caKeyId: security.ca.keyId,
+    aa: security.aa.enabled,
+    aaSignatureAlgOid: AA_SIGNATURE_ALG_OIDS[security.aa.algorithm],
   })
 
   // DG14 mirrors EF.CardAccess.
@@ -235,7 +251,7 @@ export async function buildPersoSigning(
 
   // Active Authentication: RSA-2048 key; only the public key is published.
   let aaPrivateKey: Uint8Array | undefined
-  if (security.aa) {
+  if (security.aa.enabled) {
     const aa = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
     groups.push({ number: 15, bytes: buildDg15(aa.spki) })
     aaPrivateKey = aaPrivateKeyValue(aa.modulus, aa.privateExponent)
@@ -249,7 +265,7 @@ export async function buildPersoSigning(
   if (caEnabled) {
     const ca = generateP256KeyPair()
     caScalar = ca.scalar
-    const securityObject = buildSecurityObject(cardAccess, ca.spki, caKeyId)
+    const securityObject = buildSecurityObject(cardAccess, ca.spki, security.ca.keyId)
     cardSecurity = await buildCardSecurity(
       securityObject,
       pemToDer(dsc.certPem),

@@ -3,17 +3,16 @@
  */
 import { desc, eq } from 'drizzle-orm'
 
-import type { SecurityOptions } from '@epass42/shared'
-
 import { issuingProfile, systemSetting } from '../../db/schema'
 import { nowIso } from '../../util/time'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import type { IssuingDefaults } from './build'
+import { mergeSecurity, toSecurityOverlay, type SecurityOptionsOverlay } from './securityOptions'
 
 /** A partial update to the issuing defaults (nested objects may be partial). */
 export type IssuingDefaultsUpdate = Partial<Omit<IssuingDefaults, 'security' | 'lds2'>> & {
-  security?: Partial<SecurityOptions>
+  security?: SecurityOptionsOverlay
   lds2?: { enabled?: boolean; roles?: IssuingDefaults['lds2']['roles'] }
 }
 
@@ -30,6 +29,8 @@ export class DscSettingsService {
     const extra = row?.defaultsJson
       ? (JSON.parse(row.defaultsJson) as Partial<IssuingDefaults>)
       : {}
+    // Older profiles stored the Chip Authentication key id under `lds2`.
+    const legacyLds2CaKeyId = (extra.lds2 as unknown as { caKeyId?: number } | undefined)?.caKeyId
     return {
       issuingState: overrides.issuingState ?? row?.issuingState ?? this.config.issuing.issuingState,
       issuingAuthority:
@@ -58,15 +59,12 @@ export class DscSettingsService {
           this.config.issuing.lds2.roles,
       },
       endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
-      security: {
-        ...this.config.issuing.security,
-        // Older profiles stored the Chip Authentication key id under `lds2`.
-        ...(typeof (extra.lds2 as unknown as { caKeyId?: number } | undefined)?.caKeyId === 'number'
-          ? { caKeyId: (extra.lds2 as unknown as { caKeyId: number }).caKeyId }
-          : {}),
-        ...(extra.security ?? {}),
-        ...(overrides.security ?? {}),
-      },
+      security: mergeSecurity(
+        this.config.issuing.security,
+        typeof legacyLds2CaKeyId === 'number' ? { ca: { keyId: legacyLds2CaKeyId } } : undefined,
+        toSecurityOverlay(extra.security),
+        overrides.security,
+      ),
     }
   }
 

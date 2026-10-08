@@ -86,19 +86,36 @@ export const dg16Schema = z.object({
 })
 
 /**
- * LDS1 security mechanism switches used to build EF.CardAccess / DG14 / DG15.
- * Chip Authentication is shared by LDS1 and LDS2 through the master file
- * (Doc 9303-10 §3.11.3/§3.11.4); `ca` toggles it for an LDS1-only document
- * (an emitted LDS2 application always carries it).
+ * Security mechanism and algorithm selections used to build EF.CardAccess /
+ * DG14 / DG15.  PACE and Chip Authentication are shared by LDS1 and LDS2 (they
+ * live in the master file, Doc 9303-10 §3.11.3/§3.11.4); Active Authentication
+ * is LDS1-only.
  */
 export const securityOptionsSchema = z.object({
-  paceEcdhGm3des: z.boolean().default(true),
-  paceEcdhGmAes128: z.boolean().default(true),
-  aa: z.boolean().default(false),
-  /** Advertise Chip Authentication in the LDS1 EF.CardAccess / DG14. */
-  ca: z.boolean().default(false),
-  /** Chip Authentication key id advertised by LDS1 and the LDS2 applications. */
-  caKeyId: z.number().int().min(0).max(255).default(1),
+  /** PACE ECDH generic mapping profiles (shared; at least one stays selected). */
+  pace: z
+    .object({
+      ecdhGm3des: z.boolean().default(true),
+      ecdhGmAes128: z.boolean().default(true),
+    })
+    .prefault({}),
+  /** Active Authentication (LDS1 only). */
+  aa: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** card42's card signs with ISO/IEC 9796-2 + SHA-1. */
+      algorithm: z.enum(['rsaSha1']).default('rsaSha1'),
+    })
+    .prefault({}),
+  /** Chip Authentication (shared; forced on when an LDS2 application is emitted). */
+  ca: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** card42 currently implements only the ECDH 3DES profile. */
+      algorithm: z.enum(['ecdh3des']).default('ecdh3des'),
+      keyId: z.number().int().min(0).max(255).default(1),
+    })
+    .prefault({}),
 })
 
 /** Which Document Signer signs the SOD. */

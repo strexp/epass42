@@ -138,16 +138,32 @@ const configSchema = z.object({
             .default(['travel', 'visa', 'biometrics']),
         })
         .prefault({}),
-      /** Default LDS1 security mechanisms chosen by the administrator. */
+      /** Default LDS1/LDS2 security mechanisms chosen by the administrator. */
       security: z
         .object({
-          paceEcdhGm3des: z.boolean().default(true),
-          paceEcdhGmAes128: z.boolean().default(true),
-          aa: z.boolean().default(false),
-          /** Advertise Chip Authentication in the LDS1 EF.CardAccess. */
-          ca: z.boolean().default(false),
-          /** Chip Authentication key id shared by LDS1 and the LDS2 applications. */
-          caKeyId: z.number().int().min(0).max(255).default(1),
+          /** PACE ECDH-GM profiles (shared; at least one must stay selected). */
+          pace: z
+            .object({
+              ecdhGm3des: z.boolean().default(true),
+              ecdhGmAes128: z.boolean().default(true),
+            })
+            .prefault({}),
+          /** Active Authentication (LDS1 only). */
+          aa: z
+            .object({
+              enabled: z.boolean().default(false),
+              algorithm: z.enum(['rsaSha1']).default('rsaSha1'),
+            })
+            .prefault({}),
+          /** Chip Authentication (shared; forced on when LDS2 is emitted). */
+          ca: z
+            .object({
+              enabled: z.boolean().default(false),
+              algorithm: z.enum(['ecdh3des']).default('ecdh3des'),
+              /** Chip Authentication key id shared by LDS1 and the LDS2 applications. */
+              keyId: z.number().int().min(0).max(255).default(1),
+            })
+            .prefault({}),
         })
         .prefault({}),
     })

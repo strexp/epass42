@@ -180,7 +180,7 @@ describe('M7 DSC signing service', () => {
     const submit = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
-      payload: payload('X1234567', { security: { aa: true } }),
+      payload: payload('X1234567', { security: { aa: { enabled: true } } }),
     })
     const reference = submit.json().reference as string
     const adminCookie = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
@@ -382,10 +382,10 @@ describe('M7 DSC signing service', () => {
       method: 'PUT',
       url: '/dsc/settings/issuing-profile',
       headers: { cookie: admin },
-      payload: { security: { aa: true } },
+      payload: { security: { aa: { enabled: true } } },
     })
     expect(update.statusCode).toBe(200)
-    expect(update.json().security.aa).toBe(true)
+    expect(update.json().security.aa.enabled).toBe(true)
 
     const second = await submit(app, 'D2222222')
     const secondRow = dsc.getByReference(second)!
@@ -499,10 +499,10 @@ describe('M7 DSC signing service', () => {
       method: 'PUT',
       url: '/dsc/settings/issuing-profile',
       headers: { cookie: admin },
-      payload: { security: { ca: true } },
+      payload: { security: { ca: { enabled: true } } },
     })
     expect(update.statusCode).toBe(200)
-    expect(update.json().security.ca).toBe(true)
+    expect(update.json().security.ca.enabled).toBe(true)
 
     const second = await submit(app, 'H4444444')
     const secondId = dsc.getByReference(second)!.id
@@ -550,6 +550,65 @@ describe('M7 DSC signing service', () => {
     expect(lds1).toMatch(/^@ca /m)
     expect(lds1).toMatch(/^@cardsecurity /m)
     expect(perso).toMatch(/^@lds2 travel$/m)
+  })
+
+  it('rejects Chip Authentication without any PACE profile', async () => {
+    const { app, oidc, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: {
+        security: {
+          pace: { ecdhGm3des: false, ecdhGmAes128: false },
+          ca: { enabled: true },
+        },
+      },
+    })
+    expect(update.statusCode).toBe(200)
+
+    const reference = await submit(app, 'H6666666')
+    const id = dsc.getByReference(reference)!.id
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(400)
+    expect(approve.json().error).toBe('pace_required')
+  })
+
+  it('requires at least one security mechanism', async () => {
+    const { app, oidc, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: {
+        security: {
+          pace: { ecdhGm3des: false, ecdhGmAes128: false },
+          aa: { enabled: false },
+          ca: { enabled: false },
+        },
+      },
+    })
+    expect(update.statusCode).toBe(200)
+
+    const reference = await submit(app, 'H7777777')
+    const id = dsc.getByReference(reference)!.id
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(400)
+    expect(approve.json().error).toBe('no_security_mechanism')
   })
 
   it('server-sets the MRZ nationality', async () => {

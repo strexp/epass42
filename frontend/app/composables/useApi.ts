@@ -32,6 +32,8 @@ const ERROR_KEYS = new Set([
   'forbidden',
   'not_found',
   'validation_failed',
+  'no_security_mechanism',
+  'pace_required',
   'request_already_consumed',
   'reveal_not_allowed',
   'document_number_conflict',

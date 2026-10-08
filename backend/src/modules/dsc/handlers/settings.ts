@@ -64,11 +64,25 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: DscRouteDeps)
           endorsements: z.string().max(70).optional(),
           security: z
             .object({
-              paceEcdhGm3des: z.boolean().optional(),
-              paceEcdhGmAes128: z.boolean().optional(),
-              aa: z.boolean().optional(),
-              ca: z.boolean().optional(),
-              caKeyId: z.number().int().min(0).max(255).optional(),
+              pace: z
+                .object({
+                  ecdhGm3des: z.boolean().optional(),
+                  ecdhGmAes128: z.boolean().optional(),
+                })
+                .optional(),
+              aa: z
+                .object({
+                  enabled: z.boolean().optional(),
+                  algorithm: z.enum(['rsaSha1']).optional(),
+                })
+                .optional(),
+              ca: z
+                .object({
+                  enabled: z.boolean().optional(),
+                  algorithm: z.enum(['ecdh3des']).optional(),
+                  keyId: z.number().int().min(0).max(255).optional(),
+                })
+                .optional(),
             })
             .optional(),
         }),
