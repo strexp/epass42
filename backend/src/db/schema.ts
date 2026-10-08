@@ -71,6 +71,8 @@ export const maintainer = sqliteTable(
     mnt: text('mnt').notNull(),
     realm: text('realm').notNull(),
     role: text('role').notNull(),
+    /** For `role='as-admin'`, the delegated AS this maintainer may review. */
+    asn: integer('asn'),
     note: text('note'),
   },
   (table) => [primaryKey({ columns: [table.mnt, table.realm, table.role] })],
