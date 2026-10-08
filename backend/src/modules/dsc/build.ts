@@ -82,6 +82,11 @@ export function personalizationTime(date = new Date()): string {
   )
 }
 
+/** Formats a date as `YYYYMMDD`. */
+export function compactDate(date = new Date()): string {
+  return personalizationTime(date).slice(0, 8)
+}
+
 /** Builds the DG1..DG16 set (without AA/CA) for a request. */
 function buildDataGroups(
   request: SignRequest,
@@ -121,20 +126,20 @@ function buildDataGroups(
     })
   }
 
-  if (request.dg12) {
-    groups.push({
-      number: 12,
-      bytes: buildDg12({
-        issuingAuthority: request.dg12.issuingAuthority ?? profile.issuingAuthority,
-        dateOfIssue: request.dg12.dateOfIssue,
-        otherPersons: request.dg12.otherPersons,
-        endorsements: request.dg12.endorsements ?? profile.endorsements,
-        taxExit: request.dg12.taxExit,
-        personalizationTime: personalizationTime(),
-        personalizationDevice: profile.personalizationDevice,
-      }),
-    })
-  }
+  // DG12 is always produced with server-filled document details; the applicant
+  // may only add other persons and a tax/exit note.
+  groups.push({
+    number: 12,
+    bytes: buildDg12({
+      issuingAuthority: profile.issuingAuthority,
+      dateOfIssue: compactDate(),
+      otherPersons: request.dg12?.otherPersons,
+      endorsements: profile.endorsements,
+      taxExit: request.dg12?.taxExit,
+      personalizationTime: personalizationTime(),
+      personalizationDevice: profile.personalizationDevice,
+    }),
+  })
 
   if (request.dg13) {
     groups.push({ number: 13, bytes: buildDg13Text(ascii(request.dg13.text)) })

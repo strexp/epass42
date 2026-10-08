@@ -108,7 +108,7 @@ export function buildPreview(
     },
     additional: {
       dg11: Boolean(payload.dg11),
-      dg12: Boolean(payload.dg12),
+      dg12: true,
       dg13: Boolean(payload.dg13),
       dg16: Boolean(payload.dg16 && payload.dg16.persons.length > 0),
     },

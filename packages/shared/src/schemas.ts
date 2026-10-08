@@ -65,10 +65,7 @@ export const dg11Schema = z.object({
 
 /** DG12 additional document details (subset; expanded in M7). */
 export const dg12Schema = z.object({
-  issuingAuthority: z.string().max(35).optional(),
-  dateOfIssue: compactDate.optional(),
   otherPersons: z.array(z.string().max(70)).max(10).default([]),
-  endorsements: z.string().max(70).optional(),
   taxExit: z.string().max(70).optional(),
 })
 

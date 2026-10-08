@@ -51,9 +51,6 @@ const fullName = ref('')
 const placeOfBirth = ref('')
 const address = ref('')
 const telephone = ref('')
-const issuingAuthority = ref('')
-const dateOfIssue = ref('')
-const endorsements = ref('')
 const customNotes = ref('')
 const people = ref<{ name: string; telephone: string; address: string; dateRecorded: string }[]>([])
 const email = ref('')
@@ -112,13 +109,6 @@ async function submit(): Promise<void> {
         placeOfBirth: placeOfBirth.value || undefined,
         address: address.value || undefined,
         telephone: telephone.value || undefined,
-      }
-    }
-    if (issuingAuthority.value || dateOfIssue.value || endorsements.value) {
-      body.dg12 = {
-        issuingAuthority: issuingAuthority.value || undefined,
-        dateOfIssue: dateOfIssue.value || undefined,
-        endorsements: endorsements.value || undefined,
       }
     }
     if (customNotes.value) body.dg13 = { text: customNotes.value }
@@ -193,19 +183,6 @@ async function submit(): Promise<void> {
             <NFormItem label="Address"><NInput v-model:value="address" maxlength="70" /></NFormItem>
             <NFormItem label="Telephone"
               ><NInput v-model:value="telephone" maxlength="35"
-            /></NFormItem>
-          </NForm>
-        </NCollapseItem>
-        <NCollapseItem :title="$t('dsc.documentSection')" name="document">
-          <NForm label-placement="top">
-            <NFormItem :label="$t('dsc.issuanceAuthority')">
-              <NInput v-model:value="issuingAuthority" maxlength="35" />
-            </NFormItem>
-            <NFormItem label="Date of issue (CCYYMMDD)">
-              <NInput v-model:value="dateOfIssue" maxlength="8" />
-            </NFormItem>
-            <NFormItem label="Endorsements"
-              ><NInput v-model:value="endorsements" maxlength="70"
             /></NFormItem>
           </NForm>
         </NCollapseItem>
