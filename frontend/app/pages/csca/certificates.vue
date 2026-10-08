@@ -25,7 +25,8 @@ const certificates = ref<Certificate[]>([])
 const isCscaAdmin = computed(() => auth.realms.csca.me?.isAdmin ?? false)
 
 async function load(): Promise<void> {
-  certificates.value = await api<Certificate[]>('/csca/certificates?includeRevoked=true')
+  const result = await api<{ items: Certificate[] }>('/csca/certificates?includeRevoked=true')
+  certificates.value = result.items ?? []
 }
 
 async function revoke(id: number): Promise<void> {

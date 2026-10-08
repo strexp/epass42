@@ -81,12 +81,11 @@ function addPerson(): void {
 
 async function loadOwnedCerts(): Promise<void> {
   try {
-    const certs =
-      await api<{ id: number; subjectDn: string; asn: number | null; status: string }[]>(
-        '/csca/certificates',
-      )
+    const result = await api<{
+      items: { id: number; subjectDn: string; asn: number | null; status: string }[]
+    }>('/csca/certificates')
     const asn = auth.realms.dsc.me?.account.asn ?? null
-    ownedCerts.value = certs
+    ownedCerts.value = (result.items ?? [])
       .filter((cert) => cert.status === 'active' && (asn === null || cert.asn === asn))
       .map((cert) => ({ id: cert.id, label: `${cert.subjectDn}` }))
   } catch {
