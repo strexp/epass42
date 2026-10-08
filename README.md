@@ -46,12 +46,17 @@ Migrations run automatically at startup (`RUN_MIGRATIONS`) and live in
 ### Run the frontend (M11)
 
 ```bash
-pnpm --filter @pkd42/frontend dev      # http://localhost:3000 -> proxies to the API
+pnpm --filter @pkd42/frontend dev      # http://localhost:3001 (proxies to the API)
 pnpm --filter @pkd42/frontend build
 ```
 
-The SPA renders client-side and proxies `/api`, `/auth`, `/csca`, `/dsc` and
-`/pkd` to the backend in development (see `frontend/nuxt.config.ts`).
+The SPA renders client-side and, in development, proxies `/api`, `/auth`,
+`/csca`, `/dsc` and `/pkd` to the backend on `127.0.0.1:3000` (see
+`frontend/nuxt.config.ts`). To run everything at once:
+
+```bash
+pnpm dev    # backend on :3000, frontend on :3001
+```
 
 ### Generate a CSCA (M2)
 
