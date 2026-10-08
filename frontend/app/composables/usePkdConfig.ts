@@ -5,7 +5,7 @@ export interface PkdConfig {
   roles: Role[]
   countryAlpha2: string
   countryAlpha3: string
-  oauthProviders: Record<'csca' | 'dsc', { id: number; issuer: string }[]>
+  oauthProviders: Record<'csca' | 'dsc', { id: number; alias: string; issuer: string }[]>
 }
 
 let cached: PkdConfig | null = null

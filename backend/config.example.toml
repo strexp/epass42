@@ -95,6 +95,9 @@ realm = "csca"
 issuer = "https://auth.example.net"
 clientId = "pkd42-csca"
 clientSecret = "replace-me"
+# Short login-method alias (defaults to the issuer host); shown in the UI and
+# used in the callback URL.
+alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]
 enabled = true
 
@@ -106,6 +109,7 @@ realm = "dsc"
 issuer = "https://auth.example.net"
 clientId = "pkd42-dsc"
 clientSecret = "replace-me"
+alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]
 enabled = true
 

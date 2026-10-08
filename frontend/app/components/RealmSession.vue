@@ -1,23 +1,31 @@
 <script setup lang="ts">
-import { NAvatar, NButton, NCard, NIcon, NTag, NText } from 'naive-ui'
-import { LogIn, LogOut, ShieldCheck, ShieldOff } from '@lucide/vue'
+import { NAvatar, NButton, NCard, NDropdown, NIcon, NTag, NText } from 'naive-ui'
+import { ChevronDown, LogIn, LogOut, ShieldCheck, ShieldOff } from '@lucide/vue'
 import { computed, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
+import { usePkdConfig } from '~/composables/usePkdConfig'
 import type { Realm } from '@pkd42/shared'
 
 const props = defineProps<{ realm: Realm }>()
 const auth = useAuthStore()
 const route = useRoute()
+const { config, load } = usePkdConfig()
 
 const me = computed(() => auth.realms[props.realm].me)
 const label = computed(() => (props.realm === 'csca' ? 'CSCA' : 'DSC'))
+const providers = computed(() => config.value?.oauthProviders[props.realm] ?? [])
+/** Login-method options when more than one provider is configured. */
+const options = computed(() =>
+  providers.value.map((provider) => ({ key: provider.id, label: provider.alias })),
+)
 
-onMounted(() => {
+onMounted(async () => {
+  await load()
   if (!auth.realms[props.realm].loaded) void auth.fetchMe(props.realm)
 })
 
-function login(): void {
-  auth.login(props.realm, route.fullPath)
+function login(provider?: number): void {
+  auth.login(props.realm, route.fullPath, provider)
 }
 
 async function logout(): Promise<void> {
@@ -48,7 +56,22 @@ async function logout(): Promise<void> {
           </NTag>
           <NTag v-if="me?.isAdmin" size="small" type="info">{{ $t('auth.admin') }}</NTag>
         </div>
-        <NButton v-if="!me" type="primary" size="small" @click="login">
+
+        <NDropdown
+          v-if="!me && options.length > 1"
+          trigger="click"
+          :options="options"
+          @select="(key) => login(Number(key))"
+        >
+          <NButton type="primary" size="small">
+            <template #icon
+              ><NIcon><LogIn /></NIcon
+            ></template>
+            {{ $t('common.login') }}
+            <NIcon style="margin-left: 4px"><ChevronDown /></NIcon>
+          </NButton>
+        </NDropdown>
+        <NButton v-else-if="!me" type="primary" size="small" @click="login()">
           <template #icon
             ><NIcon><LogIn /></NIcon
           ></template>

@@ -144,9 +144,30 @@ export function seedProviders(db: Db, config: AppConfig): ProviderRecord[] {
   return records
 }
 
+/** Slugifies an issuer host into a URL-safe alias. */
+function slugify(input: string): string {
+  return (
+    input
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'provider'
+  )
+}
+
+/** The default alias for a provider (issuer host). */
+function defaultAlias(provider: OAuthProviderConfig): string {
+  try {
+    return slugify(new URL(provider.issuer).hostname)
+  } catch {
+    return slugify(provider.clientId)
+  }
+}
+
 /** Registry of providers keyed by realm. */
 export class AuthProviders {
   private readonly byId = new Map<number, ProviderRecord>()
+  private readonly aliases = new Map<number, string>()
+  private readonly byAliasKey = new Map<string, ProviderRecord>()
   private readonly drivers = new Map<number, OidcDriver>()
 
   constructor(
@@ -154,9 +175,24 @@ export class AuthProviders {
     private readonly factory: OidcDriverFactory,
     private readonly publicUrl: string,
   ) {
+    const used = new Set<string>()
     for (const record of records) {
-      if (record.config.enabled) this.byId.set(record.id, record)
+      if (!record.config.enabled) continue
+      this.byId.set(record.id, record)
+      const realm = record.config.realm
+      const base = record.config.alias ?? defaultAlias(record.config)
+      let alias = base
+      let counter = 2
+      while (used.has(`${realm}:${alias}`)) alias = `${base}-${counter++}`
+      used.add(`${realm}:${alias}`)
+      this.aliases.set(record.id, alias)
+      this.byAliasKey.set(`${realm}:${alias}`, record)
     }
+  }
+
+  /** The alias of a provider. */
+  aliasOf(id: number): string {
+    return this.aliases.get(id) ?? String(id)
   }
 
   /** Enabled providers for a realm. */
@@ -170,11 +206,29 @@ export class AuthProviders {
     return record && record.config.realm === realm ? record : undefined
   }
 
+  /** Looks up a provider by its alias within a realm. */
+  byAlias(realm: Realm, alias: string): ProviderRecord | undefined {
+    return this.byAliasKey.get(`${realm}:${alias}`)
+  }
+
+  /** Resolves a provider from an id (numeric) or an alias. */
+  resolve(realm: Realm, idOrAlias: string | number | undefined): ProviderRecord | undefined {
+    if (idOrAlias === undefined || idOrAlias === '') {
+      return this.list(realm)[0]
+    }
+    if (typeof idOrAlias === 'number') return this.get(realm, idOrAlias)
+    if (/^\d+$/.test(idOrAlias))
+      return this.get(realm, Number(idOrAlias)) ?? this.byAlias(realm, idOrAlias)
+    return this.byAlias(realm, idOrAlias)
+  }
+
   /** Returns (and caches) the driver for a provider. */
   driver(record: ProviderRecord): OidcDriver {
     const cached = this.drivers.get(record.id)
     if (cached) return cached
-    const redirectUri = `${this.publicUrl.replace(/\/$/, '')}/auth/${record.config.realm}/callback`
+    // The alias is part of the callback path so each login method has a
+    // distinct, registrable redirect URI.
+    const redirectUri = `${this.publicUrl.replace(/\/$/, '')}/auth/${record.config.realm}/callback/${this.aliasOf(record.id)}`
     const driver = this.factory(record.config, redirectUri)
     this.drivers.set(record.id, driver)
     return driver

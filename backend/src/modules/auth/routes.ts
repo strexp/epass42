@@ -4,7 +4,7 @@
  * The two realms are fully isolated: separate providers, cookies, session rows
  * and CSRF scope.  Realm routes are only registered when the role is enabled.
  */
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -48,7 +48,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
       schema: {
         params: realmParams,
         querystring: z.object({
-          provider: z.coerce.number().int().positive().optional(),
+          provider: z.string().max(64).optional(),
           redirect_to: z.string().optional(),
         }),
       },
@@ -58,10 +58,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
       const realm = request.params.realm as Realm
       if (!realmEnabled(config, realm)) return reply.code(404).send({ error: 'not_found' })
 
-      const available = providers.list(realm)
-      const selected = request.query.provider
-        ? providers.get(realm, request.query.provider)
-        : available[0]
+      const selected = providers.resolve(realm, request.query.provider)
       if (!selected) return reply.code(400).send({ error: 'no_oauth_provider' })
 
       const driver = providers.driver(selected)
@@ -82,65 +79,73 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
     },
   )
 
-  server.get(
-    '/auth/:realm/callback',
-    {
+  const callbackParams = z.object({ realm: realmSchema, alias: z.string().max(64).optional() })
+  const callbackQuery = z.object({
+    code: z.string().optional(),
+    state: z.string().optional(),
+    error: z.string().optional(),
+  })
+  const handleCallback = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const realm = request.params as { realm: Realm; alias?: string }
+    const query = request.query as { code?: string; state?: string; error?: string }
+    if (!realmEnabled(config, realm.realm)) return void reply.code(404).send({ error: 'not_found' })
+    if (query.error) return void reply.code(400).send({ error: 'oauth_error' })
+    const { state } = query
+    if (!state) return void reply.code(400).send({ error: 'missing_state' })
+
+    const flow = db
+      .select()
+      .from(oauthFlow)
+      .where(and(eq(oauthFlow.state, state), eq(oauthFlow.realm, realm.realm)))
+      .get()
+    if (!flow) return void reply.code(400).send({ error: 'unknown_state' })
+    // One-time use: consume the flow before exchanging the code.
+    db.delete(oauthFlow).where(eq(oauthFlow.state, state)).run()
+    if (isExpired(flow.expiresAt)) return void reply.code(400).send({ error: 'expired_state' })
+
+    const provider = providers.get(realm.realm, flow.providerId)
+    if (!provider) return void reply.code(400).send({ error: 'unknown_provider' })
+    // When the callback carries an alias it must match the provider from state.
+    if (realm.alias && providers.aliasOf(provider.id) !== realm.alias) {
+      return void reply.code(400).send({ error: 'alias_mismatch' })
+    }
+
+    const currentUrl = new URL(request.url, config.publicUrl).href
+    const identity = await providers.driver(provider).complete(currentUrl, {
+      url: '',
+      state: flow.state,
+      nonce: flow.nonce,
+      codeVerifier: flow.codeVerifier,
+    })
+    const mapped = mapClaims(identity.rawClaims, provider.config, provider.config.issuer)
+    const account = upsertAccount(db, realm.realm, provider.id, mapped)
+
+    const token = sessions.create(realm.realm, account.id, { csrf: randomToken(24) })
+    sessions.setCookie(reply, realm.realm, token)
+    writeAudit(db, {
+      actorAccountId: account.id,
+      realm: realm.realm,
+      action: 'auth.login',
+      targetType: 'account',
+      targetId: account.id,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'] ?? null,
+    })
+    const target = sanitizeRedirect(flow.redirectTo) ?? '/'
+    const frontendBase = (config.frontendUrl || config.publicUrl).replace(/\/$/, '')
+    return void reply.redirect(`${frontendBase}${target}`)
+  }
+
+  for (const path of ['/auth/:realm/callback', '/auth/:realm/callback/:alias']) {
+    server.get(path, {
       schema: {
-        params: realmParams,
-        querystring: z.object({
-          code: z.string().optional(),
-          state: z.string().optional(),
-          error: z.string().optional(),
-        }),
+        params: path.endsWith(':alias') ? callbackParams : realmParams,
+        querystring: callbackQuery,
       },
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
-    },
-    async (request, reply) => {
-      const realm = request.params.realm as Realm
-      if (!realmEnabled(config, realm)) return reply.code(404).send({ error: 'not_found' })
-      if (request.query.error) return reply.code(400).send({ error: 'oauth_error' })
-      const { state } = request.query
-      if (!state) return reply.code(400).send({ error: 'missing_state' })
-
-      const flow = db
-        .select()
-        .from(oauthFlow)
-        .where(and(eq(oauthFlow.state, state), eq(oauthFlow.realm, realm)))
-        .get()
-      if (!flow) return reply.code(400).send({ error: 'unknown_state' })
-      // One-time use: consume the flow before exchanging the code.
-      db.delete(oauthFlow).where(eq(oauthFlow.state, state)).run()
-      if (isExpired(flow.expiresAt)) return reply.code(400).send({ error: 'expired_state' })
-
-      const provider = providers.get(realm, flow.providerId)
-      if (!provider) return reply.code(400).send({ error: 'unknown_provider' })
-
-      const currentUrl = new URL(request.url, config.publicUrl).href
-      const identity = await providers.driver(provider).complete(currentUrl, {
-        url: '',
-        state: flow.state,
-        nonce: flow.nonce,
-        codeVerifier: flow.codeVerifier,
-      })
-      const mapped = mapClaims(identity.rawClaims, provider.config, provider.config.issuer)
-      const account = upsertAccount(db, realm, provider.id, mapped)
-
-      const token = sessions.create(realm, account.id, { csrf: randomToken(24) })
-      sessions.setCookie(reply, realm, token)
-      writeAudit(db, {
-        actorAccountId: account.id,
-        realm,
-        action: 'auth.login',
-        targetType: 'account',
-        targetId: account.id,
-        ip: request.ip,
-        userAgent: request.headers['user-agent'] ?? null,
-      })
-      const target = sanitizeRedirect(flow.redirectTo) ?? '/'
-      const frontendBase = (config.frontendUrl || config.publicUrl).replace(/\/$/, '')
-      return reply.redirect(`${frontendBase}${target}`)
-    },
-  )
+      handler: handleCallback,
+    })
+  }
 
   server.post(
     '/auth/:realm/logout',

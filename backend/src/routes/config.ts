@@ -12,8 +12,12 @@ export function registerConfigRoutes(
   deps: { config: AppConfig; providers: AuthProviders },
 ): void {
   app.get('/api/config', async () => {
-    const providersFor = (realm: 'csca' | 'dsc'): { id: number; issuer: string }[] =>
-      deps.providers.list(realm).map((record) => ({ id: record.id, issuer: record.config.issuer }))
+    const providersFor = (realm: 'csca' | 'dsc'): { id: number; alias: string; issuer: string }[] =>
+      deps.providers.list(realm).map((record) => ({
+        id: record.id,
+        alias: deps.providers.aliasOf(record.id),
+        issuer: record.config.issuer,
+      }))
     return {
       roles: deps.config.roles,
       countryAlpha2: deps.config.countryAlpha2,

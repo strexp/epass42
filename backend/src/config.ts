@@ -24,6 +24,14 @@ export const oauthProviderSchema = z.object({
   issuer: z.string().url(),
   clientId: z.string().min(1),
   clientSecret: z.string().optional(),
+  /**
+   * Short, URL-safe login-method alias used in the callback path and shown in
+   * the login chooser.  Defaults to a slug of the issuer host.
+   */
+  alias: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]+$/, 'alias may only contain letters, digits, - and _')
+    .optional(),
   scopes: z.array(z.string()).default(['openid', 'profile', 'email']),
   /** Maps claim paths, e.g. `{ asn: 'dn42.asn' }`. */
   claimMap: z.record(z.string(), z.string()).default({}),
