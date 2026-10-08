@@ -6,6 +6,10 @@ build/
 dist/
 coverage/
 *.tsbuildinfo
+.nuxt/
+.output/
+.nitro/
+.cache/
 
 # Databases
 *.db

@@ -13,7 +13,7 @@ pkd42/
 │   └── shared/    zod schemas, types, error codes and constants (OIDs, country codes)
 ├── scripts/       gen-csca, verify (M2)
 ├── backend/       Fastify + SQLite/Drizzle (M3–M4)
-├── frontend/      Nuxt 4 + Naive UI (M11, planned)
+├── frontend/      Nuxt 4 + Naive UI (M11)
 ├── deploy/        docker-compose, OpenLDAP schema (planned)
 └── TODO.md        milestone/task plan
 ```
@@ -42,6 +42,16 @@ Configuration is read from environment variables overlaid on an optional
 `config.toml` (see [`backend/config.example.toml`](backend/config.example.toml)).
 Migrations run automatically at startup (`RUN_MIGRATIONS`) and live in
 `backend/drizzle`.
+
+### Run the frontend (M11)
+
+```bash
+pnpm --filter @pkd42/frontend dev      # http://localhost:3000 -> proxies to the API
+pnpm --filter @pkd42/frontend build
+```
+
+The SPA renders client-side and proxies `/api`, `/auth`, `/csca`, `/dsc` and
+`/pkd` to the backend in development (see `frontend/nuxt.config.ts`).
 
 ### Generate a CSCA (M2)
 
@@ -91,5 +101,7 @@ pnpm --filter @pkd42/scripts exec tsx src/verify.ts \
 - **M8** delivery: masked preview, one-time reveal, delivery modes and history — done.
 - **M9** PKD role: REST, LDIF dump, read-only LDAP server and OpenLDAP schema — done.
 - **M10** CSCA Master List generation, publication and verification — done.
+- **M11** frontend (Nuxt 4 SPA + Naive UI): i18n (en), dark mode, API client,
+  applicant/admin flows, masked preview and one-time claim — done.
 
 See [`TODO.md`](TODO.md) for the full milestone plan.

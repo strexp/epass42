@@ -7,9 +7,12 @@ packages:
 allowBuilds:
   better-sqlite3: true
   esbuild: true
+  nuxt: true
 
 minimumReleaseAgeExclude:
   - nodemailer@10.0.16
+  - '@lucide/vue@1.53.0'
+  - vue-router@5.4.0
 
 # The workspace is checked explicitly with `pnpm check`; do not re-run a deps
 # status check before every script (it treats ignored optional builds as fatal).
