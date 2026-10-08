@@ -7,6 +7,7 @@
  */
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify'
 import cookie from '@fastify/cookie'
+import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
@@ -122,6 +123,21 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   app.setSerializerCompiler(serializerCompiler)
 
   await app.register(cookie)
+  const corsOrigins = new Set<string>()
+  for (const url of [config.frontendUrl, config.publicUrl]) {
+    if (!url) continue
+    try {
+      corsOrigins.add(new URL(url).origin)
+    } catch {
+      /* ignore malformed */
+    }
+  }
+  await app.register(cors, {
+    origin: corsOrigins.size > 0 ? [...corsOrigins] : true,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['content-type', 'x-csrf-token', 'x-request-id'],
+  })
   await app.register(rateLimit, {
     global: true,
     max: config.rateLimit.max,

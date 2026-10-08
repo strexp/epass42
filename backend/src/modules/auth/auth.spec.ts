@@ -182,7 +182,7 @@ describe('M4 authentication', () => {
       method: 'GET',
       url: `/auth/csca/callback?code=abc&state=${state}`,
     })
-    expect(callback.headers.location).toBe('/')
+    expect(callback.headers.location).toBe('http://localhost:3001/')
   })
 
   it('reports no session before login', async () => {

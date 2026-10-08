@@ -57,6 +57,11 @@ const configSchema = z.object({
   host: z.string().default('127.0.0.1'),
   port: z.number().int().min(1).max(65535).default(3000),
   publicUrl: z.string().url().default('http://localhost:3000'),
+  /**
+   * Browser-facing frontend base URL.  After login the callback redirects here.
+   * Empty means same origin as `publicUrl`.
+   */
+  frontendUrl: z.string().default(''),
   roles: z.array(roleSchema).default(['pkd', 'csca', 'dsc']),
   countryAlpha2: z.string().length(2).default(COUNTRY_ALPHA2),
   countryAlpha3: z.string().length(3).default(COUNTRY_ALPHA3),
@@ -176,6 +181,7 @@ function fromEnv(env: NodeJS.ProcessEnv): RawConfig {
   const port = envInt(env.PKD42_PORT)
   if (port !== undefined) raw.port = port
   if (env.PKD42_PUBLIC_URL) raw.publicUrl = env.PKD42_PUBLIC_URL
+  if (env.PKD42_FRONTEND_URL !== undefined) raw.frontendUrl = env.PKD42_FRONTEND_URL
   const roles = envList(env.PKD42_ROLES)
   if (roles) raw.roles = roles
   if (env.PKD42_COUNTRY_ALPHA2) raw.countryAlpha2 = env.PKD42_COUNTRY_ALPHA2
@@ -274,6 +280,10 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   const fileConfig = readToml(configPath, cwd)
   const merged = merge(fileConfig, fromEnv(env))
   const parsed = configSchema.parse(merged)
+  // In development the Nuxt dev server runs on :3001 by default.
+  if (parsed.frontendUrl === '' && parsed.env === 'development') {
+    parsed.frontendUrl = 'http://localhost:3001'
+  }
   if (parsed.env === 'production' && parsed.sessionSecret.startsWith('dev-insecure')) {
     throw new Error('PKD42_SESSION_SECRET must be set in production')
   }

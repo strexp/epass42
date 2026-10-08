@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'dsc' })
+
 import {
   NButton,
   NCard,
@@ -216,7 +218,7 @@ onMounted(async () => {
             <NInput v-model:value="person.dateRecorded" placeholder="CCYYMMDD" />
           </div>
           <NButton size="small" style="margin-top: 8px" @click="addPerson">{{
-            $t('common.submit')
+            $t('dsc.addPerson')
           }}</NButton>
         </NCollapseItem>
       </NCollapse>

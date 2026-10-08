@@ -205,4 +205,29 @@ describe('M5 CSCA role', () => {
     })
     expect(anon.statusCode).toBe(401)
   })
+
+  it('lets an AS administrator view and switch NIA DSC delegation', async () => {
+    const { app, cscaCookie } = await harness()
+    const before = await app.inject({
+      method: 'GET',
+      url: '/csca/settings/as',
+      headers: { cookie: cscaCookie },
+    })
+    expect(before.statusCode).toBe(200)
+    expect(before.json().useNiaDsc).toBe(false)
+
+    const enable = await app.inject({
+      method: 'PUT',
+      url: '/csca/settings/as',
+      headers: { cookie: cscaCookie },
+      payload: { useNiaDsc: true },
+    })
+    expect(enable.statusCode).toBe(200)
+    const after = await app.inject({
+      method: 'GET',
+      url: '/csca/settings/as',
+      headers: { cookie: cscaCookie },
+    })
+    expect(after.json().useNiaDsc).toBe(true)
+  })
 })

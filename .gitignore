@@ -25,6 +25,7 @@ backend/data/
 .env
 .env.*
 !.env.example
+config.toml
 secrets/
 *.pem
 *.key

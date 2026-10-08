@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { NButton, NCard, NDataTable, NTag, NText } from 'naive-ui'
+import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NTag, NText } from 'naive-ui'
+import { Check, FilePlus2, ListChecks, Search, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'
+
+definePageMeta({ layout: 'dsc' })
 
 interface RequestRow {
   id: number
@@ -13,7 +16,6 @@ interface RequestRow {
 
 const auth = useAuthStore()
 const api = useApi()
-const { t } = useI18n()
 const requests = ref<RequestRow[]>([])
 const delegation = ref<{ asn: number | null; useNiaDsc: boolean } | null>(null)
 
@@ -24,18 +26,15 @@ const columns = [
   {
     title: 'Status',
     key: 'status',
-    render: (row: RequestRow) => h(NTag, { size: 'small' }, () => row.status),
+    render: (row: RequestRow) =>
+      h(
+        NTag,
+        { size: 'small', type: row.status === 'approved' ? 'success' : 'default' },
+        () => row.status,
+      ),
   },
   { title: 'Delivery', key: 'deliveryMode' },
   { title: 'DGs', key: 'dataGroups', render: (row: RequestRow) => row.dataGroups.join(', ') },
-  {
-    title: '',
-    key: 'actions',
-    render: (row: RequestRow) =>
-      h(NButton, { size: 'tiny', onClick: () => navigateTo(`/dsc/status?id=${row.id}`) }, () =>
-        t('dsc.query'),
-      ),
-  },
 ]
 
 async function setDelegation(value: boolean): Promise<void> {
@@ -46,7 +45,7 @@ onMounted(async () => {
   if (!auth.realms.dsc.loaded) await auth.fetchMe('dsc')
   if (!signedIn.value) return
   try {
-    requests.value = (await api<{ items: RequestRow[] }>('/dsc/requests')).items
+    requests.value = (await api<{ items: RequestRow[] }>('/dsc/requests')).items ?? []
   } catch {
     requests.value = []
   }
@@ -60,37 +59,71 @@ onMounted(async () => {
 
 <template>
   <div class="pkd42-page">
-    <h1>{{ $t('nav.dsc') }}</h1>
-    <NText depth="2">{{ $t('home.dscCard') }}</NText>
-
-    <div class="pkd42-actions" style="margin: 16px 0">
-      <NuxtLink to="/dsc/apply"
-        ><NButton type="primary">{{ $t('dsc.applyTitle') }}</NButton></NuxtLink
-      >
-      <NuxtLink to="/dsc/status"
-        ><NButton>{{ $t('dsc.statusTitle') }}</NButton></NuxtLink
-      >
-      <NuxtLink to="/dsc/admin"
-        ><NButton>{{ $t('dsc.reviewQueue') }}</NButton></NuxtLink
-      >
-    </div>
-
-    <NCard v-if="signedIn" :title="$t('dsc.asDelegation')" size="small" style="margin-bottom: 16px">
-      <NText depth="3">{{ $t('dsc.asDelegationHint') }}</NText>
-      <div class="pkd42-actions" style="margin-top: 8px">
-        <NButton
-          size="small"
-          :type="delegation?.useNiaDsc ? 'success' : 'default'"
-          @click="setDelegation(true)"
-        >
-          {{ $t('dsc.useNiaDsc') }}
-        </NButton>
-        <NButton size="small" @click="setDelegation(false)">{{ $t('common.cancel') }}</NButton>
+    <NSpace vertical size="large">
+      <div>
+        <h1 style="margin: 0">{{ $t('nav.dsc') }}</h1>
+        <NText depth="2">{{ $t('home.dscCard') }}</NText>
       </div>
-    </NCard>
 
-    <NCard v-if="signedIn" :title="$t('dsc.statusTitle')" size="small">
-      <NDataTable :columns="columns" :data="requests" size="small" />
-    </NCard>
+      <NSpace>
+        <NuxtLink to="/dsc/apply">
+          <NButton type="primary">
+            <template #icon
+              ><NIcon><FilePlus2 /></NIcon
+            ></template>
+            {{ $t('dsc.applyTitle') }}
+          </NButton>
+        </NuxtLink>
+        <NuxtLink to="/dsc/status">
+          <NButton>
+            <template #icon
+              ><NIcon><Search /></NIcon
+            ></template>
+            {{ $t('dsc.statusTitle') }}
+          </NButton>
+        </NuxtLink>
+        <NuxtLink to="/dsc/admin">
+          <NButton>
+            <template #icon
+              ><NIcon><ListChecks /></NIcon
+            ></template>
+            {{ $t('dsc.reviewQueue') }}
+          </NButton>
+        </NuxtLink>
+      </NSpace>
+
+      <NCard v-if="signedIn" :title="$t('dsc.asDelegation')" size="small">
+        <NText depth="3">{{ $t('dsc.asDelegationHint') }}</NText>
+        <template #action>
+          <NSpace>
+            <NButton
+              size="small"
+              :type="delegation?.useNiaDsc ? 'primary' : 'default'"
+              @click="setDelegation(true)"
+            >
+              <template #icon
+                ><NIcon><Check /></NIcon
+              ></template>
+              {{ $t('dsc.useNiaDsc') }}
+            </NButton>
+            <NButton
+              size="small"
+              :type="delegation && !delegation.useNiaDsc ? 'primary' : 'default'"
+              @click="setDelegation(false)"
+            >
+              <template #icon
+                ><NIcon><X /></NIcon
+              ></template>
+              {{ $t('common.cancel') }}
+            </NButton>
+          </NSpace>
+        </template>
+      </NCard>
+
+      <NCard v-if="signedIn" :title="$t('dsc.statusTitle')" size="small">
+        <NDataTable v-if="requests.length" :columns="columns" :data="requests" size="small" />
+        <NEmpty v-else :description="$t('common.empty')" />
+      </NCard>
+    </NSpace>
   </div>
 </template>

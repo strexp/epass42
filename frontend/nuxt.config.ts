@@ -2,11 +2,20 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 // pkd42 frontend (Nuxt 4 + Naive UI).  English-only i18n; all copy goes through
 // i18n keys (never hard-coded).
+//
+// The API runs on a separate origin in development (backend :3000, frontend
+// :3001) and is called cross-origin with credentials; CORS is configured on the
+// backend from FRONTEND_URL.  In production set NUXT_PUBLIC_API_BASE (empty for
+// same-origin).
+const apiBase =
+  process.env.NUXT_PUBLIC_API_BASE ??
+  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000')
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-01-01',
   devtools: { enabled: false },
-  // Client-rendered SPA: the admin UI does not need SSR and this avoids
-  // Naive UI css-render SSR plumbing.
+  // Client-rendered SPA (no SSR plumbing for Naive UI, and direct navigation to
+  // any route, e.g. /csca, is served by the SPA shell).
   ssr: false,
 
   modules: ['@pinia/nuxt', '@nuxtjs/i18n', '@nuxtjs/color-mode'],
@@ -14,10 +23,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    public: {
-      // Empty means same-origin; set NUXT_PUBLIC_API_BASE for a split deploy.
-      apiBase: '',
-    },
+    public: { apiBase },
   },
 
   i18n: {
@@ -37,20 +43,6 @@ export default defineNuxtConfig({
   build: {
     transpile: ['naive-ui', 'vueuc', '@css-render/vue3-ssr', '@juggle/resize-observer'],
   },
-
-  nitro: {
-    devProxy: {
-      '/api': { target: 'http://127.0.0.1:3000/api', changeOrigin: true },
-      '/auth': { target: 'http://127.0.0.1:3000/auth', changeOrigin: true },
-      '/csca': { target: 'http://127.0.0.1:3000/csca', changeOrigin: true },
-      '/dsc': { target: 'http://127.0.0.1:3000/dsc', changeOrigin: true },
-      '/pkd': { target: 'http://127.0.0.1:3000/pkd', changeOrigin: true },
-    },
-  },
-
-  // The backend defaults to 127.0.0.1:3000; run the dev UI on 3001 so the two
-  // never contend for the port.
-  devServer: { port: 3001 },
 
   app: {
     head: {

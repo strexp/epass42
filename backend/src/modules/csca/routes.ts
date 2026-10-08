@@ -18,9 +18,15 @@ import { z } from 'zod'
 
 import { writeAudit } from '../../audit/audit'
 import { parseCertificatePem, sha256, derToPem } from '@pkd42/pki'
-import { dscApplication, dscCert } from '../../db/schema'
+import { asConfig, dscApplication, dscCert } from '../../db/schema'
 import { nowIso } from '../../util/time'
-import { requireAdmin, requireSession, type AuthContext } from '../auth/middleware'
+import {
+  requireAdmin,
+  requireSession,
+  resolvePrincipal,
+  type AuthContext,
+} from '../auth/middleware'
+import { recordAsAdmin, removeAsAdmin } from '../auth/authorization'
 import { CscaService } from './service'
 
 /** Dependencies for the CSCA routes. */
@@ -320,6 +326,61 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
         ip: request.ip,
       })
       return reply.code(201).send({ id: row.id, crlNumber: row.crlNumber })
+    },
+  )
+
+  // AS-level DSC delegation (M4/T4.11), configurable from the CSCA realm where
+  // the AS administrator applies.  Enabling it registers the caller as a
+  // delegated reviewer in the DSC realm.
+  server.get('/csca/settings/as', async (request, reply) => {
+    const principal = resolvePrincipal(deps, request, 'csca')
+    if (!principal) return reply.code(401).send({ error: 'unauthorized' })
+    if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
+    const row = db.select().from(asConfig).where(eq(asConfig.asn, principal.account.asn)).get()
+    return {
+      asn: principal.account.asn,
+      activeMnt: principal.account.activeMnt,
+      useNiaDsc: row?.useNiaDsc ?? false,
+    }
+  })
+
+  server.put(
+    '/csca/settings/as',
+    { schema: { body: z.object({ useNiaDsc: z.boolean() }) } },
+    async (request, reply) => {
+      const principal = resolvePrincipal(deps, request, 'csca')
+      if (!principal) return reply.code(401).send({ error: 'unauthorized' })
+      if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
+      const asn = principal.account.asn
+      db.insert(asConfig)
+        .values({
+          asn,
+          useNiaDsc: request.body.useNiaDsc,
+          updatedBy: principal.account.id,
+          updatedAt: nowIso(),
+        })
+        .onConflictDoUpdate({
+          target: asConfig.asn,
+          set: {
+            useNiaDsc: request.body.useNiaDsc,
+            updatedBy: principal.account.id,
+            updatedAt: nowIso(),
+          },
+        })
+        .run()
+      if (request.body.useNiaDsc && principal.account.activeMnt) {
+        recordAsAdmin(db, principal.account.activeMnt, asn)
+      } else if (principal.account.activeMnt) {
+        removeAsAdmin(db, principal.account.activeMnt)
+      }
+      writeAudit(db, {
+        actorAccountId: principal.account.id,
+        realm: 'csca',
+        action: 'csca.settings.as',
+        ip: request.ip,
+        detail: { asn, useNiaDsc: request.body.useNiaDsc },
+      })
+      return { asn, useNiaDsc: request.body.useNiaDsc }
     },
   )
 }

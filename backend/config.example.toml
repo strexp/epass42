@@ -7,6 +7,9 @@ env = "development"
 host = "127.0.0.1"
 port = 3000
 publicUrl = "http://localhost:3000"
+# Browser-facing frontend base URL (login redirect + CORS).  Leave empty for a
+# same-origin deployment.
+frontendUrl = "http://localhost:3001"
 
 # Enabled roles: any subset of ["pkd", "csca", "dsc"].
 roles = ["pkd", "csca", "dsc"]

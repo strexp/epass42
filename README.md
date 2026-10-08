@@ -50,9 +50,10 @@ pnpm --filter @pkd42/frontend dev      # http://localhost:3001 (proxies to the A
 pnpm --filter @pkd42/frontend build
 ```
 
-The SPA renders client-side and, in development, proxies `/api`, `/auth`,
-`/csca`, `/dsc` and `/pkd` to the backend on `127.0.0.1:3000` (see
-`frontend/nuxt.config.ts`). To run everything at once:
+The SPA renders client-side and calls the backend cross-origin
+(`NUXT_PUBLIC_API_BASE`, default `http://localhost:3000` in development). The
+backend allows the frontend origin via `FRONTEND_URL` and redirects the OAuth
+callback back to it. To run everything at once:
 
 ```bash
 pnpm dev    # backend on :3000, frontend on :3001

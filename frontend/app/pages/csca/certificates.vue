@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'csca' })
+
 import { NButton, NCard, NDataTable, NTag, useMessage } from 'naive-ui'
 import { computed, h, onMounted, ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'

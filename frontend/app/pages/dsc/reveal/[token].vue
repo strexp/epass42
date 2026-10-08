@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'dsc' })
+
 import { NAlert, NCard, NDescriptions, NDescriptionsItem, NTag, useMessage } from 'naive-ui'
 import { onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'

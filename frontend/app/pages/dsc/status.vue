@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'dsc' })
+
 import {
   NAlert,
   NButton,

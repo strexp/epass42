@@ -60,8 +60,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** Redirects the browser to the realm login (full page navigation). */
   function login(realm: Realm, redirectTo?: string): void {
+    const config = useRuntimeConfig()
+    const base = (config.public.apiBase as string) || ''
     const query = redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : ''
-    window.location.href = `/auth/${realm}/login${query}`
+    window.location.href = `${base}/auth/${realm}/login${query}`
   }
 
   return { realms, fetchMe, logout, login }

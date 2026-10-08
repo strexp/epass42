@@ -4,14 +4,19 @@ import {
   NCard,
   NForm,
   NFormItem,
+  NIcon,
   NInput,
   NInputNumber,
   NSelect,
+  NSpace,
   NText,
   useMessage,
 } from 'naive-ui'
-import { reactive, ref } from 'vue'
+import { Save } from '@lucide/vue'
+import { computed, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
+
+definePageMeta({ layout: 'csca' })
 
 const api = useApi()
 const { t } = useI18n()
@@ -24,15 +29,27 @@ const form = reactive({
   publicKeyPem: '',
   documentType: 'P',
   validityDays: 3650,
-  issuancePolicy: '',
+  issuancePolicy: 'default',
   applicationUrl: '',
   notes: '',
 })
 const submitting = ref(false)
 
-const keyModeOptions = [
+const keyModeOptions = computed(() => [
   { label: t('csca.keyModeNia'), value: 'nia_generated' },
   { label: t('csca.keyModeUpload'), value: 'user_uploaded' },
+])
+
+const policyOptions = computed(() => [
+  { label: t('csca.policyDefault'), value: 'default' },
+  { label: t('csca.policyNia'), value: 'nia-managed' },
+  { label: t('csca.policyAsManaged'), value: 'as-managed' },
+  { label: t('csca.policyStrict'), value: 'strict' },
+])
+
+const documentTypeOptions = [
+  { label: 'P — Passport (TD3)', value: 'P' },
+  { label: 'ID — Identity card', value: 'ID' },
 ]
 
 async function submit(): Promise<void> {
@@ -66,7 +83,7 @@ async function submit(): Promise<void> {
   <div class="pkd42-page">
     <NCard :title="$t('csca.applyTitle')">
       <NText depth="3">{{ $t('auth.signedInTo', { realm: 'CSCA' }) }}</NText>
-      <NForm label-placement="top">
+      <NForm label-placement="top" style="margin-top: 12px">
         <NFormItem :label="$t('csca.keyMode')">
           <NSelect v-model:value="form.keyMode" :options="keyModeOptions" />
         </NFormItem>
@@ -80,13 +97,13 @@ async function submit(): Promise<void> {
           <NInput v-model:value="form.publicKeyPem" type="textarea" :rows="4" />
         </NFormItem>
         <NFormItem :label="$t('csca.documentType')">
-          <NInput v-model:value="form.documentType" maxlength="2" />
+          <NSelect v-model:value="form.documentType" :options="documentTypeOptions" />
         </NFormItem>
         <NFormItem :label="$t('csca.validityDays')">
           <NInputNumber v-model:value="form.validityDays" :min="1" :max="7300" />
         </NFormItem>
         <NFormItem :label="$t('csca.issuancePolicy')">
-          <NInput v-model:value="form.issuancePolicy" />
+          <NSelect v-model:value="form.issuancePolicy" :options="policyOptions" />
         </NFormItem>
         <NFormItem :label="$t('csca.applicationUrl')">
           <NInput v-model:value="form.applicationUrl" placeholder="https://" />
@@ -95,10 +112,18 @@ async function submit(): Promise<void> {
           <NInput v-model:value="form.notes" type="textarea" />
         </NFormItem>
       </NForm>
-      <template #footer>
-        <NButton type="primary" :loading="submitting" @click="submit">{{
-          $t('common.submit')
-        }}</NButton>
+      <template #action>
+        <NSpace>
+          <NButton type="primary" :loading="submitting" @click="submit">
+            <template #icon
+              ><NIcon><Save /></NIcon
+            ></template>
+            {{ $t('common.submit') }}
+          </NButton>
+          <NuxtLink to="/csca">
+            <NButton quaternary>{{ $t('common.cancel') }}</NButton>
+          </NuxtLink>
+        </NSpace>
       </template>
     </NCard>
   </div>

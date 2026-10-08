@@ -136,7 +136,9 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
         ip: request.ip,
         userAgent: request.headers['user-agent'] ?? null,
       })
-      return reply.redirect(sanitizeRedirect(flow.redirectTo) ?? '/')
+      const target = sanitizeRedirect(flow.redirectTo) ?? '/'
+      const frontendBase = (config.frontendUrl || config.publicUrl).replace(/\/$/, '')
+      return reply.redirect(`${frontendBase}${target}`)
     },
   )
 
