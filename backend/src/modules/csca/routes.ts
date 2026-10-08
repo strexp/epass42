@@ -64,6 +64,7 @@ function certMetadata(row: typeof dscCert.$inferSelect) {
     notBefore: row.notBefore,
     notAfter: row.notAfter,
     fingerprintSha256: fingerprint,
+    hasPrivateKey: row.keyRef !== null,
     certPem: row.certPem,
   }
 }
@@ -278,6 +279,36 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
       if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
       const der = new Uint8Array(parseCertificatePem(row.certPem).rawData)
       return reply.type('application/pkix-cert').send(Buffer.from(der))
+    },
+  )
+
+  // The private key of a system-generated DSC, for the applicant's own AS or a
+  // CSCA administrator.  Uploaded (user_uploaded) DSCs have no stored key.
+  server.get(
+    '/csca/certificates/:id/private-key',
+    {
+      schema: { params: z.object({ id: z.coerce.number().int().positive() }) },
+      preHandler: requireSession(deps, 'csca'),
+    },
+    async (request, reply) => {
+      const principal = request.principal!
+      const row = db.select().from(dscCert).where(eq(dscCert.id, request.params.id)).get()
+      if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
+      const own = row.asn !== null && row.asn === principal.account.asn
+      if (!principal.isAdmin && !own) return reply.code(403).send({ error: 'forbidden' })
+      if (!row.keyRef) return reply.code(404).send({ error: 'no_private_key' })
+      const pem = service.exportDscPrivateKey(row)
+      writeAudit(db, {
+        actorAccountId: principal.account.id,
+        realm: 'csca',
+        action: 'dsc.certificate.key',
+        targetType: 'dsc_cert',
+        targetId: row.id,
+        ip: request.ip,
+      })
+      reply.header('cache-control', 'no-store')
+      reply.header('content-disposition', `attachment; filename="dsc-${row.id}.key"`)
+      return reply.type('application/x-pem-file').send(pem)
     },
   )
 

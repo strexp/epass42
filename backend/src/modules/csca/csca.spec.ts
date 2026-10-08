@@ -1,9 +1,15 @@
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify'
 import { describe, expect, it } from 'vitest'
 
-import { parseCertificatePem, verifyDscAgainstCsca } from '@pkd42/pki'
+import { derToPem, generateRsaKeyPair, parseCertificatePem, verifyDscAgainstCsca } from '@pkd42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { currentCscaKey } from './service'
+
+const THIRD_USER = {
+  sub: 'third-user',
+  name: 'Third User',
+  dn42: { asn: 4242420002, active_mnt: 'THIRD-MNT', mnt_by: ['THIRD-MNT'] },
+}
 
 const CSCA_ADMIN = {
   sub: 'csca-admin',
@@ -18,6 +24,7 @@ const OTHER_USER = {
 
 interface Harness {
   app: FastifyInstance
+  oidc: FakeOidc
   cscaCookie: string
   userCookie: string
   cscaPem: string
@@ -44,11 +51,30 @@ async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promis
   const cscaCookie = await login('csca')
   const userCookie = await login('dsc')
   const cscaPem = currentCscaKey(built.dbHandle.db)!.certPem
-  return { app, cscaCookie, userCookie, cscaPem }
+  return { app, oidc, cscaCookie, userCookie, cscaPem }
 }
 
 function json(res: LightMyRequestResponse): Record<string, unknown> {
   return res.json() as Record<string, unknown>
+}
+
+/** Logs in as a specific identity (switching the fake provider's response). */
+async function loginAs(
+  app: FastifyInstance,
+  oidc: FakeOidc,
+  realm: 'csca' | 'dsc',
+  clientId: string,
+  claims: Record<string, unknown>,
+): Promise<string> {
+  oidc.set(clientId, { subject: String(claims.sub), claims })
+  const start = await app.inject({ method: 'GET', url: `/auth/${realm}/login` })
+  const state = new URL(start.headers.location as string).searchParams.get('state')
+  const callback = await app.inject({
+    method: 'GET',
+    url: `/auth/${realm}/callback?code=x&state=${state}`,
+  })
+  const cookie = callback.cookies.find((entry) => entry.name === `pkd42_${realm}_sid`)!
+  return `${cookie.name}=${cookie.value}`
 }
 
 describe('M5 CSCA role', () => {
@@ -288,5 +314,81 @@ describe('M5 CSCA role', () => {
     })
     expect(own.statusCode).toBe(200)
     expect(own.json().useNiaDsc).toBe(false)
+  })
+
+  it('exposes a system-generated DSC private key to its AS owner and NIA admins', async () => {
+    const { app, oidc } = await harness()
+
+    const ownerCookie = await loginAs(app, oidc, 'csca', 'csca-client', OTHER_USER)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: ownerCookie },
+      payload: { keyMode: 'nia_generated', subjectCn: 'Owned DSC', documentType: 'P' },
+    })
+    const adminCookie = await loginAs(app, oidc, 'csca', 'csca-client', {
+      sub: 'csca-admin',
+      name: 'CSCA Admin',
+      dn42: { asn: 4242422189, active_mnt: 'EXAMPLE-CSCA-MNT', mnt_by: ['EXAMPLE-CSCA-MNT'] },
+    })
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${submit.json().id}/approve`,
+      headers: { cookie: adminCookie },
+    })
+    const certId = approve.json().id as number
+
+    const key = await app.inject({
+      method: 'GET',
+      url: `/csca/certificates/${certId}/private-key`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(key.statusCode).toBe(200)
+    expect(key.body).toContain('BEGIN PRIVATE KEY')
+    expect(key.headers['cache-control']).toBe('no-store')
+
+    const adminKey = await app.inject({
+      method: 'GET',
+      url: `/csca/certificates/${certId}/private-key`,
+      headers: { cookie: adminCookie },
+    })
+    expect(adminKey.statusCode).toBe(200)
+
+    const foreignCookie = await loginAs(app, oidc, 'csca', 'csca-client', THIRD_USER)
+    const forbidden = await app.inject({
+      method: 'GET',
+      url: `/csca/certificates/${certId}/private-key`,
+      headers: { cookie: foreignCookie },
+    })
+    expect(forbidden.statusCode).toBe(403)
+  })
+
+  it('has no private key for an uploaded (user_uploaded) DSC', async () => {
+    const { app, cscaCookie } = await harness()
+    const keyPair = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'user_uploaded',
+        publicKeyPem: derToPem(keyPair.spki, 'PUBLIC KEY'),
+        subjectCn: 'Uploaded DSC',
+        documentType: 'P',
+      },
+    })
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${submit.json().id}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const response = await app.inject({
+      method: 'GET',
+      url: `/csca/certificates/${approve.json().id}/private-key`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(response.statusCode).toBe(404)
+    expect(response.json().error).toBe('no_private_key')
   })
 })

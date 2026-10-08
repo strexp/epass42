@@ -14,15 +14,29 @@ interface Certificate {
   source: string
   asn: number | null
   fingerprintSha256: string
+  hasPrivateKey: boolean
 }
 
 const api = useApi()
 const auth = useAuthStore()
 const { t } = useI18n()
 const message = useMessage()
+const config = useRuntimeConfig()
 const certificates = ref<Certificate[]>([])
 
+const apiBase = (config.public.apiBase as string) || ''
 const isCscaAdmin = computed(() => auth.realms.csca.me?.isAdmin ?? false)
+const myAsn = computed(() => auth.realms.csca.me?.account.asn ?? null)
+
+/** Whether the current user may download this certificate's private key. */
+function canDownloadKey(row: Certificate): boolean {
+  if (!row.hasPrivateKey || auth.realms.csca.me === null) return false
+  return isCscaAdmin.value || (row.asn !== null && row.asn === myAsn.value)
+}
+
+function keyUrl(id: number): string {
+  return `${apiBase}/csca/certificates/${id}/private-key`
+}
 
 async function load(): Promise<void> {
   const result = await api<{ items: Certificate[] }>('/csca/certificates?includeRevoked=true')
@@ -59,6 +73,11 @@ const columns = computed(() => [
       h('div', { class: 'pkd42-actions' }, [
         h('a', { href: `/csca/certificates/${row.id}.pem` }, () => 'PEM'),
         h('a', { href: `/csca/certificates/${row.id}.der` }, () => 'DER'),
+        canDownloadKey(row)
+          ? h('a', { href: keyUrl(row.id), download: `dsc-${row.id}.key` }, () =>
+              t('csca.privateKey'),
+            )
+          : null,
         isCscaAdmin.value && row.status === 'active'
           ? h(NButton, { size: 'tiny', onClick: () => revoke(row.id) }, () => t('common.revoke'))
           : null,

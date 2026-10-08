@@ -9,13 +9,16 @@
 import * as pkijs from 'pkijs'
 import { and, desc, eq } from 'drizzle-orm'
 
+import { AppError } from '@pkd42/shared'
+
 import {
-  buildMasterList,
   createCrl,
   createCscaLink,
   createCscaRoot,
   createDsc,
   createMasterListSigner,
+  buildMasterList,
+  derToPem,
   generateRsaKeyPair,
   importRsaKeyPair,
   parseCertificatePem,
@@ -251,6 +254,13 @@ export class CscaService {
     if (!row.keyRef) throw new Error('DSC has no stored private key')
     const pkcs8 = openPrivateKey(row.keyRef, this.ctx.keks)
     return importRsaKeyPair(pkcs8, pss)
+  }
+
+  /** Exports the sealed DSC private key as an unencrypted PKCS#8 PEM. */
+  exportDscPrivateKey(row: DscCertRow): string {
+    if (!row.keyRef) throw new AppError('certificate_not_found', 'no stored private key', 404)
+    const pkcs8 = openPrivateKey(row.keyRef, this.ctx.keks)
+    return derToPem(pkcs8, 'PRIVATE KEY')
   }
 
   /** Approves an application and issues the DSC. */

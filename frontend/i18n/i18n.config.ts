@@ -84,6 +84,7 @@ export default defineI18nConfig(() => ({
         revoke: 'Revoke',
         rollover: 'Roll over CSCA key',
         crl: 'CRL',
+        privateKey: 'Private key',
         asDelegationTitle: 'AS DSC delegation',
         asDelegationHint:
           'Choose whether this AS uses the NIA DSC (delegated, reviewable here) or its own certificate.',
