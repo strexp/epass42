@@ -48,13 +48,10 @@ async function logout(): Promise<void> {
           <NText strong class="realm-session-label">{{ label }}</NText>
           <NTag v-if="me" size="small" type="success">
             {{ $t('auth.signedInAs') }}
-            {{ me.account.name ?? me.account.activeMnt ?? me.account.id }}
+            {{ me.account.name ?? me.account.id }}
           </NTag>
           <NText v-else depth="3">{{ $t('auth.signInTo', { realm: label }) }}</NText>
           <NTag v-if="me?.account.activeMnt" size="small">{{ me.account.activeMnt }}</NTag>
-          <NTag v-if="me?.account.activeMnt" size="small" :bordered="false">
-            {{ me.account.activeMnt }}
-          </NTag>
           <NTag v-if="me?.isAdmin" size="small" type="info">{{ $t('auth.admin') }}</NTag>
         </div>
 
