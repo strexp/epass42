@@ -27,6 +27,7 @@ import { openDatabase, type DbHandle } from './db/client'
 import { runMigrations } from './db/migrate'
 import { resolveKeks } from './crypto/keyring'
 import { registerConfigRoutes } from './modules/system/config'
+import { registerAuditRoutes } from './modules/system/audit'
 import { registerHealthRoutes } from './modules/system/health'
 import {
   seedProviders,
@@ -211,6 +212,7 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
 
   registerHealthRoutes(app, dbHandle)
   registerConfigRoutes(app, { config, providers })
+  registerAuditRoutes(app, { config, db: dbHandle.db, sessions })
   registerAuthRoutes(app, { config, db: dbHandle.db, sessions, providers })
   if (realmEnabled(config, 'csca')) {
     registerCscaRoutes(app, { config, db: dbHandle.db, sessions, service: csca })

@@ -38,7 +38,7 @@ export class DscService {
     this.settings = new DscSettingsService(db, config)
     this.requests = new DscRequestService(db, this.settings)
     this.artifacts = new DscArtifactService(db, config, csca, this.settings, this.requests)
-    this.delivery = new DscDeliveryService(db, this.requests)
+    this.delivery = new DscDeliveryService(db, this.requests, this.artifacts)
   }
 
   /* Settings ----------------------------------------------------------- */
@@ -99,6 +99,11 @@ export class DscService {
     overrides: Partial<IssuingDefaults> = {},
   ): Promise<PersoBuildResult & { artifactId: number }> {
     return this.artifacts.buildArtifact(row, overrides)
+  }
+
+  /** Reads (and decrypts) a request's stored perso artifact (sealed at rest). */
+  readArtifact(row: SignRequestRow): string {
+    return this.artifacts.readArtifact(row)
   }
 
   approve(

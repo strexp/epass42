@@ -1,7 +1,9 @@
+import { existsSync, readFileSync } from 'node:fs'
 import type { FastifyInstance } from 'fastify'
+import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
-import { mailToken, revealToken, signRequest } from '../../db/schema'
+import { artifact, mailToken, revealToken, signRequest } from '../../db/schema'
 import type { Db } from '../../db/client'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import type { DscService } from './service'
@@ -120,6 +122,38 @@ describe('M8 delivery', () => {
     const second = await app.inject({ method: 'POST', url: `/dsc/requests/${reference}/reveal` })
     expect(second.statusCode).toBe(410)
     expect(second.json().error).toBe('request_already_consumed')
+  })
+
+  it('seals the perso at rest and deletes it after the one-time reveal', async () => {
+    const { app, oidc, db, dsc } = await harness()
+    const admin = await login(app, oidc, NIA_DSC_ADMIN)
+    const reference = await submit(app, 'X7654321')
+    const id = dsc.getByReference(reference)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+
+    // The stored artifact is sealed and contains no plaintext perso.
+    const art = db
+      .select()
+      .from(artifact)
+      .where(eq(artifact.id, dsc.getById(id)!.resultArtifactId!))
+      .get()!
+    expect(art.enc).toBe(true)
+    const onDisk = readFileSync(art.path, 'utf8')
+    expect(onDisk.startsWith('enc:v1:')).toBe(true)
+    expect(onDisk).not.toContain('@dg')
+
+    // The one-time reveal decrypts, then removes the file and database row.
+    const reveal = await app.inject({ method: 'POST', url: `/dsc/requests/${reference}/reveal` })
+    expect(reveal.statusCode).toBe(200)
+    expect(reveal.body).toContain('@dg 1')
+    expect(db.select().from(artifact).where(eq(artifact.id, art.id)).get()).toBeUndefined()
+    expect(dsc.getById(id)!.resultArtifactId).toBeNull()
+    expect(existsSync(art.path)).toBe(false)
   })
 
   it('restricts delivery mode B to reviewers', async () => {

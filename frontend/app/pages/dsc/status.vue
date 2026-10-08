@@ -92,6 +92,14 @@ onMounted(() => {
             {{ (metadata.dataGroups as number[])?.join(', ') }}
           </NDescriptionsItem>
         </NDescriptions>
+        <NAlert
+          v-if="metadata.status === 'approved'"
+          type="warning"
+          :title="$t('dsc.revealWarningTitle')"
+          style="margin-top: 12px"
+        >
+          {{ $t('dsc.revealWarning') }}
+        </NAlert>
         <div class="pkd42-actions" style="margin-top: 12px">
           <NButton size="small" @click="loadPreview">{{ $t('dsc.previewTitle') }}</NButton>
           <NButton
@@ -126,7 +134,7 @@ onMounted(() => {
       </NCard>
 
       <template v-if="claimed">
-        <NAlert type="warning" style="margin-top: 12px" :title="$t('dsc.revealWarning')" />
+        <NAlert type="warning" style="margin-top: 12px" :title="$t('dsc.claimedWarning')" />
         <pre class="pkd42-mono" data-testid="claimed">{{ claimedText }}</pre>
       </template>
     </NCard>

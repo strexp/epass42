@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
-import { Check, Download, RefreshCw, Settings, X } from '@lucide/vue'
+import { Check, Download, RefreshCw, ScrollText, Settings, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -12,6 +12,7 @@ interface RequestRow {
   id: number
   status: string
   mnt: string | null
+  ip: string | null
   dscSelection: string
   deliveryMode: string
 }
@@ -72,6 +73,7 @@ async function adminReveal(id: number): Promise<void> {
 const columns = [
   { title: '#', key: 'id' },
   { title: 'MNT', key: 'mnt' },
+  { title: 'IP', key: 'ip' },
   { title: 'DSC', key: 'dscSelection' },
   {
     title: 'Status',
@@ -108,6 +110,7 @@ const columns = [
 const queueColumns = [
   { title: '#', key: 'id' },
   { title: 'MNT', key: 'mnt' },
+  { title: 'IP', key: 'ip' },
   {
     title: '',
     key: 'actions',
@@ -146,6 +149,14 @@ onMounted(async () => {
                   ><NIcon><Settings /></NIcon
                 ></template>
                 {{ $t('dsc.settingsTitle') }}
+              </NButton>
+            </NuxtLink>
+            <NuxtLink v-if="isAdmin" to="/dsc/audit">
+              <NButton size="small">
+                <template #icon
+                  ><NIcon><ScrollText /></NIcon
+                ></template>
+                {{ $t('audit.title') }}
               </NButton>
             </NuxtLink>
             <NButton size="small" @click="load">

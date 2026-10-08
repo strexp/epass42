@@ -132,8 +132,10 @@ export default defineI18nConfig(() => ({
         referencePlaceholder: 'Enter your reference',
         query: 'Look up',
         reveal: 'Claim (one-time)',
+        revealWarningTitle: 'One-time, irreversible claim',
         revealWarning:
-          'The data can be claimed only once. Save or produce it immediately after claiming.',
+          'The file contains the Document Signer data and the AA/CA private keys. It can be claimed only once: it is deleted from the server immediately after you claim it. Save it securely before leaving this page.',
+        claimedWarning: 'This file has been claimed and deleted; it cannot be retrieved again.',
         claimed: 'This request has already been claimed.',
         reviewQueue: 'Review queue',
         adminTitle: 'Signing requests',
@@ -191,6 +193,15 @@ export default defineI18nConfig(() => ({
         ldifHint: 'Import this into OpenLDAP with slapadd.',
         objectId: 'Object',
         crlNumber: 'CRL number',
+      },
+      audit: {
+        title: 'Audit log',
+        time: 'Time',
+        actor: 'Actor',
+        action: 'Action',
+        target: 'Target',
+        ip: 'IP',
+        detail: 'Detail',
       },
       mask: {
         hidden: 'hidden',

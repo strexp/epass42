@@ -101,6 +101,16 @@ export class CscaKeyService {
     if (current) await this.loadKeyPair(current)
   }
 
+  /** Seals arbitrary bytes at rest with the envelope KEK. */
+  seal(bytes: Uint8Array): string {
+    return sealPrivateKey(bytes, this.ctx.keks[0]!)
+  }
+
+  /** Opens bytes sealed by {@link seal}. */
+  open(sealed: string): Uint8Array {
+    return openPrivateKey(sealed, this.ctx.keks)
+  }
+
   /** Rolls the CSCA key over, emitting a link certificate signed by the old key. */
   async rollover(): Promise<{ previous: CscaKeyRow; next: CscaKeyRow }> {
     const { config } = this.ctx

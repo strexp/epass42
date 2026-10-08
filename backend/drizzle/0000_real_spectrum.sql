@@ -68,6 +68,7 @@ CREATE TABLE `dsc_application` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`mnt` text,
 	`applicant_account_id` integer,
+	`ip` text,
 	`key_mode` text NOT NULL,
 	`subject_cn` text,
 	`csr_pem` text,

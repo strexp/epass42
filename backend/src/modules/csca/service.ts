@@ -55,6 +55,16 @@ export class CscaService {
     return this.keys.validateCurrentKey()
   }
 
+  /** Seals arbitrary bytes at rest with the envelope KEK. */
+  seal(bytes: Uint8Array): string {
+    return this.keys.seal(bytes)
+  }
+
+  /** Opens bytes sealed by {@link seal}. */
+  open(sealed: string): Uint8Array {
+    return this.keys.open(sealed)
+  }
+
   rollover(): Promise<{ previous: CscaKeyRow; next: CscaKeyRow }> {
     return this.keys.rollover()
   }

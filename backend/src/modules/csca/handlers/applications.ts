@@ -34,6 +34,7 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
         .values({
           mnt: principal.account.activeMnt,
           applicantAccountId: principal.account.id,
+          ip: request.ip,
           keyMode: request.body.keyMode,
           subjectCn: request.body.subjectCn,
           csrPem: request.body.csrPem ?? null,

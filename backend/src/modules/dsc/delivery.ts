@@ -2,15 +2,15 @@
  * One-time delivery (M8): atomic consumption, masked-preview hand-off and the
  * confirm/consume and mail tokens.
  */
-import { readFileSync } from 'node:fs'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import { AppError } from '@pkd42/shared'
 
 import type { Db } from '../../db/client'
-import { artifact, mailToken, revealToken, signRequest } from '../../db/schema'
+import { mailToken, revealToken, signRequest } from '../../db/schema'
 import { hashToken, randomToken } from '../../crypto/secret'
 import { isExpired, isoInSeconds, nowIso } from '../../util/time'
+import type { DscArtifactService } from './artifacts'
 import type { DscRequestService, SignRequestRow } from './requests'
 
 /** A one-time perso hand-off. */
@@ -24,6 +24,7 @@ export class DscDeliveryService {
   constructor(
     private readonly db: Db,
     private readonly requests: DscRequestService,
+    private readonly artifacts: DscArtifactService,
   ) {}
 
   /** Atomically consumes a request (single transaction, idempotent guard). */
@@ -38,14 +39,6 @@ export class DscDeliveryService {
     }
   }
 
-  /** Reads the stored perso artifact for a request. */
-  private readPerso(row: SignRequestRow): string {
-    if (!row.resultArtifactId) throw new AppError('request_not_approved', 'no artifact', 409)
-    const art = this.db.select().from(artifact).where(eq(artifact.id, row.resultArtifactId)).get()
-    if (!art) throw new AppError('request_not_approved', 'no artifact', 409)
-    return readFileSync(art.path, 'utf8')
-  }
-
   private revealApplicant(row: SignRequestRow, actorAccountId: number | null): RevealResult {
     if (row.status !== 'approved')
       throw new AppError('request_not_approved', 'request not approved', 409)
@@ -53,7 +46,9 @@ export class DscDeliveryService {
       throw new AppError('reveal_not_allowed', 'delivery is restricted to reviewers', 403)
     }
     this.consume(row, actorAccountId, 'applicant')
-    return { perso: this.readPerso(row), row }
+    const perso = this.artifacts.readArtifact(row)
+    this.artifacts.destroyArtifact(row)
+    return { perso, row }
   }
 
   /** One-time reveal via reference (delivery mode A). */
@@ -75,7 +70,9 @@ export class DscDeliveryService {
     if (row.status !== 'approved')
       throw new AppError('request_not_approved', 'request not approved', 409)
     this.consume(row, actorAccountId, 'reviewer')
-    return { perso: this.readPerso(row), row }
+    const perso = this.artifacts.readArtifact(row)
+    this.artifacts.destroyArtifact(row)
+    return { perso, row }
   }
 
   /** The mode-B "to be produced" queue. */

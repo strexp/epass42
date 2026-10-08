@@ -186,6 +186,7 @@ export class DscRequestService {
       consumedAt: row.consumedAt,
       dscSelection: row.dscSelection,
       mnt: row.mnt,
+      ip: row.ip,
       dataGroups: dataGroupList(payload, this.settings.issuingDefaults().security),
       email: row.email,
     }

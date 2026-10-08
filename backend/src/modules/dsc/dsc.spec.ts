@@ -1,12 +1,10 @@
-import { readFileSync } from 'node:fs'
 import type { FastifyInstance } from 'fastify'
-import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import { hexToBytes, parseCertificatePem, verifySod } from '@pkd42/pki'
 import { FakeOidc, makeTestApp, staticMntResolver } from '../../test-support'
 import type { Db } from '../../db/client'
-import { artifact, mntConfig, signRequest } from '../../db/schema'
+import { mntConfig } from '../../db/schema'
 import { recordAsAdmin } from '../auth/authorization'
 import { currentCscaKey } from '../csca/service'
 import { mrzExpiry } from './build'
@@ -115,10 +113,9 @@ function parsePerso(text: string): ParsedPerso {
   return { dataGroups, sod }
 }
 
-function artifactText(db: Db, requestId: number): string {
-  const row = db.select().from(signRequest).where(eq(signRequest.id, requestId)).get()!
-  const art = db.select().from(artifact).where(eq(artifact.id, row.resultArtifactId!)).get()!
-  return readFileSync(art.path, 'utf8')
+function artifactText(dsc: DscService, requestId: number): string {
+  const row = dsc.getById(requestId)!
+  return dsc.readArtifact(row)
 }
 
 /** Submits a minimal request anonymously and returns its reference. */
@@ -179,7 +176,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('builds a verifiable perso on NIA approval', async () => {
-    const { app, oidc, db, cscaPem } = await harness()
+    const { app, oidc, dsc, cscaPem } = await harness()
     const submit = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
@@ -205,7 +202,7 @@ describe('M7 DSC signing service', () => {
     expect(approve.statusCode).toBe(200)
     expect(approve.json().status).toBe('approved')
 
-    const perso = parsePerso(artifactText(db, id))
+    const perso = parsePerso(artifactText(dsc, id))
     for (const dg of [1, 2, 14, 15]) expect(perso.dataGroups.has(dg)).toBe(true)
     expect(perso.sod).toBeTruthy()
 
@@ -365,7 +362,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('applies administrator security defaults and derives the DSC selection', async () => {
-    const { app, oidc, db, dsc } = await harness()
+    const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
     const first = await submit(app, 'D1111111')
@@ -377,7 +374,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: admin },
       payload: {},
     })
-    const firstPerso = parsePerso(artifactText(db, firstRow.id))
+    const firstPerso = parsePerso(artifactText(dsc, firstRow.id))
     expect(firstPerso.dataGroups.has(14)).toBe(true)
     expect(firstPerso.dataGroups.has(15)).toBe(false)
 
@@ -398,12 +395,12 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: admin },
       payload: {},
     })
-    const secondPerso = parsePerso(artifactText(db, secondRow.id))
+    const secondPerso = parsePerso(artifactText(dsc, secondRow.id))
     expect(secondPerso.dataGroups.has(15)).toBe(true)
   })
 
   it('derives the document expiry from the issuing profile', async () => {
-    const { app, oidc, db, dsc } = await harness()
+    const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
     await app.inject({
       method: 'PUT',
@@ -423,7 +420,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: admin },
       payload: {},
     })
-    const dg1 = parsePerso(artifactText(db, row.id)).dataGroups.get(1)!
+    const dg1 = parsePerso(artifactText(dsc, row.id)).dataGroups.get(1)!
     expect(Buffer.from(dg1).toString('latin1')).toContain(mrzExpiry(5))
   })
 
@@ -440,7 +437,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('emits empty LDS2 applications only when enabled', async () => {
-    const { app, oidc, db, dsc } = await harness()
+    const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
     // Default: LDS1 only, no LDS2 section.
@@ -452,7 +449,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: admin },
       payload: {},
     })
-    expect(artifactText(db, firstId)).not.toMatch(/^@lds2 /m)
+    expect(artifactText(dsc, firstId)).not.toMatch(/^@lds2 /m)
 
     // Enable empty LDS2 applications for Travel Records.
     const update = await app.inject({
@@ -472,7 +469,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: admin },
       payload: {},
     })
-    const perso = artifactText(db, secondId)
+    const perso = artifactText(dsc, secondId)
     expect(perso).toMatch(/^@lds2 travel$/m)
     expect(perso).toMatch(/^@ca /m)
     expect(perso).toMatch(/^@cardsecurity /m)
@@ -481,7 +478,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('advertises Chip Authentication only on LDS2 (LDS1 is PACE + AA)', async () => {
-    const { app, oidc, db, dsc } = await harness()
+    const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
     const update = await app.inject({
@@ -501,7 +498,7 @@ describe('M7 DSC signing service', () => {
       payload: {},
     })
 
-    const perso = artifactText(db, id)
+    const perso = artifactText(dsc, id)
     const lds1 = perso.split('@instance A0000002472001')[0]!
     // LDS1 carries the AA private key but never a CA key or EF.CardSecurity.
     expect(lds1).toMatch(/^@aa /m)

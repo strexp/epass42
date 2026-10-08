@@ -10,7 +10,7 @@ import {
   NText,
   useMessage,
 } from 'naive-ui'
-import { Check, FilePlus2, KeyRound, RefreshCw, X } from '@lucide/vue'
+import { Check, FilePlus2, KeyRound, RefreshCw, ScrollText, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -23,6 +23,7 @@ interface Application {
   subjectCn: string | null
   status: string
   mnt: string | null
+  ip: string | null
   keyMode: string
   createdAt: string
 }
@@ -116,6 +117,7 @@ const columns = [
   { title: '#', key: 'id' },
   { title: 'CN', key: 'subjectCn' },
   { title: 'MNT', key: 'mnt' },
+  { title: 'IP', key: 'ip' },
   { title: 'Mode', key: 'keyMode' },
   {
     title: 'Status',
@@ -219,6 +221,14 @@ onMounted(async () => {
                   ><NIcon><KeyRound /></NIcon
                 ></template>
                 {{ $t('csca.certificatesTitle') }}
+              </NButton>
+            </NuxtLink>
+            <NuxtLink v-if="isAdmin" to="/csca/audit">
+              <NButton size="small">
+                <template #icon
+                  ><NIcon><ScrollText /></NIcon
+                ></template>
+                {{ $t('audit.title') }}
               </NButton>
             </NuxtLink>
           </NSpace>

@@ -2,7 +2,7 @@
  * DSC artifact build and review (M7/M8): Document Signer selection, perso
  * build, approval, rejection and regeneration.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { and, eq } from 'drizzle-orm'
 
@@ -84,7 +84,9 @@ export class DscArtifactService {
     const dir = join(this.config.dataDir, 'artifacts')
     mkdirSync(dir, { recursive: true })
     const path = join(dir, `perso-${row.id}.txt`)
-    writeFileSync(path, built.perso, { mode: 0o600 })
+    // The perso carries the AA/CA private keys: seal it at rest (M13/T13.10).
+    const sealed = this.csca.seal(new TextEncoder().encode(built.perso))
+    writeFileSync(path, sealed, { mode: 0o600 })
     const inserted = this.db
       .insert(artifact)
       .values({
@@ -92,7 +94,7 @@ export class DscArtifactService {
         path,
         sha256: built.sha256,
         size: Buffer.byteLength(built.perso),
-        enc: false,
+        enc: true,
         createdAt: nowIso(),
       })
       .run()
@@ -103,6 +105,33 @@ export class DscArtifactService {
       .where(eq(signRequest.id, row.id))
       .run()
     return { ...built, artifactId }
+  }
+
+  /** Reads (and decrypts) the stored perso artifact for a request. */
+  readArtifact(row: SignRequestRow): string {
+    if (!row.resultArtifactId) throw new AppError('request_not_approved', 'no artifact', 409)
+    const art = this.db.select().from(artifact).where(eq(artifact.id, row.resultArtifactId)).get()
+    if (!art) throw new AppError('request_not_approved', 'no artifact', 409)
+    const contents = readFileSync(art.path, 'utf8')
+    return art.enc ? new TextDecoder().decode(this.csca.open(contents)) : contents
+  }
+
+  /**
+   * Securely destroys a request's artifact (M13/T13.9): removes the sealed file
+   * and its database row so a consumed request leaves no bytes behind.
+   */
+  destroyArtifact(row: SignRequestRow): void {
+    if (!row.resultArtifactId) return
+    const art = this.db.select().from(artifact).where(eq(artifact.id, row.resultArtifactId)).get()
+    if (art) {
+      rmSync(art.path, { force: true })
+      this.db.delete(artifact).where(eq(artifact.id, art.id)).run()
+    }
+    this.db
+      .update(signRequest)
+      .set({ resultArtifactId: null })
+      .where(eq(signRequest.id, row.id))
+      .run()
   }
 
   /** Approves a request: builds the artifact and snapshots the delivery mode. */
@@ -149,6 +178,8 @@ export class DscArtifactService {
 
   /** Rebuilds the artifact for an already-produced request (new AA/CA keys). */
   async regenerate(row: SignRequestRow, _actorAccountId: number | null): Promise<SignRequestRow> {
+    // Drop the old sealed artifact before producing the replacement.
+    this.destroyArtifact(row)
     await this.buildArtifact(row)
     this.db
       .update(signRequest)

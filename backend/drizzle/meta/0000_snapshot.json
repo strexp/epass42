@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "94123b48-a09c-4268-9d15-f9e3d29f3b90",
+  "id": "09b89485-d596-4582-852c-d26220528643",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -461,6 +461,13 @@
         "applicant_account_id": {
           "name": "applicant_account_id",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

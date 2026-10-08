@@ -182,14 +182,14 @@ pkd42/
 
 - [ ] T13.1 私钥加密落盘：信封加密（KEK 来自 config.toml/文件，AES-256-GCM），`key_ref` 不落明文。
 - [ ] T13.2 CSCA 在线私钥保护：最小权限、操作二次确认、可选 PKCS#11/HSM 适配层（接口预留）。
-- [ ] T13.3 审计日志：申请/审批/吊销/签发/签名/轮换/登录，含 actor、IP、UA、时间、对象。
+- [x] T13.3 审计日志：申请/审批/吊销/签发/签名/轮换/登录，含 actor、IP、UA、时间、对象；`GET /{realm}/audit` 仅对应 realm 管理员可读。
 - [ ] T13.4 限流：登录、提交、查询、下载（按 IP + reference）。
 - [ ] T13.5 输入校验与上传加固：类型/大小/魔数、图像仅校验不重编码（DG2/DG5/DG7 由前端编码）、解压炸弹防护。
 - [ ] T13.6 隐私：护照数据与产物加密、可配置保留期与清理任务、日志脱敏。
 - [ ] T13.7 反代信任配置（`X-Forwarded-For` 白名单）。
 - [ ] T13.8 依赖审计（`pnpm audit`）、锁文件提交。
-- [ ] T13.9 一次性交付：原子消费、`Cache-Control: no-store`、消费后安全删除（文件 + DB 字节）。
-- [ ] T13.10 AA/CA 私钥：生成即加密、构建后删除、不入日志；领取页显著警示。
+- [x] T13.9 一次性交付：原子消费、`Cache-Control: no-store`、消费后安全删除（文件 + DB 字节）；产物落盘为信封加密。
+- [x] T13.10 AA/CA 私钥：随 perso 信封加密落盘、消费后删除、不入日志；领取页显著警示。
 - [ ] T13.11 预览 mask 策略可配（默认掩码：证件号/个人号/完整生日/地址电话邮箱/DG16 姓名；生物特征用占位）。
 - [ ] T13.12 邮件预取防护：链接落地页不消费；消费需显式 `POST`。
 
@@ -420,6 +420,10 @@ CREATE TABLE reveal_token (
 - `GET /pkd/certificates`、`GET /pkd/crls`、`GET /pkd/masterlists`
 - `GET /pkd/objects/:id.(der|pem)`
 - `GET /pkd/ldif`
+
+### 运营
+
+- `GET /:realm/audit`（对应 realm 管理员；`?action=&limit=&offset=`）
 
 ### 配置
 

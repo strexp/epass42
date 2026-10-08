@@ -11,6 +11,8 @@ interface RequestRow {
   id: number
   status: string
   deliveryMode: string
+  mnt: string | null
+  ip: string | null
   dataGroups: number[]
   createdAt: string
 }
@@ -30,6 +32,8 @@ const columns = [
     key: 'status',
     render: (row: RequestRow) => h(StatusTag, { status: row.status }),
   },
+  { title: 'MNT', key: 'mnt' },
+  { title: 'IP', key: 'ip' },
   { title: 'Delivery', key: 'deliveryMode' },
   { title: 'DGs', key: 'dataGroups', render: (row: RequestRow) => row.dataGroups.join(', ') },
   {

@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { derToPem } from '@pkd42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
+import { writeAudit } from '../../audit/audit'
 import { requireAdmin, type AuthContext } from '../auth/middleware'
 import type { SessionStore } from '../auth/session'
 import type { CscaService } from '../csca/service'
@@ -84,8 +85,16 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
   server.post(
     '/pkd/masterlists',
     { preHandler: requireAdmin(deps as unknown as AuthContext, 'csca') },
-    async (_request, reply) => {
+    async (request, reply) => {
       const row = await deps.csca.generateMasterList()
+      writeAudit(db, {
+        actorAccountId: request.principal?.account.id ?? null,
+        realm: 'csca',
+        action: 'pkd.masterlist.generate',
+        targetType: 'master_list',
+        targetId: row.id,
+        ip: request.ip,
+      })
       return reply.code(201).send({ id: `ml-${row.id}` })
     },
   )

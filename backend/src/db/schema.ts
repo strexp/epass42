@@ -115,6 +115,7 @@ export const dscApplication = sqliteTable('dsc_application', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   mnt: text('mnt'),
   applicantAccountId: integer('applicant_account_id').references(() => account.id),
+  ip: text('ip'),
   keyMode: text('key_mode').notNull(),
   subjectCn: text('subject_cn'),
   csrPem: text('csr_pem'),
