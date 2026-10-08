@@ -5,6 +5,7 @@ import {
   NFormItem,
   NIcon,
   NInput,
+  NInputNumber,
   NSelect,
   NSpace,
   NText,
@@ -27,6 +28,7 @@ const profile = ref({
   issuingAuthority: '',
   personalizationDevice: '',
   dg13Policy: '',
+  validityYears: 10,
   security: {
     paceEcdhGm3des: true,
     paceEcdhGmAes128: true,
@@ -118,6 +120,9 @@ onMounted(async () => {
           </NFormItem>
           <NFormItem :label="$t('dsc.dg13Policy')">
             <NInput v-model:value="profile.dg13Policy" />
+          </NFormItem>
+          <NFormItem :label="$t('dsc.validityYears')">
+            <NInputNumber v-model:value="profile.validityYears" :min="1" :max="30" />
           </NFormItem>
         </NCard>
 

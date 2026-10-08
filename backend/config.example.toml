@@ -71,6 +71,8 @@ issuingState = "UDN"
 issuingAuthority = "NIA"
 personalizationDevice = "PKD42"
 dg13Policy = "utf8-text"
+# Document validity (years); the MRZ expiry is computed by the service.
+validityYears = 10
 
 [issuing.security]
 paceEcdhGm3des = true
@@ -79,6 +81,12 @@ caEcdh3des = false
 caEcdhAes128 = false
 caKeyId = 1
 aa = false
+
+# Static IP-prefix to ASN map for jurisdiction lookup; the endpoint
+# /dsc/jurisdiction tells applicants whose AS uses its own DSC to apply there.
+[[jurisdiction.routes]]
+prefix = "10.127.21.0/24"
+asn = 4242422189
 
 # PKD directory (M9).
 [pkd]

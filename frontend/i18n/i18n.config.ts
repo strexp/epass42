@@ -144,6 +144,10 @@ export default defineI18nConfig(() => ({
         issuanceAuthority: 'Issuing authority',
         personalizationDevice: 'Personalization device',
         dg13Policy: 'DG13 encoding policy',
+        validityYears: 'Document validity (years)',
+        jurisdictionTitle: 'Your AS uses its own Document Signer',
+        jurisdictionBody:
+          'Traffic from AS{asn} is configured to use its own DSC. Apply through your own network’s DSC service instead; you may still continue here with the NIA DSC.',
         asDelegation: 'AS delegation',
         asDelegationHint: 'Delegate this AS to the NIA DSC and review its requests.',
         useNiaDsc: 'Delegate to NIA DSC',

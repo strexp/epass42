@@ -45,6 +45,8 @@ export interface IssuingDefaults {
   issuingAuthority: string
   personalizationDevice: string
   dg13Policy: string
+  /** Document validity in years, used for the server-computed MRZ expiry. */
+  validityYears: number
   endorsements?: string
   /** Default security mechanisms applied when the request omits them. */
   security: SecurityInfoSelection
@@ -87,6 +89,17 @@ export function compactDate(date = new Date()): string {
   return personalizationTime(date).slice(0, 8)
 }
 
+/** Computes the MRZ document expiry (YYMMDD) from a validity in years. */
+export function mrzExpiry(validityYears: number, from = new Date()): string {
+  const date = new Date(from)
+  date.setUTCFullYear(date.getUTCFullYear() + validityYears)
+  return (
+    String(date.getUTCFullYear() % 100).padStart(2, '0') +
+    String(date.getUTCMonth() + 1).padStart(2, '0') +
+    String(date.getUTCDate()).padStart(2, '0')
+  )
+}
+
 /** Builds the DG1..DG16 set (without AA/CA) for a request. */
 function buildDataGroups(
   request: SignRequest,
@@ -95,7 +108,11 @@ function buildDataGroups(
   const groups: { number: number; bytes: Uint8Array }[] = []
   groups.push({
     number: 1,
-    bytes: buildDg1({ ...request.mrz, issuingState: profile.issuingState }),
+    bytes: buildDg1({
+      ...request.mrz,
+      issuingState: profile.issuingState,
+      dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
+    }),
   })
 
   const dg2 = buildDg2(fromBase64(request.dg2.jpeg), request.dg2.width, request.dg2.height)
@@ -220,7 +237,7 @@ export async function buildPersoSigning(
       role: 'lds1',
       documentNumber: request.mrz.documentNumber,
       dateOfBirth: request.mrz.dateOfBirth,
-      dateOfExpiry: request.mrz.dateOfExpiry,
+      dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
       dataGroups: groups,
       sod,
       aaPrivateKey,

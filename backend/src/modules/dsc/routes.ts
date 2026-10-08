@@ -18,6 +18,7 @@ import { writeAudit } from '../../audit/audit'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { asConfig, dscCert } from '../../db/schema'
+import { findAsn } from '../../util/ip'
 import {
   canReview,
   dscScope,
@@ -60,7 +61,9 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
     { schema: { body: signRequestSchema }, bodyLimit: LIMITS.requestPayload },
     async (request, reply) => {
       const payload = request.body as SignRequest
-      const mrzValidation = validateMrzLines(buildMrzLines(payload.mrz))
+      const mrzValidation = validateMrzLines(
+        buildMrzLines({ ...payload.mrz, dateOfExpiry: payload.mrz.dateOfExpiry ?? '' }),
+      )
       if (!mrzValidation.valid) {
         return reply.code(400).send({ error: 'mrz_invalid', details: mrzValidation.errors })
       }
@@ -362,6 +365,27 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
     },
   )
 
+  // IP / session based AS jurisdiction: tells the applicant whether their AS
+  // uses its own DSC (so they can be redirected away from the NIA service).
+  server.get('/dsc/jurisdiction', async (request) => {
+    const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
+    let asn = principal?.account.asn ?? null
+    if (asn === null) asn = findAsn(deps.config.jurisdiction.routes, request.ip)
+    if (asn === null) return { asn: null, useNiaDsc: null, notice: false, ownDscUrl: null }
+    const row = db.select().from(asConfig).where(eq(asConfig.asn, asn)).get()
+    const useNiaDsc = row ? row.useNiaDsc : true
+    let ownDscUrl: string | null = null
+    if (!useNiaDsc) {
+      const cert = db
+        .select()
+        .from(dscCert)
+        .where(and(eq(dscCert.asn, asn), eq(dscCert.status, 'active')))
+        .get()
+      ownDscUrl = cert?.applicationUrl ?? null
+    }
+    return { asn, useNiaDsc, notice: !useNiaDsc, ownDscUrl }
+  })
+
   server.get(
     '/dsc/settings/issuing-profile',
     { preHandler: requireAdmin(deps as AuthContext, 'dsc') },
@@ -377,6 +401,7 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
           issuingAuthority: z.string().max(70).optional(),
           personalizationDevice: z.string().max(70).optional(),
           dg13Policy: z.string().max(70).optional(),
+          validityYears: z.number().int().min(1).max(30).optional(),
           endorsements: z.string().max(70).optional(),
           security: z
             .object({

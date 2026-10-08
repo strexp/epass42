@@ -25,7 +25,8 @@ export const mrzFieldsSchema = z.object({
   nationality: z.string().length(3),
   dateOfBirth: compactDate,
   sex: z.enum(['M', 'F', '<']).default('<'),
-  dateOfExpiry: compactDate,
+  /** Optional; computed by the service from the issuing profile validity. */
+  dateOfExpiry: compactDate.optional(),
   personalNumber: z.string().max(14).default(''),
   optionalData: z.string().max(14).default(''),
 })

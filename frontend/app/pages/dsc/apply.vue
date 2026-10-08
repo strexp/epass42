@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  NAlert,
   NButton,
   NCard,
   NCollapse,
@@ -15,7 +16,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { Send } from '@lucide/vue'
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@pkd42/shared'
 import type { EncodedFile } from '~/components/common/FileField.vue'
 import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
@@ -36,7 +37,6 @@ const mrz = reactive<MrzFields>({
   nationality: 'UDN',
   dateOfBirth: '',
   sex: '<',
-  dateOfExpiry: '',
   personalNumber: '',
   optionalData: '',
 })
@@ -67,12 +67,29 @@ const documentTypeOptions = [
   { label: 'Identity card', value: 'ID' },
 ]
 
+interface Jurisdiction {
+  asn: number | null
+  useNiaDsc: boolean | null
+  notice: boolean
+  ownDscUrl: string | null
+}
+const jurisdiction = ref<Jurisdiction | null>(null)
+const noticeDismissed = ref(false)
+
+/** Preview-only expiry (the service computes the real one from settings). */
+const previewExpiry = computed(() => {
+  const date = new Date()
+  date.setUTCFullYear(date.getUTCFullYear() + 10)
+  return (
+    String(date.getUTCFullYear() % 100).padStart(2, '0') +
+    String(date.getUTCMonth() + 1).padStart(2, '0') +
+    String(date.getUTCDate()).padStart(2, '0')
+  )
+})
+const previewMrz = computed(() => ({ ...mrz, dateOfExpiry: previewExpiry.value }))
+
 const canSubmit = computed(
-  () =>
-    mrz.surname !== '' &&
-    mrz.documentNumber !== '' &&
-    mrz.dateOfBirth !== '' &&
-    mrz.dateOfExpiry !== '',
+  () => mrz.surname !== '' && mrz.documentNumber !== '' && mrz.dateOfBirth !== '',
 )
 
 function addPerson(): void {
@@ -124,12 +141,39 @@ async function submit(): Promise<void> {
     submitting.value = false
   }
 }
+
+onMounted(async () => {
+  try {
+    jurisdiction.value = await api<Jurisdiction>('/dsc/jurisdiction')
+  } catch {
+    jurisdiction.value = null
+  }
+})
 </script>
 
 <template>
   <div class="pkd42-page">
     <NCard :title="$t('dsc.applyTitle')">
       <NText depth="3">{{ $t('dsc.submitHint') }}</NText>
+
+      <NAlert
+        v-if="jurisdiction?.notice && !noticeDismissed"
+        type="warning"
+        :title="$t('dsc.jurisdictionTitle')"
+        style="margin-top: 12px"
+      >
+        <div>{{ $t('dsc.jurisdictionBody', { asn: jurisdiction.asn }) }}</div>
+        <a
+          v-if="jurisdiction.ownDscUrl"
+          :href="jurisdiction.ownDscUrl"
+          target="_blank"
+          rel="noopener"
+          >{{ jurisdiction.ownDscUrl }}</a
+        >
+        <div style="margin-top: 8px">
+          <NButton size="small" @click="noticeDismissed = true">{{ $t('common.confirm') }}</NButton>
+        </div>
+      </NAlert>
 
       <NDivider>{{ $t('dsc.personalDetails') }}</NDivider>
       <NForm label-placement="top">
@@ -152,9 +196,6 @@ async function submit(): Promise<void> {
           <NFormItem label="Sex">
             <NSelect v-model:value="mrz.sex" :options="sexOptions" />
           </NFormItem>
-          <NFormItem label="Date of expiry (YYMMDD)">
-            <NInput v-model:value="mrz.dateOfExpiry" maxlength="6" placeholder="300101" />
-          </NFormItem>
           <NFormItem label="Nationality">
             <NInput v-model:value="mrz.nationality" maxlength="3" />
           </NFormItem>
@@ -164,7 +205,7 @@ async function submit(): Promise<void> {
       <NDivider>{{ $t('dsc.photoSection') }}</NDivider>
       <PortraitEditor v-model="portrait" />
       <EmrtdPreview
-        :mrz="mrz"
+        :mrz="previewMrz"
         :portrait-data-url="portrait?.previewDataUrl ?? null"
         style="margin-top: 12px"
       />

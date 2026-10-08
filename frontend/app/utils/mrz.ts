@@ -14,7 +14,8 @@ export interface MrzFields {
   nationality: string
   dateOfBirth: string
   sex: string
-  dateOfExpiry: string
+  /** Computed by the service; optional on the client. */
+  dateOfExpiry?: string
   personalNumber: string
   optionalData: string
 }

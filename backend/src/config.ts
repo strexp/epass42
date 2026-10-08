@@ -119,6 +119,8 @@ const configSchema = z.object({
       issuingAuthority: z.string().default('NIA'),
       personalizationDevice: z.string().default('PKD42'),
       dg13Policy: z.string().default('utf8-text'),
+      /** Document validity, in years, applied to the server-computed expiry. */
+      validityYears: z.number().int().min(1).max(30).default(10),
       /** Default eMRTD security mechanisms chosen by the administrator. */
       security: z
         .object({
@@ -130,6 +132,12 @@ const configSchema = z.object({
           aa: z.boolean().default(false),
         })
         .prefault({}),
+    })
+    .prefault({}),
+  /** Static IP-prefix to ASN map used to resolve the requesting AS. */
+  jurisdiction: z
+    .object({
+      routes: z.array(z.object({ prefix: z.string(), asn: z.number().int() })).default([]),
     })
     .prefault({}),
   crl: z
@@ -252,6 +260,9 @@ function fromEnv(env: NodeJS.ProcessEnv): RawConfig {
     }
   }
   if (env.PKD42_PKD_BASE_DN) raw.pkd = { baseDn: env.PKD42_PKD_BASE_DN }
+  if (env.PKD42_JURISDICTION_ROUTES) {
+    raw.jurisdiction = { routes: JSON.parse(env.PKD42_JURISDICTION_ROUTES) }
+  }
   if (
     env.PKD42_LDAP_ENABLED !== undefined ||
     env.PKD42_LDAP_PORT !== undefined ||

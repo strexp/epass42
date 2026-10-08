@@ -9,6 +9,7 @@ import type { Db } from '../../db/client'
 import { artifact, asConfig, signRequest } from '../../db/schema'
 import { recordAsAdmin } from '../auth/authorization'
 import { currentCscaKey } from '../csca/service'
+import { mrzExpiry } from './build'
 import type { DscService } from './service'
 
 const CSCA_ADMIN = {
@@ -41,7 +42,6 @@ function mrz(documentNumber: string): Record<string, unknown> {
     nationality: 'UDN',
     dateOfBirth: '900101',
     sex: 'F',
-    dateOfExpiry: '300101',
     personalNumber: '',
     optionalData: '',
   }
@@ -62,9 +62,9 @@ interface Harness {
   cscaPem: string
 }
 
-async function harness(): Promise<Harness> {
+async function harness(overrides: Record<string, string> = {}): Promise<Harness> {
   const oidc = new FakeOidc()
-  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true' })
+  const built = await makeTestApp(oidc, { PKD42_CSCA_BOOTSTRAP: 'true', ...overrides })
   oidc.set('csca-client', { subject: CSCA_ADMIN.sub, claims: CSCA_ADMIN })
   oidc.set('dsc-client', { subject: USER.sub, claims: USER })
   return {
@@ -396,5 +396,53 @@ describe('M7 DSC signing service', () => {
     })
     const secondPerso = parsePerso(artifactText(db, secondRow.id))
     expect(secondPerso.dataGroups.has(15)).toBe(true)
+  })
+
+  it('derives the document expiry from the issuing profile', async () => {
+    const { app, oidc, db, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { validityYears: 5 },
+    })
+
+    const reference = await submit(app, 'E1111111')
+    const row = dsc.getByReference(reference)!
+    const payload = JSON.parse(row.payloadJson) as { mrz: { dateOfExpiry?: string } }
+    expect(payload.mrz.dateOfExpiry).toBe(mrzExpiry(5))
+
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${row.id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    const dg1 = parsePerso(artifactText(db, row.id)).dataGroups.get(1)!
+    expect(Buffer.from(dg1).toString('latin1')).toContain(mrzExpiry(5))
+  })
+
+  it('reports AS jurisdiction from the IP route table and settings', async () => {
+    const { app, db } = await harness({
+      PKD42_JURISDICTION_ROUTES: JSON.stringify([{ prefix: '10.0.0.0/8', asn: 4242420001 }]),
+    })
+    db.insert(asConfig)
+      .values({ asn: 4242420001, useNiaDsc: false, updatedAt: new Date().toISOString() })
+      .run()
+
+    const inRange = await app.inject({
+      method: 'GET',
+      url: '/dsc/jurisdiction',
+      remoteAddress: '10.1.2.3',
+    })
+    expect(inRange.json()).toMatchObject({ asn: 4242420001, useNiaDsc: false, notice: true })
+
+    const outOfRange = await app.inject({
+      method: 'GET',
+      url: '/dsc/jurisdiction',
+      remoteAddress: '192.0.2.1',
+    })
+    expect(outOfRange.json()).toMatchObject({ asn: null, notice: false })
   })
 })

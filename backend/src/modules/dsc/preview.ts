@@ -93,7 +93,7 @@ export function buildPreview(
     surname: mask(payload.mrz.surname),
     givenNames: mask(payload.mrz.givenNames),
     dateOfBirth: { present: true, value: maskDate(payload.mrz.dateOfBirth) },
-    dateOfExpiry: { present: true, value: maskDate(payload.mrz.dateOfExpiry) },
+    dateOfExpiry: { present: true, value: maskDate(payload.mrz.dateOfExpiry ?? '') },
     nationality: payload.mrz.nationality,
     sex: payload.mrz.sex,
     dataGroups: dataGroupList(payload, resolved),

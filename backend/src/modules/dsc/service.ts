@@ -31,6 +31,7 @@ import type { DscScope } from '../auth/authorization'
 import { asDelegatesToNia, canReview } from '../auth/authorization'
 import {
   buildPersoSigning,
+  mrzExpiry,
   type IssuingDefaults,
   type PersoBuildResult,
   type SigningMaterial,
@@ -90,6 +91,10 @@ export class DscService {
         row?.personalizationDevice ??
         this.config.issuing.personalizationDevice,
       dg13Policy: overrides.dg13Policy ?? row?.dg13Policy ?? this.config.issuing.dg13Policy,
+      validityYears:
+        overrides.validityYears ??
+        (extra.validityYears as number | undefined) ??
+        this.config.issuing.validityYears,
       endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
       security: {
         ...this.config.issuing.security,
@@ -130,6 +135,16 @@ export class DscService {
     const createdAt = nowIso()
     const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString()
     const selection = this.resolveDscSelection(requester, payload)
+    // The document expiry is derived from the issuing profile validity.
+    const profile = this.issuingDefaults()
+    const effectivePayload: SignRequest = {
+      ...payload,
+      mrz: {
+        ...payload.mrz,
+        // Always server-computed; a supplied value is ignored.
+        dateOfExpiry: mrzExpiry(profile.validityYears),
+      },
+    }
     let result
     try {
       result = this.db
@@ -141,7 +156,7 @@ export class DscService {
           ip: requester.ip,
           dscSelection: selection.mode,
           dscCertId: selection.certId,
-          payloadJson: JSON.stringify(payload),
+          payloadJson: JSON.stringify(effectivePayload),
           status: 'submitted',
           deliveryMode: this.getDeliveryMode(),
           deliveryOverride: false,
