@@ -459,7 +459,7 @@ describe('M7 DSC signing service', () => {
       payload: { lds2: { enabled: true, roles: ['travel'] } },
     })
     expect(update.statusCode).toBe(200)
-    expect(update.json().lds2).toEqual({ enabled: true, roles: ['travel'], caKeyId: 1 })
+    expect(update.json().lds2).toEqual({ enabled: true, roles: ['travel'] })
 
     const second = await submit(app, 'H2222222')
     const secondId = dsc.getByReference(second)!.id
@@ -477,7 +477,49 @@ describe('M7 DSC signing service', () => {
     expect(perso).not.toMatch(/^@transparent /m)
   })
 
-  it('advertises Chip Authentication only on LDS2 (LDS1 is PACE + AA)', async () => {
+  it('advertises Chip Authentication on LDS1 when enabled', async () => {
+    const { app, oidc, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    // Default: LDS1 is PACE + AA only, with no CA key or EF.CardSecurity.
+    const first = await submit(app, 'H3333333')
+    const firstId = dsc.getByReference(first)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${firstId}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    const firstPerso = artifactText(dsc, firstId)
+    expect(firstPerso).not.toMatch(/^@ca /m)
+    expect(firstPerso).not.toMatch(/^@cardsecurity /m)
+
+    // Enable Chip Authentication for the LDS1 document.
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { security: { ca: true } },
+    })
+    expect(update.statusCode).toBe(200)
+    expect(update.json().security.ca).toBe(true)
+
+    const second = await submit(app, 'H4444444')
+    const secondId = dsc.getByReference(second)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${secondId}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    const secondPerso = artifactText(dsc, secondId)
+    const lds1 = secondPerso.split('@instance A0000002472001')[0]!
+    expect(lds1).toMatch(/^@ca /m)
+    expect(lds1).toMatch(/^@cardsecurity /m)
+    expect(secondPerso).not.toMatch(/^@lds2 /m)
+  })
+
+  it('shares one Chip Authentication key pair across LDS1 and LDS2', async () => {
     const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
@@ -485,11 +527,11 @@ describe('M7 DSC signing service', () => {
       method: 'PUT',
       url: '/dsc/settings/issuing-profile',
       headers: { cookie: admin },
-      payload: { security: { aa: true }, lds2: { enabled: true, roles: ['travel'] } },
+      payload: { lds2: { enabled: true, roles: ['travel'] } },
     })
     expect(update.statusCode).toBe(200)
 
-    const reference = await submit(app, 'H3333333')
+    const reference = await submit(app, 'H5555555')
     const id = dsc.getByReference(reference)!.id
     await app.inject({
       method: 'POST',
@@ -500,14 +542,14 @@ describe('M7 DSC signing service', () => {
 
     const perso = artifactText(dsc, id)
     const lds1 = perso.split('@instance A0000002472001')[0]!
-    // LDS1 carries the AA private key but never a CA key or EF.CardSecurity.
-    expect(lds1).toMatch(/^@aa /m)
-    expect(lds1).not.toMatch(/^@ca /m)
-    expect(lds1).not.toMatch(/^@cardsecurity /m)
-    // The LDS2 application advertises Chip Authentication.
+    // One CA key pair and one EF.CardSecurity live in the master file, so the
+    // LDS1 section carries the same values as the LDS2 application.
+    const caLines = perso.match(/^@ca [0-9A-F]+$/gm) ?? []
+    expect(caLines).toHaveLength(2)
+    expect(new Set(caLines).size).toBe(1)
+    expect(lds1).toMatch(/^@ca /m)
+    expect(lds1).toMatch(/^@cardsecurity /m)
     expect(perso).toMatch(/^@lds2 travel$/m)
-    expect(perso).toMatch(/^@ca /m)
-    expect(perso).toMatch(/^@cardsecurity /m)
   })
 
   it('server-sets the MRZ nationality', async () => {

@@ -77,16 +77,20 @@ validityYears = 10
 dg2MaxBytes = 16384
 
 # LDS2 applications: disabled by default (empty when enabled).  Chip
-# Authentication is advertised by LDS2 only (card42's LDS1 is PACE + AA).
+# Authentication material lives in the master file and is shared by LDS1 and
+# the LDS2 applications.
 [issuing.lds2]
 enabled = false
 roles = ["travel", "visa", "biometrics"]
-caKeyId = 1
 
 [issuing.security]
 paceEcdhGm3des = true
 paceEcdhGmAes128 = true
 aa = false
+# Advertise Chip Authentication in the LDS1 EF.CardAccess / DG14.
+ca = false
+# Chip Authentication key id shared by LDS1 and the LDS2 applications.
+caKeyId = 1
 
 # dn42 whois used to resolve a client IP to its maintainer(s).  The endpoint
 # /dsc/jurisdiction looks up the IP's mnt-by to tell applicants whose

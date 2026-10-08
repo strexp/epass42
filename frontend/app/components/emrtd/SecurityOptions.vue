@@ -3,6 +3,10 @@ import { NFormItem, NSwitch } from 'naive-ui'
 import type { SecurityOptions } from '@epass42/shared'
 
 const model = defineModel<SecurityOptions>({ required: true })
+
+/** LDS2 applications always carry Chip Authentication, so it cannot be turned
+ * off while any LDS2 application is emitted. */
+defineProps<{ caDisabled?: boolean }>()
 </script>
 
 <template>
@@ -15,6 +19,9 @@ const model = defineModel<SecurityOptions>({ required: true })
     </NFormItem>
     <NFormItem label="Active Authentication">
       <NSwitch v-model:value="model.aa" />
+    </NFormItem>
+    <NFormItem label="Chip Authentication">
+      <NSwitch v-model:value="model.ca" :disabled="caDisabled" />
     </NFormItem>
   </div>
 </template>

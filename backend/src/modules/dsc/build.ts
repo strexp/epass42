@@ -54,11 +54,11 @@ export interface IssuingDefaults {
   /** Maximum DG2 byte size (card42 LDS1 DG2 capacity by default). */
   dg2MaxBytes: number
   /** Emit empty LDS2 applications for these roles (disabled by default). */
-  lds2: { enabled: boolean; roles: Lds2Role[]; caKeyId: number }
+  lds2: { enabled: boolean; roles: Lds2Role[] }
   endorsements?: string
   /**
    * Default LDS1 security mechanisms applied when the request omits them.
-   * Chip Authentication is LDS2-only (card42's LDS1 is PACE + AA).
+   * Chip Authentication is shared by LDS1 and LDS2 through the master file.
    */
   security: SecurityOptions
 }
@@ -210,14 +210,23 @@ export async function buildPersoSigning(
   // Security mechanisms are administrator defaults the applicant does not see.
   const security = request.security ?? profile.security
 
-  // EF.CardAccess advertises the LDS1 PACE mechanisms (and AA, if enabled).
-  // Chip Authentication is LDS2-only, so LDS1 never advertises it.
+  const lds2Enabled = profile.lds2.enabled && profile.lds2.roles.length > 0
+  // EF.CardAccess and EF.CardSecurity live in the master file (Doc 9303-10
+  // §3.11.3/§3.11.4), so LDS1 and the LDS2 applications share one CA key pair
+  // and one EF.CardSecurity.  Chip Authentication is emitted when the
+  // administrator enables it for LDS1 or when any LDS2 application (which
+  // always carries it) is emitted.
+  const caEnabled = security.ca || lds2Enabled
+  const caKeyId = security.caKeyId ?? 1
+
+  // EF.CardAccess advertises the selected PACE mechanisms, AA (if enabled) and
+  // Chip Authentication (if enabled).
   const cardAccess = buildCardAccess({
     paceEcdhGm3des: security.paceEcdhGm3des,
     paceEcdhGmAes128: security.paceEcdhGmAes128,
-    caEcdh3des: false,
+    caEcdh3des: caEnabled,
     caEcdhAes128: false,
-    caKeyId: profile.lds2.caKeyId,
+    caKeyId,
     aa: security.aa,
   })
 
@@ -230,6 +239,22 @@ export async function buildPersoSigning(
     const aa = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
     groups.push({ number: 15, bytes: buildDg15(aa.spki) })
     aaPrivateKey = aaPrivateKeyValue(aa.modulus, aa.privateExponent)
+  }
+
+  // Chip Authentication: one P-256 key pair shared by every role.  The private
+  // scalar is personalized as DGI FF03 and the static public key is published
+  // in the master-file EF.CardSecurity (DGI FF05 for LDS1, FID 011D for LDS2).
+  let caScalar: Uint8Array | undefined
+  let cardSecurity: Uint8Array | undefined
+  if (caEnabled) {
+    const ca = generateP256KeyPair()
+    caScalar = ca.scalar
+    const securityObject = buildSecurityObject(cardAccess, ca.spki, caKeyId)
+    cardSecurity = await buildCardSecurity(
+      securityObject,
+      pemToDer(dsc.certPem),
+      dsc.keyPair.privateKey,
+    )
   }
 
   groups.sort((a, b) => a.number - b.number)
@@ -247,29 +272,15 @@ export async function buildPersoSigning(
       dataGroups: groups,
       sod,
       aaPrivateKey,
+      caScalar,
       cardAccess,
+      cardSecurity,
     },
   ]
 
-  // Optional empty LDS2 applications (disabled by default).  Chip
-  // Authentication material (EF.CardAccess, EF.CardSecurity, CA key) lives in
-  // the shared master file, so it is generated once and reused by every role.
-  if (profile.lds2.enabled && profile.lds2.roles.length > 0) {
-    const lds2Access = buildCardAccess({
-      paceEcdhGm3des: true,
-      paceEcdhGmAes128: false,
-      caEcdh3des: true,
-      caEcdhAes128: false,
-      caKeyId: profile.lds2.caKeyId,
-      aa: false,
-    })
-    const ca = generateP256KeyPair()
-    const securityObject = buildSecurityObject(lds2Access, ca.spki, profile.lds2.caKeyId)
-    const lds2CardSecurity = await buildCardSecurity(
-      securityObject,
-      pemToDer(dsc.certPem),
-      dsc.keyPair.privateKey,
-    )
+  // Optional empty LDS2 applications (disabled by default).  They reuse the
+  // master-file Chip Authentication material generated above.
+  if (lds2Enabled) {
     for (const role of profile.lds2.roles) {
       sections.push({
         role,
@@ -277,9 +288,9 @@ export async function buildPersoSigning(
         dateOfBirth: request.mrz.dateOfBirth,
         dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
         dataGroups: [],
-        caScalar: ca.scalar,
-        cardAccess: lds2Access,
-        cardSecurity: lds2CardSecurity,
+        caScalar,
+        cardAccess,
+        cardSecurity,
       })
     }
   }

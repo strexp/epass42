@@ -58,6 +58,7 @@ export interface RequestPreview {
     paceEcdhGm3des: boolean
     paceEcdhGmAes128: boolean
     aa: boolean
+    ca: boolean
   }
   /** Masked optional fields. */
   additional: {
@@ -80,6 +81,8 @@ export function buildPreview(
     paceEcdhGm3des: true,
     paceEcdhGmAes128: true,
     aa: false,
+    ca: false,
+    caKeyId: 1,
   }
   return {
     documentCode: payload.mrz.documentCode,
@@ -98,6 +101,7 @@ export function buildPreview(
       paceEcdhGm3des: resolved.paceEcdhGm3des,
       paceEcdhGmAes128: resolved.paceEcdhGmAes128,
       aa: resolved.aa,
+      ca: resolved.ca,
     },
     additional: {
       dg11: Boolean(payload.dg11),

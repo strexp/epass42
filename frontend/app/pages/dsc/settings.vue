@@ -31,11 +31,13 @@ const profile = ref({
   dg13Policy: '',
   validityYears: 10,
   dg2MaxBytes: 16384,
-  lds2: { enabled: false, roles: ['travel', 'visa', 'biometrics'] as string[], caKeyId: 1 },
+  lds2: { enabled: false, roles: ['travel', 'visa', 'biometrics'] as string[] },
   security: {
     paceEcdhGm3des: true,
     paceEcdhGmAes128: true,
     aa: false,
+    ca: false,
+    caKeyId: 1,
   },
 })
 
@@ -137,13 +139,27 @@ onMounted(async () => {
 
         <NCard :title="$t('dsc.securityDefaults')" size="small">
           <NText depth="3">{{ $t('dsc.securityDefaultsHint') }}</NText>
-          <SecurityOptions v-model="profile.security" style="margin-top: 12px" />
+          <SecurityOptions
+            v-model="profile.security"
+            :ca-disabled="profile.security.ca && profile.lds2.enabled"
+            style="margin-top: 12px"
+          />
+          <NFormItem
+            v-if="profile.security.ca || profile.lds2.enabled"
+            :label="$t('dsc.caKeyId')"
+            style="margin-top: 8px"
+          >
+            <NInputNumber v-model:value="profile.security.caKeyId" :min="0" :max="255" />
+          </NFormItem>
         </NCard>
 
         <NCard :title="$t('dsc.lds2Title')" size="small">
           <NText depth="3">{{ $t('dsc.lds2Hint') }}</NText>
           <div style="margin-top: 8px">
-            <NSwitch v-model:value="profile.lds2.enabled" />
+            <NSwitch
+              v-model:value="profile.lds2.enabled"
+              :disabled="!profile.security.ca && !profile.lds2.enabled"
+            />
           </div>
           <NSelect
             v-if="profile.lds2.enabled"
@@ -152,13 +168,6 @@ onMounted(async () => {
             :options="lds2Options"
             style="max-width: 460px; margin-top: 8px"
           />
-          <NFormItem
-            v-if="profile.lds2.enabled"
-            :label="$t('dsc.lds2CaKeyId')"
-            style="margin-top: 8px"
-          >
-            <NInputNumber v-model:value="profile.lds2.caKeyId" :min="0" :max="255" />
-          </NFormItem>
         </NCard>
 
         <NSpace>

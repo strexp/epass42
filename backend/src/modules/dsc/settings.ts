@@ -14,7 +14,7 @@ import type { IssuingDefaults } from './build'
 /** A partial update to the issuing defaults (nested objects may be partial). */
 export type IssuingDefaultsUpdate = Partial<Omit<IssuingDefaults, 'security' | 'lds2'>> & {
   security?: Partial<SecurityOptions>
-  lds2?: { enabled?: boolean; roles?: IssuingDefaults['lds2']['roles']; caKeyId?: number }
+  lds2?: { enabled?: boolean; roles?: IssuingDefaults['lds2']['roles'] }
 }
 
 /** Issuing defaults and delivery-mode settings. */
@@ -56,14 +56,14 @@ export class DscSettingsService {
           overrides.lds2?.roles ??
           (extra.lds2 as { roles?: IssuingDefaults['lds2']['roles'] } | undefined)?.roles ??
           this.config.issuing.lds2.roles,
-        caKeyId:
-          overrides.lds2?.caKeyId ??
-          (extra.lds2 as { caKeyId?: number } | undefined)?.caKeyId ??
-          this.config.issuing.lds2.caKeyId,
       },
       endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
       security: {
         ...this.config.issuing.security,
+        // Older profiles stored the Chip Authentication key id under `lds2`.
+        ...(typeof (extra.lds2 as unknown as { caKeyId?: number } | undefined)?.caKeyId === 'number'
+          ? { caKeyId: (extra.lds2 as unknown as { caKeyId: number }).caKeyId }
+          : {}),
         ...(extra.security ?? {}),
         ...(overrides.security ?? {}),
       },

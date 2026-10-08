@@ -114,7 +114,10 @@ tag number (`tag & 0x20`). For a tag such as `5F2B` the low byte `0x2B` has bit
 
 - PACE ECDH-GM 3DES/AES-128 (`0.4.0.127.0.7.2.2.4.2.1` / `…4.2.2`) with
   parameter id 12 (P-256): `securityInfo.buildCardAccess` — OK.
-- Chip Authentication ECDH 3DES/AES-128 with key id: OK.
+- Chip Authentication ECDH 3DES/AES-128 with key id: OK. LDS1 and LDS2 share
+  one CA key pair and one master-file EF.CardAccess/EF.CardSecurity; the LDS1
+  private scalar is personalized as DGI FF03 and EF.CardSecurity as DGI FF05
+  (card42 `d386608`).
 - Active Authentication (`2.23.136.1.1.5`, version 1, signature algorithm): OK.
 - EF.CardSecurity eContent (`id-SecurityObject`) = CardAccess set plus
   `ChipAuthenticationPublicKeyInfo`: OK.

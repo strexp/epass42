@@ -128,7 +128,7 @@ const configSchema = z.object({
       /**
        * LDS2 applications to emit.  Disabled by default (no LDS2 sections); when
        * enabled the listed roles are emitted as empty applications.  Chip
-       * Authentication is only advertised by LDS2 (card42's LDS1 is PACE + AA).
+       * Authentication material is shared with LDS1 through the master file.
        */
       lds2: z
         .object({
@@ -136,8 +136,6 @@ const configSchema = z.object({
           roles: z
             .array(z.enum(['travel', 'visa', 'biometrics']))
             .default(['travel', 'visa', 'biometrics']),
-          /** Chip Authentication key id advertised by the LDS2 applications. */
-          caKeyId: z.number().int().min(0).max(255).default(1),
         })
         .prefault({}),
       /** Default LDS1 security mechanisms chosen by the administrator. */
@@ -146,6 +144,10 @@ const configSchema = z.object({
           paceEcdhGm3des: z.boolean().default(true),
           paceEcdhGmAes128: z.boolean().default(true),
           aa: z.boolean().default(false),
+          /** Advertise Chip Authentication in the LDS1 EF.CardAccess. */
+          ca: z.boolean().default(false),
+          /** Chip Authentication key id shared by LDS1 and the LDS2 applications. */
+          caKeyId: z.number().int().min(0).max(255).default(1),
         })
         .prefault({}),
     })

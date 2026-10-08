@@ -87,12 +87,18 @@ export const dg16Schema = z.object({
 
 /**
  * LDS1 security mechanism switches used to build EF.CardAccess / DG14 / DG15.
- * Chip Authentication is LDS2-only, so it is not configurable here.
+ * Chip Authentication is shared by LDS1 and LDS2 through the master file
+ * (Doc 9303-10 §3.11.3/§3.11.4); `ca` toggles it for an LDS1-only document
+ * (an emitted LDS2 application always carries it).
  */
 export const securityOptionsSchema = z.object({
   paceEcdhGm3des: z.boolean().default(true),
   paceEcdhGmAes128: z.boolean().default(true),
   aa: z.boolean().default(false),
+  /** Advertise Chip Authentication in the LDS1 EF.CardAccess / DG14. */
+  ca: z.boolean().default(false),
+  /** Chip Authentication key id advertised by LDS1 and the LDS2 applications. */
+  caKeyId: z.number().int().min(0).max(255).default(1),
 })
 
 /** Which Document Signer signs the SOD. */

@@ -149,11 +149,12 @@ export default defineI18nConfig(() => ({
         validityYears: 'Document validity (years)',
         dg2MaxBytes: 'Maximum DG2 size (bytes)',
         lds2Title: 'LDS2 applications',
-        lds2Hint: 'Emit empty LDS2 applications (no records); disabled by default.',
+        lds2Hint:
+          'Emit empty LDS2 applications (no records). LDS2 always carries Chip Authentication.',
         lds2Travel: 'Travel records',
         lds2Visa: 'Visa records',
         lds2Biometrics: 'Additional biometrics',
-        lds2CaKeyId: 'Chip Authentication key id',
+        caKeyId: 'Chip Authentication key id',
         jurisdictionTitle: 'Your maintainer uses its own Document Signer',
         jurisdictionBody:
           'Traffic from {mnt} is configured to use its own DSC. Apply through your own network’s DSC service instead; you may still continue here with the NIA DSC.',
