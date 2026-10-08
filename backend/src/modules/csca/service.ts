@@ -41,7 +41,8 @@ export type CrlRow = typeof crl.$inferSelect
 export interface CscaContext {
   db: Db
   config: AppConfig
-  kek: Buffer
+  /** Ordered KEKs: index 0 seals new keys, all are tried when opening. */
+  keks: Buffer[]
 }
 
 function addYears(date: Date, years: number): Date {
@@ -108,7 +109,7 @@ export class CscaService {
     key: RsaKeyPair,
     current: boolean,
   ): CscaKeyRow {
-    const { db, kek } = this.ctx
+    const { db, keks } = this.ctx
     if (current) db.update(cscaKey).set({ isCurrent: false }).run()
     const result = db
       .insert(cscaKey)
@@ -119,7 +120,7 @@ export class CscaService {
         notBefore: generated.certificate.notBefore.toISOString(),
         notAfter: generated.certificate.notAfter.toISOString(),
         certPem: generated.pem,
-        keyRef: sealPrivateKey(key.pkcs8, kek),
+        keyRef: sealPrivateKey(key.pkcs8, keks[0]!),
         isCurrent: current,
         status: 'active',
         createdAt: nowIso(),
@@ -134,8 +135,14 @@ export class CscaService {
 
   /** Opens the CSCA private key for signing. */
   async loadKeyPair(row: CscaKeyRow): Promise<RsaKeyPair> {
-    const pkcs8 = openPrivateKey(row.keyRef, this.ctx.kek)
+    const pkcs8 = openPrivateKey(row.keyRef, this.ctx.keks)
     return importRsaKeyPair(pkcs8, row.keyAlgorithm === 'RSASSA-PSS')
+  }
+
+  /** Loads the current CSCA key pair, throwing on a KEK mismatch. */
+  async validateCurrentKey(): Promise<void> {
+    const current = currentCscaKey(this.ctx.db)
+    if (current) await this.loadKeyPair(current)
   }
 
   /** Ensures an active NIA DSC exists (creating one signed by the CSCA). */
@@ -177,7 +184,7 @@ export class CscaService {
     issuancePolicy?: string | null
     applicationUrl?: string | null
   }): Promise<DscCertRow> {
-    const { config, db, kek } = this.ctx
+    const { config, db, keks } = this.ctx
     const now = new Date()
     const issuerCert = parseCertificatePem(params.csca.certPem)
 
@@ -190,7 +197,7 @@ export class CscaService {
         hash: 'SHA-256',
       })
       subject = key
-      sealedKey = sealPrivateKey(key.pkcs8, kek)
+      sealedKey = sealPrivateKey(key.pkcs8, keks[0]!)
     } else {
       if (!params.subjectPublicKey) throw new Error('subject public key is required')
       subject = params.subjectPublicKey
@@ -242,7 +249,7 @@ export class CscaService {
   /** Opens the sealed private key of an NIA/owned system-generated DSC. */
   async loadDscKeyPair(row: DscCertRow, pss = false): Promise<RsaKeyPair> {
     if (!row.keyRef) throw new Error('DSC has no stored private key')
-    const pkcs8 = openPrivateKey(row.keyRef, this.ctx.kek)
+    const pkcs8 = openPrivateKey(row.keyRef, this.ctx.keks)
     return importRsaKeyPair(pkcs8, pss)
   }
 
@@ -421,7 +428,7 @@ export class CscaService {
   async ensureMasterListSigner(): Promise<DscCertRow> {
     const existing = this.currentMasterListSigner()
     if (existing) return existing
-    const { config, db, kek } = this.ctx
+    const { config, db, keks } = this.ctx
     const csca = await this.ensureCscaKey()
     if (!csca) throw new Error('no CSCA key available')
     const cscaPair = await this.loadKeyPair(csca)
@@ -450,7 +457,7 @@ export class CscaService {
         mnt: null,
         source: 'ml-signer',
         certPem: generated.pem,
-        keyRef: sealPrivateKey(key.pkcs8, kek),
+        keyRef: sealPrivateKey(key.pkcs8, keks[0]!),
         status: 'active',
         notBefore: generated.certificate.notBefore.toISOString(),
         notAfter: generated.certificate.notAfter.toISOString(),

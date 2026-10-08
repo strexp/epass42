@@ -15,6 +15,9 @@ import { COUNTRY_ALPHA2, COUNTRY_ALPHA3 } from '@pkd42/shared'
 export const realmSchema = z.enum(['csca', 'dsc'])
 export const roleSchema = z.enum(['pkd', 'csca', 'dsc'])
 
+/** The default (insecure) session secret used in development, also a legacy KEK. */
+export const DEV_SESSION_SECRET = 'dev-insecure-session-secret-change-me'
+
 /** One configured OAuth provider (M4/T4.1). */
 export const oauthProviderSchema = z.object({
   realm: realmSchema,
@@ -69,7 +72,7 @@ const configSchema = z.object({
   runMigrations: z.boolean().default(true),
   /** Directory for generated artifacts (perso, …). */
   dataDir: z.string().default('./data'),
-  sessionSecret: z.string().min(16).default('dev-insecure-session-secret-change-me'),
+  sessionSecret: z.string().min(16).default(DEV_SESSION_SECRET),
   sessionTtlSeconds: z
     .number()
     .int()

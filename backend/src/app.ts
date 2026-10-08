@@ -25,7 +25,7 @@ import { AppError } from '@pkd42/shared'
 import type { AppConfig } from './config'
 import { openDatabase, type DbHandle } from './db/client'
 import { runMigrations } from './db/migrate'
-import { resolveKek } from './crypto/keyring'
+import { resolveKeks } from './crypto/keyring'
 import { registerConfigRoutes } from './routes/config'
 import { registerHealthRoutes } from './routes/health'
 import {
@@ -189,10 +189,20 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
     config.publicUrl,
   )
   const sessions = new SessionStore(dbHandle.db, config)
-  const kek = resolveKek(config)
-  const csca = new CscaService({ db: dbHandle.db, config, kek })
+  const keks = resolveKeks(config, config.dataDir)
+  const csca = new CscaService({ db: dbHandle.db, config, keks })
   if (realmEnabled(config, 'csca')) {
     await csca.ensureCscaKey()
+    // Verify the stored key can be opened, so a KEK mismatch is reported at
+    // startup rather than when issuing a DSC.
+    try {
+      await csca.validateCurrentKey()
+    } catch (error) {
+      app.log.error(
+        { err: error },
+        'sealed CSCA key cannot be decrypted (KEK mismatch): set the same ENCRYPTION_KEK/PKD42_ENCRYPTION_KEK used before, or remove the database to bootstrap a new CSCA',
+      )
+    }
   }
   const dsc = new DscService(dbHandle.db, config, csca)
 
