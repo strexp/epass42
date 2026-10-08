@@ -54,7 +54,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'pkd42',
+      title: 'PKD42',
       htmlAttrs: { lang: 'en' },
     },
   },

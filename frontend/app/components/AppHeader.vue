@@ -63,6 +63,7 @@ function onSelect(key: string): void {
   align-items: center;
   gap: 8px;
   font-weight: 700;
+  font-size: 18px;
   text-decoration: none;
   color: inherit;
 }

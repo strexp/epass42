@@ -5,7 +5,7 @@ export default defineI18nConfig(() => ({
   fallbackLocale: 'en',
   messages: {
     en: {
-      app: { name: 'pkd42', tagline: 'dn42 PKD / CSCA / DSC' },
+      app: { name: 'PKD42', tagline: 'dn42 PKD / CSCA / DSC' },
       nav: {
         home: 'Home',
         csca: 'CSCA',
@@ -44,7 +44,7 @@ export default defineI18nConfig(() => ({
         close: 'Close',
       },
       home: {
-        intro: 'pkd42 runs the ICAO PKD, CSCA and DSC roles for dn42.',
+        intro: 'PKD42 runs the ICAO PKD, CSCA and DSC roles for dn42.',
         cscaCard: 'Submit and manage Document Signer applications.',
         dscCard: 'Request eMRTD personalization (.perso) data.',
         pkdCard: 'Browse published CSCA certificates, CRLs and Master Lists.',
