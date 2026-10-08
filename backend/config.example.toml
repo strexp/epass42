@@ -72,6 +72,14 @@ issuingAuthority = "NIA"
 personalizationDevice = "PKD42"
 dg13Policy = "utf8-text"
 
+[issuing.security]
+paceEcdhGm3des = true
+paceEcdhGmAes128 = true
+caEcdh3des = false
+caEcdhAes128 = false
+caKeyId = 1
+aa = false
+
 # PKD directory (M9).
 [pkd]
 # baseDn = "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int"

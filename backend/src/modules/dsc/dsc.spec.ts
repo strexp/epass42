@@ -117,6 +117,16 @@ function artifactText(db: Db, requestId: number): string {
   return readFileSync(art.path, 'utf8')
 }
 
+/** Submits a minimal request anonymously and returns its reference. */
+async function submit(app: FastifyInstance, documentNumber: string): Promise<string> {
+  const response = await app.inject({
+    method: 'POST',
+    url: '/dsc/requests',
+    payload: payload(documentNumber),
+  })
+  return response.json().reference as string
+}
+
 describe('M7 DSC signing service', () => {
   it('accepts an anonymous structured request and returns metadata', async () => {
     const { app } = await harness()
@@ -348,5 +358,43 @@ describe('M7 DSC signing service', () => {
       payload: {},
     })
     expect(denied.statusCode).toBe(403)
+  })
+
+  it('applies administrator security defaults and derives the DSC selection', async () => {
+    const { app, oidc, db, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const first = await submit(app, 'D1111111')
+    const firstRow = dsc.getByReference(first)!
+    expect(firstRow.dscSelection).toBe('nia')
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${firstRow.id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    const firstPerso = parsePerso(artifactText(db, firstRow.id))
+    expect(firstPerso.dataGroups.has(14)).toBe(true)
+    expect(firstPerso.dataGroups.has(15)).toBe(false)
+
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { security: { aa: true } },
+    })
+    expect(update.statusCode).toBe(200)
+    expect(update.json().security.aa).toBe(true)
+
+    const second = await submit(app, 'D2222222')
+    const secondRow = dsc.getByReference(second)!
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${secondRow.id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    const secondPerso = parsePerso(artifactText(db, secondRow.id))
+    expect(secondPerso.dataGroups.has(15)).toBe(true)
   })
 })

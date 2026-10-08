@@ -119,6 +119,17 @@ const configSchema = z.object({
       issuingAuthority: z.string().default('NIA'),
       personalizationDevice: z.string().default('PKD42'),
       dg13Policy: z.string().default('utf8-text'),
+      /** Default eMRTD security mechanisms chosen by the administrator. */
+      security: z
+        .object({
+          paceEcdhGm3des: z.boolean().default(true),
+          paceEcdhGmAes128: z.boolean().default(true),
+          caEcdh3des: z.boolean().default(false),
+          caEcdhAes128: z.boolean().default(false),
+          caKeyId: z.number().int().min(0).max(255).default(1),
+          aa: z.boolean().default(false),
+        })
+        .prefault({}),
     })
     .prefault({}),
   crl: z

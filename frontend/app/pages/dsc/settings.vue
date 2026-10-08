@@ -23,7 +23,19 @@ const { t } = useI18n()
 const message = useMessage()
 
 const deliveryMode = ref<'applicant' | 'reviewer'>('applicant')
-const profile = ref({ issuingAuthority: '', personalizationDevice: '', dg13Policy: '' })
+const profile = ref({
+  issuingAuthority: '',
+  personalizationDevice: '',
+  dg13Policy: '',
+  security: {
+    paceEcdhGm3des: true,
+    paceEcdhGmAes128: true,
+    caEcdh3des: false,
+    caEcdhAes128: false,
+    caKeyId: 1,
+    aa: false,
+  },
+})
 
 const isAdmin = computed(() => auth.realms.dsc.me?.isAdmin ?? false)
 
@@ -107,18 +119,25 @@ onMounted(async () => {
           <NFormItem :label="$t('dsc.dg13Policy')">
             <NInput v-model:value="profile.dg13Policy" />
           </NFormItem>
-          <NButton size="small" type="primary" @click="saveProfile">
+        </NCard>
+
+        <NCard :title="$t('dsc.securityDefaults')" size="small">
+          <NText depth="3">{{ $t('dsc.securityDefaultsHint') }}</NText>
+          <SecurityOptions v-model="profile.security" style="margin-top: 12px" />
+        </NCard>
+
+        <NSpace>
+          <NButton type="primary" @click="saveProfile">
             <template #icon
               ><NIcon><Save /></NIcon
             ></template>
             {{ $t('common.save') }}
           </NButton>
-        </NCard>
+          <NuxtLink to="/dsc">
+            <NButton quaternary>{{ $t('common.back') }}</NButton>
+          </NuxtLink>
+        </NSpace>
       </template>
-
-      <NuxtLink to="/dsc">
-        <NButton size="small">{{ $t('common.back') }}</NButton>
-      </NuxtLink>
     </NSpace>
   </div>
 </template>

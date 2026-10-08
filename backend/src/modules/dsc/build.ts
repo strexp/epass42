@@ -35,6 +35,7 @@ import {
   wrapDg3,
   wrapDg4,
   type RsaKeyPair,
+  type SecurityInfoSelection,
 } from '@pkd42/pki'
 import type { SignRequest } from '@pkd42/shared'
 
@@ -45,6 +46,8 @@ export interface IssuingDefaults {
   personalizationDevice: string
   dg13Policy: string
   endorsements?: string
+  /** Default security mechanisms applied when the request omits them. */
+  security: SecurityInfoSelection
 }
 
 /** The Document Signer material used to sign EF.SOD / EF.CardSecurity. */
@@ -163,7 +166,8 @@ export async function buildPersoSigning(
   dsc: SigningMaterial,
 ): Promise<PersoBuildResult> {
   const groups = buildDataGroups(request, profile)
-  const security = request.security
+  // Security mechanisms are administrator defaults the applicant does not see.
+  const security = request.security ?? profile.security
 
   // EF.CardAccess advertises the selected PACE/CA/AA mechanisms.
   const cardAccess = buildCardAccess({

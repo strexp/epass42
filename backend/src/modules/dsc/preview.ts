@@ -74,9 +74,18 @@ export interface RequestPreview {
 export function buildPreview(
   payload: SignRequest,
   rules: MaskRules = DEFAULT_MASK,
+  security: SignRequest['security'] = payload.security,
 ): RequestPreview {
   const mask = (value: string | undefined): ReturnType<typeof field> => field(value, true)
   void rules
+  const resolved = security ?? {
+    paceEcdhGm3des: true,
+    paceEcdhGmAes128: true,
+    caEcdh3des: false,
+    caEcdhAes128: false,
+    caKeyId: 1,
+    aa: false,
+  }
   return {
     documentCode: payload.mrz.documentCode,
     issuingState: payload.mrz.issuingState,
@@ -87,15 +96,15 @@ export function buildPreview(
     dateOfExpiry: { present: true, value: maskDate(payload.mrz.dateOfExpiry) },
     nationality: payload.mrz.nationality,
     sex: payload.mrz.sex,
-    dataGroups: dataGroupList(payload),
+    dataGroups: dataGroupList(payload, resolved),
     images: { dg2: true, dg5: Boolean(payload.dg5), dg7: Boolean(payload.dg7) },
     biometrics: { dg3: Boolean(payload.dg3), dg4: Boolean(payload.dg4) },
     security: {
-      paceEcdhGm3des: payload.security.paceEcdhGm3des,
-      paceEcdhGmAes128: payload.security.paceEcdhGmAes128,
-      caEcdh3des: payload.security.caEcdh3des,
-      caEcdhAes128: payload.security.caEcdhAes128,
-      aa: payload.security.aa,
+      paceEcdhGm3des: resolved.paceEcdhGm3des,
+      paceEcdhGmAes128: resolved.paceEcdhGmAes128,
+      caEcdh3des: resolved.caEcdh3des,
+      caEcdhAes128: resolved.caEcdhAes128,
+      aa: resolved.aa,
     },
     additional: {
       dg11: Boolean(payload.dg11),

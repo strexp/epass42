@@ -12,6 +12,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { SignRequest } from '@pkd42/shared'
 import { AppError } from '@pkd42/shared'
 import { verifySod } from '@pkd42/pki'
+import type { SecurityInfoSelection } from '@pkd42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import {
@@ -27,7 +28,7 @@ import { hashToken, randomToken } from '../../crypto/secret'
 import { isExpired, isoInSeconds, nowIso } from '../../util/time'
 import { currentNiaDsc, CscaService, type DscCertRow } from '../csca/service'
 import type { DscScope } from '../auth/authorization'
-import { canReview } from '../auth/authorization'
+import { asDelegatesToNia, canReview } from '../auth/authorization'
 import {
   buildPersoSigning,
   type IssuingDefaults,
@@ -37,6 +38,11 @@ import {
 import { buildPreview, type RequestPreview } from './preview'
 
 export type SignRequestRow = typeof signRequest.$inferSelect
+
+/** A partial update to the issuing defaults (security may be partial). */
+export type IssuingDefaultsUpdate = Partial<Omit<IssuingDefaults, 'security'>> & {
+  security?: Partial<SecurityInfoSelection>
+}
 
 /** Who is submitting the request (may be anonymous). */
 export interface Requester {
@@ -70,21 +76,52 @@ export class DscService {
   ) {}
 
   /** The current issuing defaults (config overlaid by the DB profile row). */
-  issuingDefaults(overrides: Partial<IssuingDefaults> = {}): IssuingDefaults {
+  issuingDefaults(overrides: IssuingDefaultsUpdate = {}): IssuingDefaults {
     const row = this.db.select().from(issuingProfile).orderBy(desc(issuingProfile.id)).get()
     const extra = row?.defaultsJson
       ? (JSON.parse(row.defaultsJson) as Partial<IssuingDefaults>)
       : {}
     return {
-      issuingState: row?.issuingState ?? this.config.issuing.issuingState,
-      issuingAuthority: row?.issuingAuthority ?? this.config.issuing.issuingAuthority,
+      issuingState: overrides.issuingState ?? row?.issuingState ?? this.config.issuing.issuingState,
+      issuingAuthority:
+        overrides.issuingAuthority ?? row?.issuingAuthority ?? this.config.issuing.issuingAuthority,
       personalizationDevice:
-        row?.personalizationDevice ?? this.config.issuing.personalizationDevice,
-      dg13Policy: row?.dg13Policy ?? this.config.issuing.dg13Policy,
-      endorsements: row?.endorsementsJson ?? undefined,
-      ...extra,
-      ...overrides,
+        overrides.personalizationDevice ??
+        row?.personalizationDevice ??
+        this.config.issuing.personalizationDevice,
+      dg13Policy: overrides.dg13Policy ?? row?.dg13Policy ?? this.config.issuing.dg13Policy,
+      endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
+      security: {
+        ...this.config.issuing.security,
+        ...(extra.security ?? {}),
+        ...(overrides.security ?? {}),
+      },
     }
+  }
+
+  /**
+   * Derives the Document Signer selection.  The applicant does not choose: it
+   * follows the AS delegation setting (NIA DSC) or the AS's own active DSC.
+   */
+  private resolveDscSelection(
+    requester: Requester,
+    payload: SignRequest,
+  ): { mode: 'nia' | 'owned'; certId: number | null } {
+    if (payload.dscSelection) {
+      return {
+        mode: payload.dscSelection.mode,
+        certId: payload.dscSelection.mode === 'owned' ? payload.dscSelection.dscCertId : null,
+      }
+    }
+    if (requester.asn !== null && !asDelegatesToNia(this.db, requester.asn)) {
+      const own = this.db
+        .select()
+        .from(dscCert)
+        .where(and(eq(dscCert.asn, requester.asn), eq(dscCert.status, 'active')))
+        .get()
+      if (own) return { mode: 'owned', certId: own.id }
+    }
+    return { mode: 'nia', certId: null }
   }
 
   /** Creates a signing request and returns its one-time reference. */
@@ -92,7 +129,7 @@ export class DscService {
     const reference = randomToken(24)
     const createdAt = nowIso()
     const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString()
-    const dscSelection = payload.dscSelection.mode
+    const selection = this.resolveDscSelection(requester, payload)
     let result
     try {
       result = this.db
@@ -102,11 +139,11 @@ export class DscService {
           requesterAccountId: requester.accountId,
           asn: requester.asn,
           ip: requester.ip,
-          dscSelection,
-          dscCertId: payload.dscSelection.mode === 'owned' ? payload.dscSelection.dscCertId : null,
+          dscSelection: selection.mode,
+          dscCertId: selection.certId,
           payloadJson: JSON.stringify(payload),
           status: 'submitted',
-          deliveryMode: 'applicant',
+          deliveryMode: this.getDeliveryMode(),
           deliveryOverride: false,
           email: payload.email ?? null,
           createdAt,
@@ -285,7 +322,7 @@ export class DscService {
       deliveryMode: row.deliveryMode,
       consumedAt: row.consumedAt,
       dscSelection: row.dscSelection,
-      dataGroups: dataGroupList(payload),
+      dataGroups: dataGroupList(payload, this.issuingDefaults().security),
       email: row.email,
     }
   }
@@ -318,7 +355,7 @@ export class DscService {
 
   /** Updates the issuing profile defaults. */
   updateIssuingProfile(
-    values: Partial<IssuingDefaults>,
+    values: IssuingDefaultsUpdate,
     actorAccountId: number | null,
   ): IssuingDefaults {
     const current = this.issuingDefaults()
@@ -347,7 +384,8 @@ export class DscService {
   preview(reference: string): RequestPreview | null {
     const row = this.getByReference(reference)
     if (!row) return null
-    return buildPreview(JSON.parse(row.payloadJson) as SignRequest)
+    const payload = JSON.parse(row.payloadJson) as SignRequest
+    return buildPreview(payload, undefined, payload.security ?? this.issuingDefaults().security)
   }
 
   /** Atomically consumes a request (single transaction, idempotent guard). */
@@ -478,7 +516,10 @@ export class DscService {
 }
 
 /** The data group numbers a request will produce (for metadata/preview). */
-export function dataGroupList(payload: SignRequest): number[] {
+export function dataGroupList(
+  payload: SignRequest,
+  security: SignRequest['security'] = payload.security,
+): number[] {
   const groups = [1, 2, 14]
   if (payload.dg3) groups.push(3)
   if (payload.dg4) groups.push(4)
@@ -488,6 +529,6 @@ export function dataGroupList(payload: SignRequest): number[] {
   if (payload.dg12) groups.push(12)
   if (payload.dg13) groups.push(13)
   if (payload.dg16) groups.push(16)
-  if (payload.security.aa) groups.push(15)
+  if (security?.aa) groups.push(15)
   return [...new Set(groups)].sort((a, b) => a - b)
 }

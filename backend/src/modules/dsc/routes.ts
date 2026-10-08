@@ -378,6 +378,16 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
           personalizationDevice: z.string().max(70).optional(),
           dg13Policy: z.string().max(70).optional(),
           endorsements: z.string().max(70).optional(),
+          security: z
+            .object({
+              paceEcdhGm3des: z.boolean().optional(),
+              paceEcdhGmAes128: z.boolean().optional(),
+              caEcdh3des: z.boolean().optional(),
+              caEcdhAes128: z.boolean().optional(),
+              caKeyId: z.number().int().min(0).max(255).optional(),
+              aa: z.boolean().optional(),
+            })
+            .optional(),
         }),
       },
       preHandler: requireAdmin(deps as AuthContext, 'dsc'),

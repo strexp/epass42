@@ -88,23 +88,14 @@ export const dg16Schema = z.object({
 })
 
 /** Security mechanism switches used to build EF.CardAccess / DG14 / DG15. */
-export const securityOptionsSchema = z
-  .object({
-    paceEcdhGm3des: z.boolean().default(true),
-    paceEcdhGmAes128: z.boolean().default(true),
-    caEcdh3des: z.boolean().default(false),
-    caEcdhAes128: z.boolean().default(false),
-    caKeyId: z.number().int().min(0).max(255).default(1),
-    aa: z.boolean().default(false),
-  })
-  .default({
-    paceEcdhGm3des: true,
-    paceEcdhGmAes128: true,
-    caEcdh3des: false,
-    caEcdhAes128: false,
-    caKeyId: 1,
-    aa: false,
-  })
+export const securityOptionsSchema = z.object({
+  paceEcdhGm3des: z.boolean().default(true),
+  paceEcdhGmAes128: z.boolean().default(true),
+  caEcdh3des: z.boolean().default(false),
+  caEcdhAes128: z.boolean().default(false),
+  caKeyId: z.number().int().min(0).max(255).default(1),
+  aa: z.boolean().default(false),
+})
 
 /** Which Document Signer signs the SOD. */
 export const dscSelectionSchema = z.discriminatedUnion('mode', [
@@ -124,8 +115,10 @@ export const signRequestSchema = z.object({
   dg12: dg12Schema.optional(),
   dg13: z.object({ text: z.string().max(2048) }).optional(),
   dg16: dg16Schema.optional(),
-  security: securityOptionsSchema,
-  dscSelection: dscSelectionSchema.default({ mode: 'nia' }),
+  /** Optional; the DSC service applies the administrator's default. */
+  security: securityOptionsSchema.optional(),
+  /** Optional; derived from the AS delegation setting. */
+  dscSelection: dscSelectionSchema.optional(),
   email: z.string().email().optional(),
   notes: z.string().max(2000).optional(),
 })
