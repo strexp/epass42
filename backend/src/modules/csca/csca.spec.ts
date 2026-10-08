@@ -314,6 +314,7 @@ describe('M5 CSCA role', () => {
     })
     expect(own.statusCode).toBe(200)
     expect(own.json().useNiaDsc).toBe(false)
+    expect(own.json().hasActiveDsc).toBe(true)
   })
 
   it('exposes a system-generated DSC private key to its AS owner and NIA admins', async () => {

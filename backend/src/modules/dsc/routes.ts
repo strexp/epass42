@@ -13,11 +13,11 @@ import { z } from 'zod'
 
 import { buildMrzLines, validateMrzLines } from '@pkd42/pki'
 import { signRequestSchema, type SignRequest, LIMITS } from '@pkd42/shared'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { writeAudit } from '../../audit/audit'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { asConfig } from '../../db/schema'
+import { asConfig, dscCert } from '../../db/schema'
 import {
   canReview,
   dscScope,
@@ -446,7 +446,17 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
         ip: request.ip,
         detail: { asn, useNiaDsc: request.body.useNiaDsc },
       })
-      return { asn, useNiaDsc: request.body.useNiaDsc }
+      const active = db
+        .select()
+        .from(dscCert)
+        .where(and(eq(dscCert.asn, asn), eq(dscCert.status, 'active')))
+        .get()
+      return {
+        asn,
+        activeMnt: principal.account.activeMnt,
+        useNiaDsc: request.body.useNiaDsc,
+        hasActiveDsc: active !== undefined,
+      }
     },
   )
 }

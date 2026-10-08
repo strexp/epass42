@@ -442,7 +442,17 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
         ip: request.ip,
         detail: { asn, useNiaDsc: request.body.useNiaDsc },
       })
-      return { asn, useNiaDsc: request.body.useNiaDsc }
+      const active = db
+        .select()
+        .from(dscCert)
+        .where(and(eq(dscCert.asn, asn), eq(dscCert.status, 'active')))
+        .get()
+      return {
+        asn,
+        activeMnt: principal.account.activeMnt,
+        useNiaDsc: request.body.useNiaDsc,
+        hasActiveDsc: active !== undefined,
+      }
     },
   )
 }

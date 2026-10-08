@@ -72,10 +72,18 @@ async function loadDelegation(): Promise<void> {
 
 async function setDelegation(value: boolean): Promise<void> {
   try {
-    delegation.value = await api('/csca/settings/as', {
-      method: 'PUT',
-      body: { useNiaDsc: value },
-    })
+    const updated = await api<{
+      asn: number | null
+      activeMnt: string | null
+      useNiaDsc: boolean
+      hasActiveDsc: boolean
+    }>('/csca/settings/as', { method: 'PUT', body: { useNiaDsc: value } })
+    delegation.value = {
+      asn: updated.asn,
+      activeMnt: updated.activeMnt,
+      useNiaDsc: updated.useNiaDsc,
+      hasActiveDsc: updated.hasActiveDsc,
+    }
     message.success(t('common.success'))
   } catch (error) {
     message.error(t(errorMessageKey(error)))
