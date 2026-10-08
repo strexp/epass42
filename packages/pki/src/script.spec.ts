@@ -24,7 +24,6 @@ describe('perso script writer', () => {
     expect(script).toContain('@dg 2 750100')
     expect(script).toContain('@cardaccess 3100')
     expect(script).toContain('@sod 770100')
-    expect(script).toContain('NOT valid for real identity documents')
   })
 
   it('renders an LDS2 section with records and transparent files', () => {

@@ -135,7 +135,7 @@ export type SignRequest = z.infer<typeof signRequestSchema>
 export type SecurityOptions = z.infer<typeof securityOptionsSchema>
 export type DscSelection = z.infer<typeof dscSelectionSchema>
 
-/** dn42 OAuth claims we consume (`PLAN.md`). */
+/** dn42 OAuth claims we consume. */
 export const dn42ClaimsSchema = z.object({
   sub: z.string(),
   iss: z.string(),

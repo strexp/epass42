@@ -18,7 +18,7 @@ import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 
 import { createCscaRoot, generateRsaKeyPair, type HashName, type RsaKeyPair } from '@pkd42/pki'
-import { COUNTRY_ALPHA2, COUNTRY_ALPHA3, DISCLAIMER } from '@pkd42/shared'
+import { COUNTRY_ALPHA2, COUNTRY_ALPHA3 } from '@pkd42/shared'
 
 const HASHES: Record<string, HashName> = {
   sha224: 'SHA-224',
@@ -207,13 +207,11 @@ async function main(): Promise<void> {
     notBefore: generated.certificate.notBefore.toISOString(),
     notAfter: generated.certificate.notAfter.toISOString(),
     crlDistributionPoints: options.crlDp,
-    disclaimer: DISCLAIMER,
   }
   writeFileSync(join(options.out, 'csca.json'), `${JSON.stringify(metadata, null, 2)}\n`)
 
   process.stderr.write(
-    `Wrote ${join(options.out, 'csca.key')}, csca.crt, csca.crt.der and csca.json\n` +
-      `${DISCLAIMER}\n`,
+    `Wrote ${join(options.out, 'csca.key')}, csca.crt, csca.crt.der and csca.json\n`,
   )
 }
 

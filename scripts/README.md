@@ -53,7 +53,7 @@ For production-like use, generate the CSCA on an offline machine:
 
 The pkd42 project intentionally runs with an **online** CSCA (it issues DSC
 certificates and CRLs automatically). The offline procedure above is the
-conservative option and matches the PKI role description in `PLAN.md`.
+conservative option.
 
 ## Verifying objects
 

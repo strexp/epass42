@@ -1,8 +1,7 @@
 /**
- * Global constants for the pkd42 simulation.
+ * Global constants for the pkd42 project.
  *
- * The project is a dn42 role-play system and MUST NOT be used for real identity
- * documents.  The country codes below are reserved for this simulation.
+ * The country codes below are used throughout the DN/PKD paths and the MRZ.
  */
 
 /** ISO 3166-1 alpha-2 style code used in DN/PKD paths (`c=XD`). */
@@ -15,14 +14,9 @@ export const COUNTRY_ALPHA3 = 'UDN' as const
 export const ROLES = ['pkd', 'csca', 'dsc'] as const
 export type Role = (typeof ROLES)[number]
 
-/** The two independent OAuth realms (`PLAN.md`: CSCA and DSC logins differ). */
+/** The two independent OAuth realms (CSCA and DSC logins differ). */
 export const REALMS = ['csca', 'dsc'] as const
 export type Realm = (typeof REALMS)[number]
-
-/** Human-readable disclaimer shown in the UI and embedded in every artifact. */
-export const DISCLAIMER =
-  'pkd42 is a dn42 simulation of ICAO PKD/CSCA/DSC. ' +
-  'Not valid for real identity documents or any official use.'
 
 /** Cryptographic defaults. */
 export const CRYPTO = {

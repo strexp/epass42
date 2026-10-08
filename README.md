@@ -1,14 +1,8 @@
 # pkd42
 
-pkd42 is a **dn42 role-play simulation** of an ICAO-style public key
-infrastructure: a certificate directory (PKD), a Country Signing Certificate
-Authority (CSCA) and a Document Signer (DSC) signing service for eMRTD
-("passport") personalization.
-
-> **Disclaimer.** pkd42 is a simulation for the dn42 network. It is **not** a
-> real identity document system and its certificates, CRLs, Master Lists and
-> `.perso` files **must not** be used for real passports, identity documents or
-> any official purpose. Every artifact carries this notice.
+pkd42 is a dn42 public key infrastructure: a certificate directory (PKD), a
+Country Signing Certificate Authority (CSCA) and a Document Signer (DSC) signing
+service for eMRTD ("passport") personalization.
 
 ## Repository layout
 
@@ -21,8 +15,7 @@ pkd42/
 ├── backend/       Fastify + TypeScript (M3+, planned)
 ├── frontend/      Nuxt 4 + Naive UI (M11, planned)
 ├── deploy/        docker-compose, OpenLDAP schema (planned)
-├── TODO.md        milestone/task plan
-└── PLAN.md        high-level plan (local only)
+└── TODO.md        milestone/task plan
 ```
 
 ## Requirements
@@ -53,7 +46,7 @@ pnpm --filter @pkd42/scripts exec tsx src/verify.ts \
 
 ## Design notes
 
-- Country codes are reserved for the simulation: ICAO three-letter `UDN`
+- Country codes used by the project: ICAO three-letter `UDN`
   (MRZ/`localityName`) and alpha-2 `XD` (`C=XD`, PKD paths).
 - **CSCA private keys are online** in this design (encrypted at rest; M13),
   which is what lets the service issue DSC certificates and CRLs automatically.
