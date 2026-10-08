@@ -127,17 +127,18 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
           offset: z.coerce.number().int().min(0).default(0),
         }),
       },
-      preHandler: requireAdmin(deps, 'csca'),
+      preHandler: requireSession(deps, 'csca'),
     },
     async (request) => {
-      const rows = db
-        .select()
-        .from(dscApplication)
-        .orderBy(desc(dscApplication.id))
-        .all()
-        .filter((row) => !request.query.status || row.status === request.query.status)
+      const principal = request.principal!
+      let rows = db.select().from(dscApplication).orderBy(desc(dscApplication.id)).all()
+      // Non-admins only see their own applications.
+      if (!principal.isAdmin) {
+        rows = rows.filter((row) => row.applicantAccountId === principal.account.id)
+      }
+      rows = rows.filter((row) => !request.query.status || row.status === request.query.status)
       const page = rows.slice(request.query.offset, request.query.offset + request.query.limit)
-      return { total: rows.length, items: page }
+      return { total: rows.length, items: page, scope: principal.isAdmin ? 'all' : 'own' }
     },
   )
 

@@ -45,6 +45,7 @@ const delegation = ref<{
 
 const me = computed(() => auth.realms.csca.me)
 const isAdmin = computed(() => me.value?.isAdmin ?? false)
+const signedIn = computed(() => me.value !== null)
 const hasAsn = computed(() => (me.value?.account.asn ?? null) !== null)
 
 async function loadApplications(): Promise<void> {
@@ -145,7 +146,8 @@ const columns = [
 onMounted(async () => {
   if (!auth.realms.csca.loaded) await auth.fetchMe('csca')
   await loadDelegation()
-  if (isAdmin.value) await loadApplications()
+  // Admins see every application; other users see their own.
+  if (signedIn.value) await loadApplications()
 })
 </script>
 
@@ -198,7 +200,11 @@ onMounted(async () => {
         </template>
       </NCard>
 
-      <NCard v-if="isAdmin" :title="$t('csca.adminTitle')" size="small">
+      <NCard
+        v-if="signedIn"
+        :title="isAdmin ? $t('csca.adminTitle') : $t('csca.myApplications')"
+        size="small"
+      >
         <template #action>
           <NSpace>
             <NButton size="small" @click="loadApplications">
@@ -243,14 +249,6 @@ onMounted(async () => {
             </NSpace>
           </template>
         </NCard>
-      </NCard>
-
-      <NCard v-else :title="$t('nav.certificates')" size="small">
-        <template #action>
-          <NuxtLink to="/csca/certificates">
-            <NButton size="small">{{ $t('csca.certificatesTitle') }}</NButton>
-          </NuxtLink>
-        </template>
       </NCard>
     </NSpace>
   </div>

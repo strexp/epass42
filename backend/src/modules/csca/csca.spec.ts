@@ -177,15 +177,35 @@ describe('M5 CSCA role', () => {
     expect(json(reject).status).toBe('rejected')
   })
 
-  it('forbids non-admins from review endpoints', async () => {
+  it('lets non-admins see their own applications but not review them', async () => {
     const { app, cscaCookie } = await harness(OTHER_USER)
 
+    // A non-admin submits an application...
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'nia_generated', subjectCn: 'Own application', documentType: 'P' },
+    })
+    expect(submit.statusCode).toBe(201)
+
+    // ...and can list it (scope 'own').
     const list = await app.inject({
       method: 'GET',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
     })
-    expect(list.statusCode).toBe(403)
+    expect(list.statusCode).toBe(200)
+    expect(list.json().scope).toBe('own')
+    expect(list.json().total).toBe(1)
+
+    // Review endpoints remain forbidden.
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${submit.json().id}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(403)
 
     const rollover = await app.inject({
       method: 'POST',
