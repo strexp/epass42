@@ -7,20 +7,25 @@ import {
   NIcon,
   NInput,
   NInputNumber,
+  NResult,
   NSelect,
   NSpace,
   NText,
   useMessage,
 } from 'naive-ui'
-import { Save } from '@lucide/vue'
-import { computed, reactive, ref } from 'vue'
+import { LogIn, Save } from '@lucide/vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
+import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({ layout: 'csca' })
 
 const api = useApi()
+const auth = useAuthStore()
 const { t } = useI18n()
 const message = useMessage()
+
+const signedIn = computed(() => auth.realms.csca.me !== null)
 
 const form = reactive({
   keyMode: 'nia_generated' as 'nia_generated' | 'user_uploaded',
@@ -29,7 +34,7 @@ const form = reactive({
   publicKeyPem: '',
   documentType: 'P',
   validityDays: 3650,
-  issuancePolicy: 'default',
+  issuancePolicy: 'open',
   applicationUrl: '',
   notes: '',
 })
@@ -51,6 +56,10 @@ const documentTypeOptions = [
   { label: 'P — Passport (TD3)', value: 'P' },
   { label: 'ID — Identity card', value: 'ID' },
 ]
+
+function login(): void {
+  auth.login('csca', '/csca/apply')
+}
 
 async function submit(): Promise<void> {
   submitting.value = true
@@ -77,11 +86,15 @@ async function submit(): Promise<void> {
     submitting.value = false
   }
 }
+
+onMounted(async () => {
+  if (!auth.realms.csca.loaded) await auth.fetchMe('csca')
+})
 </script>
 
 <template>
   <div class="pkd42-page">
-    <NCard :title="$t('csca.applyTitle')">
+    <NCard v-if="signedIn" :title="$t('csca.applyTitle')">
       <NText depth="3">{{ $t('auth.signedInTo', { realm: 'CSCA' }) }}</NText>
       <NForm label-placement="top" style="margin-top: 12px">
         <NFormItem :label="$t('csca.keyMode')">
@@ -125,6 +138,19 @@ async function submit(): Promise<void> {
           </NuxtLink>
         </NSpace>
       </template>
+    </NCard>
+
+    <NCard v-else :title="$t('csca.applyTitle')">
+      <NResult status="info" :title="$t('auth.signInTo', { realm: 'CSCA' })">
+        <template #footer>
+          <NButton type="primary" @click="login">
+            <template #icon
+              ><NIcon><LogIn /></NIcon
+            ></template>
+            {{ $t('common.login') }}
+          </NButton>
+        </template>
+      </NResult>
     </NCard>
   </div>
 </template>

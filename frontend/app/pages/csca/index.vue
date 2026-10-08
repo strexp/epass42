@@ -154,7 +154,7 @@ onMounted(async () => {
 <template>
   <div class="pkd42-page">
     <NSpace vertical size="large">
-      <NCard :title="$t('csca.applyTitle')" size="small">
+      <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
         <NText depth="3">{{ $t('home.cscaCard') }}</NText>
         <template #action>
           <NuxtLink to="/csca/apply">
@@ -166,6 +166,10 @@ onMounted(async () => {
             </NButton>
           </NuxtLink>
         </template>
+      </NCard>
+
+      <NCard v-else :title="$t('csca.applyTitle')" size="small">
+        <NText depth="3">{{ $t('auth.signInTo', { realm: 'CSCA' }) }}</NText>
       </NCard>
 
       <NCard v-if="hasAsn" :title="$t('csca.asDelegationTitle')" size="small">
