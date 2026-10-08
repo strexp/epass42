@@ -13,7 +13,7 @@
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAudit } from '../../audit/audit'
@@ -282,8 +282,8 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
     },
   )
 
-  // The private key of a system-generated DSC, for the applicant's own AS or a
-  // CSCA administrator.  Uploaded (user_uploaded) DSCs have no stored key.
+  // One-time download of a system-generated DSC private key (owner AS or CSCA
+  // admin).  The sealed key is deleted after the first successful download.
   server.get(
     '/csca/certificates/:id/private-key',
     {
@@ -296,8 +296,22 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
       if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
       const own = row.asn !== null && row.asn === principal.account.asn
       if (!principal.isAdmin && !own) return reply.code(403).send({ error: 'forbidden' })
-      if (!row.keyRef) return reply.code(404).send({ error: 'no_private_key' })
+      if (!row.keyRef) {
+        const uploaded = row.keyMode === 'user_uploaded'
+        return reply
+          .code(uploaded ? 404 : 410)
+          .send({ error: uploaded ? 'no_private_key' : 'private_key_consumed' })
+      }
+      // Export, then atomically clear the sealed key so it can be taken once.
       const pem = service.exportDscPrivateKey(row)
+      const cleared = db
+        .update(dscCert)
+        .set({ keyRef: null })
+        .where(and(eq(dscCert.id, row.id), isNotNull(dscCert.keyRef)))
+        .run()
+      if (cleared.changes === 0) {
+        return reply.code(410).send({ error: 'private_key_consumed' })
+      }
       writeAudit(db, {
         actorAccountId: principal.account.id,
         realm: 'csca',

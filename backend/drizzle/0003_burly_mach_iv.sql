@@ -1,0 +1,1 @@
+ALTER TABLE `dsc_cert` ADD `key_mode` text;

@@ -85,6 +85,9 @@ export default defineI18nConfig(() => ({
         rollover: 'Roll over CSCA key',
         crl: 'CRL',
         privateKey: 'Private key',
+        privateKeyTitle: 'Download private key',
+        privateKeyWarning:
+          'The private key can be downloaded only once. Save it securely now: it is deleted after this download and cannot be retrieved again.',
         asDelegationTitle: 'AS DSC delegation',
         asDelegationHint:
           'Choose whether this AS uses the NIA DSC (delegated, reviewable here) or its own certificate.',
@@ -182,6 +185,8 @@ export default defineI18nConfig(() => ({
         reveal_not_allowed: 'Delivery is restricted to reviewers.',
         document_number_conflict: 'This document number already exists for your AS.',
         no_active_dsc: 'No approved DSC is available for this AS yet.',
+        no_private_key: 'This certificate has no downloadable private key.',
+        private_key_consumed: 'The private key has already been downloaded and deleted.',
       },
     },
   },

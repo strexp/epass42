@@ -32,6 +32,8 @@ export const ERROR_CODES = [
   'mrz_invalid',
   'document_number_conflict',
   'no_active_dsc',
+  'no_private_key',
+  'private_key_consumed',
   'request_not_found',
   'request_already_consumed',
   'request_not_approved',

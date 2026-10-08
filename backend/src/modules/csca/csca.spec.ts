@@ -347,12 +347,21 @@ describe('M5 CSCA role', () => {
     expect(key.body).toContain('BEGIN PRIVATE KEY')
     expect(key.headers['cache-control']).toBe('no-store')
 
+    // The key is deleted after the first download.
+    const againAsOwner = await app.inject({
+      method: 'GET',
+      url: `/csca/certificates/${certId}/private-key`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(againAsOwner.statusCode).toBe(410)
+    expect(againAsOwner.json().error).toBe('private_key_consumed')
+
     const adminKey = await app.inject({
       method: 'GET',
       url: `/csca/certificates/${certId}/private-key`,
       headers: { cookie: adminCookie },
     })
-    expect(adminKey.statusCode).toBe(200)
+    expect(adminKey.statusCode).toBe(410)
 
     const foreignCookie = await loginAs(app, oidc, 'csca', 'csca-client', THIRD_USER)
     const forbidden = await app.inject({

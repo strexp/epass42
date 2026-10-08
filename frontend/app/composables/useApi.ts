@@ -36,4 +36,6 @@ const ERROR_KEYS = new Set([
   'reveal_not_allowed',
   'document_number_conflict',
   'no_active_dsc',
+  'no_private_key',
+  'private_key_consumed',
 ])

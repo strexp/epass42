@@ -234,6 +234,7 @@ export class CscaService {
         certPem: generated.pem,
         keyRef: sealedKey,
         privateKeyPemEnc: null,
+        keyMode: params.keyMode,
         issuancePolicy: params.issuancePolicy ?? null,
         applicationUrl: params.applicationUrl ?? null,
         status: 'active',

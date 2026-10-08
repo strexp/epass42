@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'csca' })
 
-import { NButton, NCard, NDataTable, NTag, useMessage } from 'naive-ui'
+import { NButton, NCard, NDataTable, NTag, useDialog, useMessage } from 'naive-ui'
 import { computed, h, onMounted, ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { errorMessageKey } from '~/composables/useApi'
@@ -21,6 +21,7 @@ const api = useApi()
 const auth = useAuthStore()
 const { t } = useI18n()
 const message = useMessage()
+const dialog = useDialog()
 const config = useRuntimeConfig()
 const certificates = ref<Certificate[]>([])
 
@@ -36,6 +37,26 @@ function canDownloadKey(row: Certificate): boolean {
 
 function keyUrl(id: number): string {
   return `${apiBase}/csca/certificates/${id}/private-key`
+}
+
+/** Confirms the one-time download, then triggers it and refreshes the list. */
+function downloadKey(row: Certificate): void {
+  dialog.warning({
+    title: t('csca.privateKeyTitle'),
+    content: t('csca.privateKeyWarning'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => {
+      const link = document.createElement('a')
+      link.href = keyUrl(row.id)
+      link.download = `dsc-${row.id}.key`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      // The key is consumed by the download; refresh so the action disappears.
+      window.setTimeout(() => void load(), 1500)
+    },
+  })
 }
 
 async function load(): Promise<void> {
@@ -74,7 +95,7 @@ const columns = computed(() => [
         h('a', { href: `/csca/certificates/${row.id}.pem` }, () => 'PEM'),
         h('a', { href: `/csca/certificates/${row.id}.der` }, () => 'DER'),
         canDownloadKey(row)
-          ? h('a', { href: keyUrl(row.id), download: `dsc-${row.id}.key` }, () =>
+          ? h(NButton, { size: 'tiny', onClick: () => downloadKey(row) }, () =>
               t('csca.privateKey'),
             )
           : null,

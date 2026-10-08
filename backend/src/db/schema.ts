@@ -147,6 +147,8 @@ export const dscCert = sqliteTable('dsc_cert', {
   certPem: text('cert_pem').notNull(),
   keyRef: text('key_ref'),
   privateKeyPemEnc: text('private_key_pem_enc'),
+  /** `nia_generated` (system key) or `user_uploaded` (no stored key). */
+  keyMode: text('key_mode'),
   issuancePolicy: text('issuance_policy'),
   applicationUrl: text('application_url'),
   status: text('status').notNull().default('active'),
