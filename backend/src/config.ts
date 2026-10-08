@@ -62,6 +62,8 @@ const configSchema = z.object({
   countryAlpha3: z.string().length(3).default(COUNTRY_ALPHA3),
   databasePath: z.string().default('./data/pkd42.db'),
   runMigrations: z.boolean().default(true),
+  /** Directory for generated artifacts (perso, …). */
+  dataDir: z.string().default('./data'),
   sessionSecret: z.string().min(16).default('dev-insecure-session-secret-change-me'),
   sessionTtlSeconds: z
     .number()
@@ -95,6 +97,14 @@ const configSchema = z.object({
   adminIncludeMntBy: z.boolean().default(false),
   oauthProviders: z.array(oauthProviderSchema).default([]),
   csca: cscaSchema.prefault({}),
+  issuing: z
+    .object({
+      issuingState: z.string().length(3).default(COUNTRY_ALPHA3),
+      issuingAuthority: z.string().default('NIA'),
+      personalizationDevice: z.string().default('PKD42'),
+      dg13Policy: z.string().default('utf8-text'),
+    })
+    .prefault({}),
   crl: z
     .object({
       autoGenerate: z.boolean().default(true),

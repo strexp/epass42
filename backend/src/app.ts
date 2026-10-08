@@ -38,6 +38,8 @@ import { registerAuthRoutes } from './modules/auth/routes'
 import { realmEnabled } from './modules/auth/middleware'
 import { CscaService } from './modules/csca/service'
 import { registerCscaRoutes } from './modules/csca/routes'
+import { DscService } from './modules/dsc/service'
+import { registerDscRoutes } from './modules/dsc/routes'
 
 /** Options for {@link buildApp}. */
 export interface BuildAppOptions {
@@ -58,6 +60,7 @@ export interface BuiltApp {
   providers: AuthProviders
   sessions: SessionStore
   csca: CscaService
+  dsc: DscService
 }
 
 const defaultDriverFactory: OidcDriverFactory = (provider, redirectUri) => {
@@ -173,6 +176,7 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   if (realmEnabled(config, 'csca')) {
     await csca.ensureCscaKey()
   }
+  const dsc = new DscService(dbHandle.db, config, csca)
 
   registerHealthRoutes(app, dbHandle)
   registerConfigRoutes(app, { config, providers })
@@ -180,7 +184,10 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   if (realmEnabled(config, 'csca')) {
     registerCscaRoutes(app, { config, db: dbHandle.db, sessions, service: csca })
   }
+  if (realmEnabled(config, 'dsc')) {
+    registerDscRoutes(app, { config, db: dbHandle.db, sessions, service: dsc })
+  }
 
   await app.ready()
-  return { app, config, dbHandle, providers, sessions, csca }
+  return { app, config, dbHandle, providers, sessions, csca, dsc }
 }

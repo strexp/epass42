@@ -4,6 +4,7 @@ build
 coverage
 pnpm-lock.yaml
 reference
+backend/drizzle
 *.db
 *.sqlite
 *.sqlite3

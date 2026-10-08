@@ -358,61 +358,61 @@ pkd42/
 
 ### 9.1 输入契约（申请者只提交结构化字段）
 
-- [ ] T7.1.1 `POST /dsc/requests` 接受结构化 JSON（**无裸 hex 输入**）：
-  - [ ] `mrz`：TD3 字段（documentCode、issuingState=`UDN`、surname、givenNames、documentNumber、nationality、dob、sex、doe、personalNumber、optionalData）。
-  - [ ] `dg2`（必填）：**前端裁切/编码**后的 DG2 字节（Base64）；服务端只做结构校验，不重编码。
-  - [ ] `dg3`/`dg4`（可选）：用户上传的**已编码 CBEFF/BDB**；服务端包 `63`/`76` 外层并校验。
-  - [ ] `dg5`/`dg7`（可选）：**前端编码**的显示头像/签名图像（`5F40`/`5F43`）。
-  - [ ] `dg11`（可选）：结构化字段（fullName、otherNames[]、personalNumber、fullDob、placeOfBirth、address、telephone、profession、title、personalSummary、citizenshipImage?、otherTdNumbers[]、custodyInfo）。
-  - [ ] `dg12`（可选）：结构化字段（issuingAuthority、dateOfIssue、otherPersons[]、endorsements、taxExit、frontImage?、rearImage?；`5F55`/`5F56` 由服务端填）。
-  - [ ] `dg13`（可选）：发行国自定义的自由文本/结构化 JSON（编码策略可配）。
-  - [ ] `dg16`（可选）：通知人列表（name、telephone、address、dateRecorded）。
-  - [ ] `security`：机制开关（PACE ECDH-GM 3DES/AES、CA 3DES/AES、AA）；服务端据此生成 EF.CardAccess（主）/可选 DG14、DG15、EF.CardSecurity。
-  - [ ] `lds2`：**默认空**，申请者不输入；不生成任何 LDS2 记录/透明 EF（是否创建空应用由配置决定）。
-  - [ ] `dscSelection`：`nia`（默认）或 `owned`（指定 `dsc_cert_id`，仅限申请人所有）。
-  - [ ] `email`（可选）、`notes`（可选）。
-- [ ] T7.1.2 zod schema（`packages/shared`，前后端共用）+ 大小限制（每图/总 payload）。
-- [ ] T7.1.3 校验：
+- [x] T7.1.1 `POST /dsc/requests` 接受结构化 JSON（**无裸 hex 输入**）：
+  - [x] `mrz`：TD3 字段（documentCode、issuingState=`UDN`、surname、givenNames、documentNumber、nationality、dob、sex、doe、personalNumber、optionalData）。
+  - [x] `dg2`（必填）：**前端裁切/编码**后的 DG2 字节（Base64）；服务端只做结构校验，不重编码。
+  - [x] `dg3`/`dg4`（可选）：用户上传的**已编码 CBEFF/BDB**；服务端包 `63`/`76` 外层并校验。
+  - [x] `dg5`/`dg7`（可选）：**前端编码**的显示头像/签名图像（`5F40`/`5F43`）。
+  - [x] `dg11`（可选）：结构化字段（fullName、otherNames[]、personalNumber、fullDob、placeOfBirth、address、telephone、profession、title、personalSummary、citizenshipImage?、otherTdNumbers[]、custodyInfo）。
+  - [x] `dg12`（可选）：结构化字段（issuingAuthority、dateOfIssue、otherPersons[]、endorsements、taxExit、frontImage?、rearImage?；`5F55`/`5F56` 由服务端填）。
+  - [x] `dg13`（可选）：发行国自定义的自由文本/结构化 JSON（编码策略可配）。
+  - [x] `dg16`（可选）：通知人列表（name、telephone、address、dateRecorded）。
+  - [x] `security`：机制开关（PACE ECDH-GM 3DES/AES、CA 3DES/AES、AA）；服务端据此生成 EF.CardAccess（主）/可选 DG14、DG15、EF.CardSecurity。
+  - [x] `lds2`：**默认空**，申请者不输入；不生成任何 LDS2 记录/透明 EF（是否创建空应用由配置决定）。
+  - [x] `dscSelection`：`nia`（默认）或 `owned`（指定 `dsc_cert_id`，仅限申请人所有）。
+  - [x] `email`（可选）、`notes`（可选）。
+- [x] T7.1.2 zod schema（`packages/shared`，前后端共用）+ 大小限制（每图/总 payload）。
+- [x] T7.1.3 校验：
   - [ ] MRZ 校验位/字符集/`<` 填充；`issuingState=UDN`；证件号在签发 AS 内唯一。
   - [ ] 文档类型与所选 DSC 的 `DocumentType` 授权一致。
-  - [ ] DG2/DG3/DG4/DG5/DG7 外层结构与图像魔数；DG11/DG12/DG16 字段长度/字符集。
-  - [ ] DG 编号范围与重复检测。
-- [ ] T7.1.4 已登录用户关联 `account`；匿名则仅生成 reference。
+  - [x] DG2/DG3/DG4/DG5/DG7 外层结构与图像魔数；DG11/DG12/DG16 字段长度/字符集。
+  - [x] DG 编号范围与重复检测。
+- [x] T7.1.4 已登录用户关联 `account`；匿名则仅生成 reference。
 
 ### 9.2 处理（服务端生成 AA/CA）
 
-- [ ] T7.2.1 服务端从 `mrz` 构建 **DG1**（权威，不信任前端）。
-- [ ] T7.2.2 服务端生成 **AA**（RSA-2048）→ 公钥进 `DG15`，私钥进 perso `@aa`（DGI FF02）。
-- [ ] T7.2.3 服务端生成 **CA**（P-256）→ 公钥进 `EF.CardSecurity`（DSC 签名）与 EF.CardAccess，标量进 `@ca`（DGI FF03）。
-- [ ] T7.2.4 构建 `EF.CardAccess`（主）与可选 `DG14`，二者内容一致。
-- [ ] T7.2.5 组装 DG2/DG3/DG4/DG5/DG7（校验）、DG11/DG12/DG13/DG16（服务端构建）。
-- [ ] T7.2.6 计算各 DG SHA-256 → `LdsSecurityObject` → 选定 DSC → `EF.SOD`。
-- [ ] T7.2.7 渲染 `perso` 文本（`renderEmrtdScript`），含 LDS1（与可选 LDS2 段）。
-- [ ] T7.2.8 加密落盘为 artifact，记录 SHA-256；构建完成后**删除原始 AA/CA 私钥**（perso 内已含）。
+- [x] T7.2.1 服务端从 `mrz` 构建 **DG1**（权威，不信任前端）。
+- [x] T7.2.2 服务端生成 **AA**（RSA-2048）→ 公钥进 `DG15`，私钥进 perso `@aa`（DGI FF02）。
+- [x] T7.2.3 服务端生成 **CA**（P-256）→ 公钥进 `EF.CardSecurity`（DSC 签名）与 EF.CardAccess，标量进 `@ca`（DGI FF03）。
+- [x] T7.2.4 构建 `EF.CardAccess`（主）与可选 `DG14`，二者内容一致。
+- [x] T7.2.5 组装 DG2/DG3/DG4/DG5/DG7（校验）、DG11/DG12/DG13/DG16（服务端构建）。
+- [x] T7.2.6 计算各 DG SHA-256 → `LdsSecurityObject` → 选定 DSC → `EF.SOD`。
+- [x] T7.2.7 渲染 `perso` 文本（`renderEmrtdScript`），含 LDS1（与可选 LDS2 段）。
+- [x] T7.2.8 加密落盘为 artifact，记录 SHA-256；构建完成后**删除原始 AA/CA 私钥**（perso 内已含）。
 
 ### 9.3 输出（一次性交付，见 M8）
 
 - [ ] T7.3.1 `.perso` 通过一次性 `reveal` 交付（附可选 EF.SOD/DSC 证书）。
-- [ ] T7.3.2 头部注释含 reference ID、DG 清单、SOD 指纹。
-- [ ] T7.3.3 **perso 按设计包含 AA/CA 私钥**（`@aa`/`@ca`），UI 与文件均需显著警示；除这些外不回传任何密钥。
+- [x] T7.3.2 头部注释含 reference ID、DG 清单、SOD 指纹。
+- [x] T7.3.3 **perso 按设计包含 AA/CA 私钥**（`@aa`/`@ca`），UI 与文件均需显著警示；除这些外不回传任何密钥。
 
 ### 9.4 验证闭环
 
-- [ ] T7.4.1 内部 `verifySod` 自检。
+- [x] T7.4.1 内部 `verifySod` 自检。
 - [ ] T7.4.2 集成测试：card42 模拟器导入 perso 跑 PA（CI 可用则跑，否则文档化手动步骤）。
 - [ ] T7.4.3 单测：`openssl cms -verify` 对生成的 SOD；DG 结构向量。
 
 ### 9.5 LDS2（默认空，申请者不输入）
 
-- [ ] T7.5.1 初始 perso：LDS2（Travel/Visa/Additional Biometrics）默认不含记录/透明 EF；申请者表单不出现 LDS2 输入。
+- [x] T7.5.1 初始 perso：LDS2（Travel/Visa/Additional Biometrics）默认不含记录/透明 EF；申请者表单不出现 LDS2 输入。
 - [ ] T7.5.2 可选：为已启用 LDS2 的模式生成空应用（DF + EF.CardAccess/Security 角色一致性）。
-- [ ] T7.5.3 记录写入（state/date、visa、biometrics）由管理员或后续授权终端负责（结构保留在 `packages/pki`）。
+- [x] T7.5.3 记录写入（state/date、visa、biometrics）由管理员或后续授权终端负责（结构保留在 `packages/pki`）。
 
 ### 9.6 服务端填写字段与管理员定制
 
-- [ ] T7.6.1 定义"服务端填写字段"清单：DG1 `issuingState=UDN`、DG12 `5F19` 发证机构、`5F26` 签发日期、`5F55` 个性化时间、`5F56` 个性化设备序列号、DG13 编码策略、DG11 `5F11` 出生地默认、DG12 `5F1B/5F1C` 默认文本等。
+- [x] T7.6.1 定义"服务端填写字段"清单：DG1 `issuingState=UDN`、DG12 `5F19` 发证机构、`5F26` 签发日期、`5F55` 个性化时间、`5F56` 个性化设备序列号、DG13 编码策略、DG11 `5F11` 出生地默认、DG12 `5F1B/5F1C` 默认文本等。
 - [ ] T7.6.2 这些字段有**系统默认值**，存于 `issuing_profile`；DSC 管理员可编辑。
-- [ ] T7.6.3 审批时允许**对单请求覆盖**（快照进 `sign_request.profile_overrides`）。
+- [x] T7.6.3 审批时允许**对单请求覆盖**（快照进 `sign_request.profile_overrides`）。
 - [ ] T7.6.4 审计默认值修改与单请求覆盖。
 
 **验收**：提交样例护照数据→下载 `.perso`→card42 模拟器 PA 通过。
