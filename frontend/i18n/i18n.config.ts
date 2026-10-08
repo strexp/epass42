@@ -5,7 +5,7 @@ export default defineI18nConfig(() => ({
   fallbackLocale: 'en',
   messages: {
     en: {
-      app: { name: 'PKD42', tagline: 'dn42 PKD / CSCA / DSC' },
+      app: { name: 'Public Key Directory 42', tagline: 'PKD / CSCA / DSC in dn42' },
       nav: {
         home: 'Home',
         csca: 'CSCA',
