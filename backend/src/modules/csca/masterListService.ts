@@ -67,7 +67,6 @@ export class MasterListService {
         cscaKeyId: csca.id,
         serial: generated.serialHex,
         subjectDn: generated.certificate.subject,
-        asn: null,
         mnt: null,
         source: 'ml-signer',
         certPem: generated.pem,

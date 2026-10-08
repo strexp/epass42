@@ -64,7 +64,7 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CscaRouteD
       const principal = request.principal!
       const row = db.select().from(dscCert).where(eq(dscCert.id, request.params.id)).get()
       if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
-      const own = row.asn !== null && row.asn === principal.account.asn
+      const own = row.mnt !== null && row.mnt === principal.account.activeMnt
       if (!principal.isAdmin && !own) return reply.code(403).send({ error: 'forbidden' })
       if (!row.keyRef) {
         const uploaded = row.keyMode === 'user_uploaded'

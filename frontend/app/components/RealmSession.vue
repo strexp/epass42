@@ -47,10 +47,11 @@ async function logout(): Promise<void> {
           </NAvatar>
           <NText strong class="realm-session-label">{{ label }}</NText>
           <NTag v-if="me" size="small" type="success">
-            {{ $t('auth.signedInAs') }} {{ me.account.name ?? me.account.asn ?? me.account.id }}
+            {{ $t('auth.signedInAs') }}
+            {{ me.account.name ?? me.account.activeMnt ?? me.account.id }}
           </NTag>
           <NText v-else depth="3">{{ $t('auth.signInTo', { realm: label }) }}</NText>
-          <NTag v-if="me?.account.asn" size="small">{{ $t('auth.asn') }} {{ me.account.asn }}</NTag>
+          <NTag v-if="me?.account.activeMnt" size="small">{{ me.account.activeMnt }}</NTag>
           <NTag v-if="me?.account.activeMnt" size="small" :bordered="false">
             {{ me.account.activeMnt }}
           </NTag>

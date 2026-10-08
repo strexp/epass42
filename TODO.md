@@ -76,7 +76,7 @@ pkd42/
 | M1     | `packages/pki` 内核（X.509/CRL/CMS/SOD/CardSecurity/MasterList/DG1–DG16/MRZ/perso/验证） | 完成   |
 | M2     | `scripts/gen-csca` + `scripts/verify`                                                    | 完成   |
 | M3     | 后端骨架（Fastify + zod/OpenAPI + SQLite/Drizzle + 配置/日志/健康检查）                  | 完成   |
-| M4     | 双 realm OAuth + 会话 + MNT 授权（含委派 AS 评审）                                       | 完成   |
+| M4     | 双 realm OAuth + 会话 + MNT 授权（含委派 MNT 评审）                                      | 完成   |
 | M5     | CSCA 角色（DSC 申请/审核/签发/吊销/轮换）                                                | 完成   |
 | M6     | CRL 生成与调度                                                                           | 完成   |
 | M7     | DSC Signing Service（结构化请求 → DG/AA/CA/SOD/perso）                                   | 完成   |
@@ -118,7 +118,7 @@ pkd42/
 ### M4 认证与授权
 
 - 双 realm 完全隔离（cookie/session/CSRF）；`openid-client`（PKCE/state/nonce）；每个 provider 可配 `alias`，callback 路径带别名 `/auth/{realm}/callback/{alias}`；dn42 claim 映射与预填；`CSCA_ADMIN_MNTS`/`DSC_ADMIN_MNTS` 鉴权；CORS（分域部署）、防 CSRF/开放重定向/SSRF。
-- 委派 AS 评审：`as_config.use_nia_dsc`（缺省即 NIA）+ `maintainer`(role=`as-admin`)；只能看/审本 AS 且委派 NIA 的申请，禁改全局设定；NIA 管理员全量。`GET/PUT /csca/settings/as` 查看与切换（无 active DSC 时禁止切到自有）。
+- 委派 MNT 评审：`mnt_config.use_nia_dsc`（缺省即 NIA）+ `maintainer`(role=`as-admin`)；只能看/审本 MNT 且委派 NIA 的申请，禁改全局设定；NIA 管理员全量。`GET/PUT /csca/settings/mnt` 与 `/dsc/settings/mnt` 查看与切换（无 active DSC 时禁止切到自有）。
 
 ### M5 CSCA 角色
 
@@ -135,7 +135,7 @@ pkd42/
 - DG2 结构校验 + **16 KiB 上限**（`issuing.dg2MaxBytes`，超限 `413 dg2_too_large`）；DG3/DG4 包装；DG5/DG7；DG11/DG12（发证机构/签发日期/背书由服务端填充）/DG13/DG14/DG15/DG16。
 - 安全机制（PACE/CA/AA）与 DSC 选择为**管理员默认 + 服务端推导**，申请者不配置；服务端生成 AA(RSA-2048)/CA(P-256)，EF.CardAccess/DG14、EF.CardSecurity；EF.SOD 自检；`.perso` 产物（AA/CA 私钥仅存在于产物）。
 - 可选输出**默认空的 LDS2 应用**（`issuing.lds2`，默认关闭）：按 Travel/Visa/Additional Biometrics 生成空应用段，附 PACE+CA 的 EF.CardAccess/EF.CardSecurity 与 CA 标量；CardAccess/Security/CA 位于 Master File，各角色共享同一份。记录/透明 EF 仍为空，留待 M12+。
-- 提交前按登录 ASN 或 IP 路由表（`jurisdiction.routes`）判定管辖；若该 AS 使用自有 DSC 则提示并引导（可忽略继续用 NIA）。
+- 提交前按登录的 `activeMnt` 或 whois（`jurisdiction.whois`，默认 `whois.dn42`）查询 IP 的 `mnt-by` 判定管辖；若该 MNT 使用自有 DSC 则提示并引导（可忽略继续用 NIA）。
 
 ### M8 交付
 
@@ -165,7 +165,7 @@ pkd42/
 
 - LDS2 记录/透明 EF 写入（空应用已实现；记录留待管理员/授权终端，见 M12+）。
 - ECDSA（显式 ECParameters）证书。
-- 真实 dn42 IP→AS 管辖自动同步（现为静态路由表）。
+- whois（`whois.dn42`）IP→MNT 判定的缓存与超时策略。
 
 > 注：LDS1 仅 PACE + AA（card42 LDS1 不支持 CA），CA 只在 LDS2 上启用；该问题已按此约定实现。
 
@@ -287,13 +287,13 @@ CREATE TABLE oauth_provider (
   UNIQUE(realm, issuer, client_id));
 CREATE TABLE account (
   id INTEGER PRIMARY KEY, realm TEXT NOT NULL, provider_id INTEGER REFERENCES oauth_provider(id),
-  subject TEXT NOT NULL, asn INTEGER, active_mnt TEXT, email TEXT, name TEXT,
+  subject TEXT NOT NULL, active_mnt TEXT, email TEXT, name TEXT,
   raw_claims TEXT, created_at TEXT NOT NULL, UNIQUE(realm, provider_id, subject));
 CREATE TABLE session (
   id TEXT PRIMARY KEY, realm TEXT NOT NULL, account_id INTEGER REFERENCES account(id),
   data TEXT, created_at TEXT NOT NULL, expires_at TEXT NOT NULL);
 CREATE TABLE maintainer (
-  mnt TEXT NOT NULL, realm TEXT NOT NULL, role TEXT NOT NULL, asn INTEGER, note TEXT,
+  mnt TEXT NOT NULL, realm TEXT NOT NULL, role TEXT NOT NULL, note TEXT,
   PRIMARY KEY (mnt, realm, role));
 
 -- CSCA
@@ -303,14 +303,14 @@ CREATE TABLE csca_key (
   cert_pem TEXT NOT NULL, key_ref TEXT NOT NULL, is_current INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL);
 CREATE TABLE dsc_application (
-  id INTEGER PRIMARY KEY, asn INTEGER, mnt TEXT, applicant_account_id INTEGER REFERENCES account(id),
+  id INTEGER PRIMARY KEY, mnt TEXT, applicant_account_id INTEGER REFERENCES account(id),
   key_mode TEXT NOT NULL, subject_cn TEXT, csr_pem TEXT, public_key_pem TEXT,
   document_type TEXT, validity_days INTEGER, issuance_policy TEXT, application_url TEXT,
   notes TEXT, status TEXT NOT NULL DEFAULT 'submitted',
   reviewed_by INTEGER, reviewed_at TEXT, reject_reason TEXT, created_at TEXT NOT NULL);
 CREATE TABLE dsc_cert (
   id INTEGER PRIMARY KEY, csca_key_id INTEGER REFERENCES csca_key(id),
-  serial TEXT NOT NULL UNIQUE, subject_dn TEXT NOT NULL, asn INTEGER, mnt TEXT,
+  serial TEXT NOT NULL UNIQUE, subject_dn TEXT NOT NULL, mnt TEXT,
   source TEXT NOT NULL, cert_pem TEXT NOT NULL, key_ref TEXT,
   issuance_policy TEXT, application_url TEXT,
   status TEXT NOT NULL DEFAULT 'active', not_before TEXT, not_after TEXT,
@@ -328,8 +328,8 @@ CREATE TABLE master_list (
 -- DSC 签名
 CREATE TABLE sign_request (
   id INTEGER PRIMARY KEY, reference_hash TEXT NOT NULL UNIQUE,
-  requester_account_id INTEGER REFERENCES account(id), asn INTEGER,
-  ip TEXT, dsc_selection TEXT NOT NULL, dsc_cert_id INTEGER REFERENCES dsc_cert(id),
+  requester_account_id INTEGER REFERENCES account(id), mnt TEXT, ip TEXT,
+  dsc_selection TEXT NOT NULL, dsc_cert_id INTEGER REFERENCES dsc_cert(id),
   payload_json TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'submitted',
   delivery_mode TEXT NOT NULL DEFAULT 'applicant'
     CHECK(delivery_mode IN ('applicant','reviewer')),
@@ -339,16 +339,16 @@ CREATE TABLE sign_request (
   consumed_at TEXT, consumed_by INTEGER, consumed_channel TEXT,
   regenerated_from INTEGER,
   created_at TEXT NOT NULL, expires_at TEXT);
--- 同一签发 AS 内证件号唯一（BAC 口令唯一性）
+-- 同一签发 MNT 内证件号唯一（BAC 口令唯一性）
 CREATE UNIQUE INDEX ux_sign_request_mrz
-  ON sign_request(asn, json_extract(payload_json, '$.mrz.documentNumber'));
+  ON sign_request(mnt, json_extract(payload_json, '$.mrz.documentNumber'));
 CREATE TABLE artifact (
   id INTEGER PRIMARY KEY, kind TEXT NOT NULL, path TEXT NOT NULL, sha256 TEXT NOT NULL,
   size INTEGER, enc INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
 
--- AS 管辖配置
-CREATE TABLE as_config (
-  asn INTEGER PRIMARY KEY, use_nia_dsc INTEGER NOT NULL DEFAULT 0,
+-- MNT 管辖配置
+CREATE TABLE mnt_config (
+  mnt TEXT PRIMARY KEY, use_nia_dsc INTEGER NOT NULL DEFAULT 0,
   updated_by INTEGER, updated_at TEXT NOT NULL);
 
 -- 系统设置（例如 dsc.delivery_mode = applicant|reviewer）
@@ -429,25 +429,25 @@ CREATE TABLE reveal_token (
 
 ## 附录 E — 风险与未决项
 
-| #   | 项                             | 状态   | 处理                                                                                               |
-| --- | ------------------------------ | ------ | -------------------------------------------------------------------------------------------------- |
-| E1  | DSC 签名输入契约               | 已定   | 结构化字段；前端编码 DG2/DG5/DG7；DG3/DG4 上传已编码 BLOB；AA/CA 服务端生成                        |
-| E2  | `as_config` 由 AS 管理员配置   | 已定   | 前端提供配置页（DSC realm 登录后）                                                                 |
-| E3  | 国家码 `UDN` / `XD`            | 已定   | 全局常量                                                                                           |
-| E4  | CSCA 在线私钥                  | 已定   | 信封加密 + 二次确认 + 审计；预留 HSM 适配                                                          |
-| E5  | ECDSA 显式参数                 | 待定   | 默认 RSA；需要时再实现                                                                             |
-| E6  | LDAP 只读实现（ldapjs 维护度） | 待定   | 以 LDIF+OpenLDAP 为主，只读 LDAP 为兼容层                                                          |
-| E7  | 复用 generator 代码正确性      | 进行中 | M1.5.5 审计并记录 `AUDIT.md`                                                                       |
-| E8  | 邮件可达性                     | 待定   | SPF/DKIM/DMARC + 重试                                                                              |
-| E9  | 隐私与保留期                   | 待定   | M13 落地                                                                                           |
-| E10 | DG3/DG4 编码归属               | 已定   | 用户上传 ISO 19794 已编码数据，服务端仅包外层并校验                                                |
-| E11 | 预览 mask 字段清单             | 已定   | 掩码证件号/个人号/完整生日/地址电话邮箱/DG16 姓名；生物特征用占位                                  |
-| E12 | 前端编码需安全上下文           | 已定   | 必须有 HTTPS/localhost；**不降级**                                                                 |
-| E13 | LDS2 具体范围                  | 已定   | 默认空、申请者不输入；记录由管理员/后续授权终端写入                                                |
-| E14 | 一次性领取 UX 边界             | 已定   | 预览非破坏；领取破坏并删除；仅管理员可重新生成                                                     |
-| E15 | AA/CA 私钥外泄风险             | 已接受 | 本轮忽略；仅保留加密落盘/构建后删除/审计                                                           |
-| E16 | 服务端填写字段可定制           | 已定   | `issuing_profile` 系统默认 + 审批单请求覆盖 + 审计                                                 |
-| E17 | 委派 AS 评审越权/串号          | 已定   | DSC realm 按 `asn` 作用域隔离；仅本 AS 且委派 NIA DSC 的申请；仅审批，禁改全局设定；NIA 管理员全量 |
+| #   | 项                             | 状态   | 处理                                                                                                |
+| --- | ------------------------------ | ------ | --------------------------------------------------------------------------------------------------- |
+| E1  | DSC 签名输入契约               | 已定   | 结构化字段；前端编码 DG2/DG5/DG7；DG3/DG4 上传已编码 BLOB；AA/CA 服务端生成                         |
+| E2  | `mnt_config` 由维护者配置      | 已定   | 前端提供配置页（DSC realm 登录后）                                                                  |
+| E3  | 国家码 `UDN` / `XD`            | 已定   | 全局常量                                                                                            |
+| E4  | CSCA 在线私钥                  | 已定   | 信封加密 + 二次确认 + 审计；预留 HSM 适配                                                           |
+| E5  | ECDSA 显式参数                 | 待定   | 默认 RSA；需要时再实现                                                                              |
+| E6  | LDAP 只读实现（ldapjs 维护度） | 待定   | 以 LDIF+OpenLDAP 为主，只读 LDAP 为兼容层                                                           |
+| E7  | 复用 generator 代码正确性      | 进行中 | M1.5.5 审计并记录 `AUDIT.md`                                                                        |
+| E8  | 邮件可达性                     | 待定   | SPF/DKIM/DMARC + 重试                                                                               |
+| E9  | 隐私与保留期                   | 待定   | M13 落地                                                                                            |
+| E10 | DG3/DG4 编码归属               | 已定   | 用户上传 ISO 19794 已编码数据，服务端仅包外层并校验                                                 |
+| E11 | 预览 mask 字段清单             | 已定   | 掩码证件号/个人号/完整生日/地址电话邮箱/DG16 姓名；生物特征用占位                                   |
+| E12 | 前端编码需安全上下文           | 已定   | 必须有 HTTPS/localhost；**不降级**                                                                  |
+| E13 | LDS2 具体范围                  | 已定   | 默认空、申请者不输入；记录由管理员/后续授权终端写入                                                 |
+| E14 | 一次性领取 UX 边界             | 已定   | 预览非破坏；领取破坏并删除；仅管理员可重新生成                                                      |
+| E15 | AA/CA 私钥外泄风险             | 已接受 | 本轮忽略；仅保留加密落盘/构建后删除/审计                                                            |
+| E16 | 服务端填写字段可定制           | 已定   | `issuing_profile` 系统默认 + 审批单请求覆盖 + 审计                                                  |
+| E17 | 委派 MNT 评审越权/串号         | 已定   | DSC realm 按 `mnt` 作用域隔离；仅本 MNT 且委派 NIA DSC 的申请；仅审批，禁改全局设定；NIA 管理员全量 |
 
 ---
 

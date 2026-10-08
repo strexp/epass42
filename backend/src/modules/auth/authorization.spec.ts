@@ -4,9 +4,8 @@ import { eq } from 'drizzle-orm'
 import { makeTestConfig } from '../../test-support'
 import { openDatabase, type Db } from '../../db/client'
 import { runMigrations } from '../../db/migrate'
-import { account, asConfig } from '../../db/schema'
+import { account, mntConfig } from '../../db/schema'
 import {
-  asAdminAsns,
   canManageSettings,
   canReview,
   dscScope,
@@ -21,17 +20,13 @@ function makeDb(): Db {
   return handle.db
 }
 
-function insertAccount(
-  db: Db,
-  values: { subject: string; asn: number | null; activeMnt: string | null },
-): AccountRow {
+function insertAccount(db: Db, values: { subject: string; activeMnt: string | null }): AccountRow {
   const result = db
     .insert(account)
     .values({
       realm: 'dsc',
       providerId: null,
       subject: values.subject,
-      asn: values.asn,
       activeMnt: values.activeMnt,
       rawClaims: JSON.stringify({ dn42: { mnt_by: [values.activeMnt] } }),
       createdAt: nowIso(),
@@ -44,47 +39,48 @@ function insertAccount(
     .get() as AccountRow
 }
 
-describe('DSC delegated AS review scope', () => {
+describe('DSC delegated maintainer review scope', () => {
   const config = makeTestConfig({ adminMnts: { dsc: ['NIA-DSC-MNT'] } })
 
   it('treats a configured MNT as a global NIA administrator', () => {
     const db = makeDb()
-    const nia = insertAccount(db, { subject: 'nia', asn: 4242420000, activeMnt: 'NIA-DSC-MNT' })
+    const nia = insertAccount(db, { subject: 'nia', activeMnt: 'NIA-DSC-MNT' })
     expect(dscScope(db, config, nia)).toEqual({ kind: 'nia' })
     expect(canManageSettings({ kind: 'nia' })).toBe(true)
   })
 
-  it('grants an AS reviewer scope only when the AS delegates to NIA DSC', () => {
+  it('grants a reviewer scope only when the maintainer delegates to NIA DSC', () => {
     const db = makeDb()
-    const asUser = insertAccount(db, { subject: 'as1', asn: 4242420001, activeMnt: 'AS1-MNT' })
-    // Not yet recorded as an AS admin.
+    const asUser = insertAccount(db, { subject: 'as1', activeMnt: 'AS1-MNT' })
+    // Not yet recorded as a delegated reviewer.
     expect(dscScope(db, config, asUser)).toEqual({ kind: 'none' })
 
-    // The default (no as_config row) is delegation to the NIA DSC.
-    recordAsAdmin(db, 'AS1-MNT', 4242420001)
-    expect(dscScope(db, config, asUser)).toEqual({ kind: 'as', asn: 4242420001 })
+    // The default (no mnt_config row) is delegation to the NIA DSC.
+    recordAsAdmin(db, 'AS1-MNT')
+    expect(dscScope(db, config, asUser)).toEqual({ kind: 'mnt', mnt: 'AS1-MNT' })
 
     // Opting out of delegation removes the scope.
-    db.insert(asConfig).values({ asn: 4242420001, useNiaDsc: false, updatedAt: nowIso() }).run()
+    db.insert(mntConfig).values({ mnt: 'AS1-MNT', useNiaDsc: false, updatedAt: nowIso() }).run()
     expect(dscScope(db, config, asUser)).toEqual({ kind: 'none' })
 
     // Opting back in restores it.
-    db.update(asConfig).set({ useNiaDsc: true }).run()
-    expect(dscScope(db, config, asUser)).toEqual({ kind: 'as', asn: 4242420001 })
-    expect(asAdminAsns(db, 'AS1-MNT')).toEqual([4242420001])
-    expect(canManageSettings({ kind: 'as', asn: 4242420001 })).toBe(false)
+    db.update(mntConfig).set({ useNiaDsc: true }).run()
+    expect(dscScope(db, config, asUser)).toEqual({ kind: 'mnt', mnt: 'AS1-MNT' })
+    expect(canManageSettings({ kind: 'mnt', mnt: 'AS1-MNT' })).toBe(false)
   })
 
-  it('scopes visibility to the reviewer AS and to NIA-signed requests', () => {
-    const scope = { kind: 'as', asn: 4242420001 } as const
-    expect(canReview(scope, { asn: 4242420001, dscSelection: 'nia' })).toBe(true)
-    // Another AS is not visible.
-    expect(canReview(scope, { asn: 4242420002, dscSelection: 'nia' })).toBe(false)
-    // A request signed by the AS's own DSC is out of scope.
-    expect(canReview(scope, { asn: 4242420001, dscSelection: 'owned' })).toBe(false)
+  it('scopes visibility to the reviewer maintainer and to NIA-signed requests', () => {
+    const scope = { kind: 'mnt', mnt: 'AS1-MNT' } as const
+    expect(canReview(scope, { mnt: 'AS1-MNT', dscSelection: 'nia' })).toBe(true)
+    // A canonical multi-maintainer set matches when any member matches.
+    expect(canReview(scope, { mnt: 'OTHER-MNT,AS1-MNT', dscSelection: 'nia' })).toBe(true)
+    // Another maintainer is not visible.
+    expect(canReview(scope, { mnt: 'AS2-MNT', dscSelection: 'nia' })).toBe(false)
+    // A request signed by the maintainer's own DSC is out of scope.
+    expect(canReview(scope, { mnt: 'AS1-MNT', dscSelection: 'owned' })).toBe(false)
 
     const nia = { kind: 'nia' } as const
-    expect(canReview(nia, { asn: 4242420002, dscSelection: 'owned' })).toBe(true)
-    expect(canReview({ kind: 'none' }, { asn: 4242420001, dscSelection: 'nia' })).toBe(false)
+    expect(canReview(nia, { mnt: 'AS2-MNT', dscSelection: 'owned' })).toBe(true)
+    expect(canReview({ kind: 'none' }, { mnt: 'AS1-MNT', dscSelection: 'nia' })).toBe(false)
   })
 })

@@ -1,12 +1,12 @@
 /**
- * DSC settings routes (M8): delivery mode, issuing profile and AS delegation.
+ * DSC settings routes (M8): delivery mode, issuing profile and maintainer delegation.
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import { writeAudit } from '../../../audit/audit'
-import { readAsDelegation, setAsDelegation } from '../../as/delegation'
+import { readMntDelegation, setMntDelegation } from '../../mnt/delegation'
 import { requireAdmin, resolvePrincipal, type AuthContext } from '../../auth/middleware'
 import type { DscRouteDeps } from '../routeContext'
 
@@ -87,30 +87,30 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: DscRouteDeps)
     },
   )
 
-  // Self-service AS delegation (M4/T4.11, E2): an AS administrator configures
+  // Self-service maintainer delegation (M4/T4.11, E2): a maintainer configures
   // whether its certificates are signed by the NIA DSC; doing so registers the
-  // caller as a delegated reviewer for that AS.
-  server.get('/dsc/settings/as', async (request, reply) => {
+  // caller as a delegated reviewer for its maintainer.
+  server.get('/dsc/settings/mnt', async (request, reply) => {
     const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
     if (!principal) return reply.code(401).send({ error: 'unauthorized' })
-    if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
-    return readAsDelegation(db, principal.account)
+    if (principal.account.activeMnt === null) return reply.code(400).send({ error: 'no_mnt' })
+    return readMntDelegation(db, principal.account)
   })
 
   server.put(
-    '/dsc/settings/as',
+    '/dsc/settings/mnt',
     { schema: { body: z.object({ useNiaDsc: z.boolean() }) } },
     async (request, reply) => {
       const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
       if (!principal) return reply.code(401).send({ error: 'unauthorized' })
-      if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
-      const updated = setAsDelegation(db, principal.account, request.body.useNiaDsc)
+      if (principal.account.activeMnt === null) return reply.code(400).send({ error: 'no_mnt' })
+      const updated = setMntDelegation(db, principal.account, request.body.useNiaDsc)
       writeAudit(db, {
         actorAccountId: principal.account.id,
         realm: 'dsc',
-        action: 'dsc.settings.as',
+        action: 'dsc.settings.mnt',
         ip: request.ip,
-        detail: { asn: updated.asn, useNiaDsc: request.body.useNiaDsc },
+        detail: { mnt: updated.mnt, useNiaDsc: request.body.useNiaDsc },
       })
       return updated
     },

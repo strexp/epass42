@@ -4,7 +4,7 @@
  *   applications  POST/GET /csca/applications, review
  *   certificates  GET /csca/certificates(/:id.pem|der|private-key), revoke, rollover
  *   crl           GET /csca/crl.(pem|der), POST /csca/crl/generate
- *   settings      GET/PUT /csca/settings/as
+ *   settings      GET/PUT /csca/settings/mnt
  */
 import type { FastifyInstance } from 'fastify'
 

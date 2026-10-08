@@ -4,13 +4,14 @@ import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import { hexToBytes, parseCertificatePem, verifySod } from '@pkd42/pki'
-import { FakeOidc, makeTestApp } from '../../test-support'
+import { FakeOidc, makeTestApp, staticMntResolver } from '../../test-support'
 import type { Db } from '../../db/client'
-import { artifact, asConfig, signRequest } from '../../db/schema'
+import { artifact, mntConfig, signRequest } from '../../db/schema'
 import { recordAsAdmin } from '../auth/authorization'
 import { currentCscaKey } from '../csca/service'
 import { mrzExpiry } from './build'
 import type { DscService } from './service'
+import type { MntResolver } from '../jurisdiction/whois'
 
 const CSCA_ADMIN = {
   sub: 'csca-admin',
@@ -62,9 +63,12 @@ interface Harness {
   cscaPem: string
 }
 
-async function harness(overrides: Record<string, unknown> = {}): Promise<Harness> {
+async function harness(
+  overrides: Record<string, unknown> = {},
+  resolver: MntResolver = staticMntResolver(),
+): Promise<Harness> {
   const oidc = new FakeOidc()
-  const built = await makeTestApp(oidc, { csca: { bootstrap: true }, ...overrides })
+  const built = await makeTestApp(oidc, { csca: { bootstrap: true }, ...overrides }, resolver)
   oidc.set('csca-client', { subject: CSCA_ADMIN.sub, claims: CSCA_ADMIN })
   oidc.set('dsc-client', { subject: USER.sub, claims: USER })
   return {
@@ -211,12 +215,12 @@ describe('M7 DSC signing service', () => {
     void reference
   })
 
-  it('scopes delegated AS reviewers to their own NIA-signed requests', async () => {
+  it('scopes delegated maintainer reviewers to their own NIA-signed requests', async () => {
     const { app, oidc, db, dsc } = await harness()
-    db.insert(asConfig)
-      .values({ asn: 4242420001, useNiaDsc: true, updatedAt: new Date().toISOString() })
+    db.insert(mntConfig)
+      .values({ mnt: 'AS1-REV-MNT', useNiaDsc: true, updatedAt: new Date().toISOString() })
       .run()
-    recordAsAdmin(db, 'AS1-REV-MNT', 4242420001)
+    recordAsAdmin(db, 'AS1-REV-MNT')
 
     const reviewerCookie = await login(app, oidc, 'dsc', 'dsc-client', AS_REVIEWER)
     const userCookie = await login(app, oidc, 'dsc', 'dsc-client', USER)
@@ -285,7 +289,7 @@ describe('M7 DSC signing service', () => {
     expect(settings.json().error).toBe('forbidden_settings')
   })
 
-  it('configures AS delegation and grants the reviewer scope', async () => {
+  it('configures maintainer delegation and grants the reviewer scope', async () => {
     const { app, oidc, dsc } = await harness()
     const userCookie = await login(app, oidc, 'dsc', 'dsc-client', USER)
 
@@ -305,22 +309,22 @@ describe('M7 DSC signing service', () => {
     })
     expect(forbidden.statusCode).toBe(403)
 
-    // Enable delegation for the AS.
+    // Enable delegation for the maintainer.
     const enable = await app.inject({
       method: 'PUT',
-      url: '/dsc/settings/as',
+      url: '/dsc/settings/mnt',
       headers: { cookie: userCookie },
       payload: { useNiaDsc: true },
     })
     expect(enable.statusCode).toBe(200)
     const status = await app.inject({
       method: 'GET',
-      url: '/dsc/settings/as',
+      url: '/dsc/settings/mnt',
       headers: { cookie: userCookie },
     })
     expect(status.json().useNiaDsc).toBe(true)
 
-    // Now the AS admin can review its own NIA-signed request.
+    // Now the maintainer can review its own NIA-signed request.
     const list = await app.inject({
       method: 'GET',
       url: '/dsc/requests',
@@ -340,7 +344,7 @@ describe('M7 DSC signing service', () => {
     // Disabling delegation removes the reviewer scope.
     await app.inject({
       method: 'PUT',
-      url: '/dsc/settings/as',
+      url: '/dsc/settings/mnt',
       headers: { cookie: userCookie },
       payload: { useNiaDsc: false },
     })
@@ -522,12 +526,13 @@ describe('M7 DSC signing service', () => {
     expect(stored.mrz.nationality).toBe('UDN')
   })
 
-  it('reports AS jurisdiction from the IP route table and settings', async () => {
-    const { app, db } = await harness({
-      jurisdiction: { routes: [{ prefix: '10.0.0.0/8', asn: 4242420001 }] },
-    })
-    db.insert(asConfig)
-      .values({ asn: 4242420001, useNiaDsc: false, updatedAt: new Date().toISOString() })
+  it('reports maintainer jurisdiction from whois and settings', async () => {
+    const { app, db } = await harness(
+      {},
+      staticMntResolver({ '10.1.2.3': ['AS1-MNT'], '192.0.2.1': [] }),
+    )
+    db.insert(mntConfig)
+      .values({ mnt: 'AS1-MNT', useNiaDsc: false, updatedAt: new Date().toISOString() })
       .run()
 
     const inRange = await app.inject({
@@ -535,14 +540,14 @@ describe('M7 DSC signing service', () => {
       url: '/dsc/jurisdiction',
       remoteAddress: '10.1.2.3',
     })
-    expect(inRange.json()).toMatchObject({ asn: 4242420001, useNiaDsc: false, notice: true })
+    expect(inRange.json()).toMatchObject({ mnts: ['AS1-MNT'], useNiaDsc: false, notice: true })
 
     const outOfRange = await app.inject({
       method: 'GET',
       url: '/dsc/jurisdiction',
       remoteAddress: '192.0.2.1',
     })
-    expect(outOfRange.json()).toMatchObject({ asn: null, notice: false })
+    expect(outOfRange.json()).toMatchObject({ mnts: [], notice: false })
   })
 
   it('lets the owner view status/preview and reveal by id', async () => {

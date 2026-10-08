@@ -43,7 +43,7 @@ async function issueDsc(
     keyBits: 2048,
     pss: false,
     source: 'owned',
-    asn: 4242420001,
+    mnt: 'TEST-MNT',
     keyMode: 'nia_generated',
   })
 }

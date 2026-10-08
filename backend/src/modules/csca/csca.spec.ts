@@ -252,11 +252,11 @@ describe('M5 CSCA role', () => {
     expect(anon.statusCode).toBe(401)
   })
 
-  it('lets an AS administrator view and switch NIA DSC delegation', async () => {
+  it('lets a maintainer view and switch NIA DSC delegation', async () => {
     const { app, cscaCookie } = await harness()
     const before = await app.inject({
       method: 'GET',
-      url: '/csca/settings/as',
+      url: '/csca/settings/mnt',
       headers: { cookie: cscaCookie },
     })
     expect(before.statusCode).toBe(200)
@@ -266,14 +266,14 @@ describe('M5 CSCA role', () => {
 
     const enable = await app.inject({
       method: 'PUT',
-      url: '/csca/settings/as',
+      url: '/csca/settings/mnt',
       headers: { cookie: cscaCookie },
       payload: { useNiaDsc: true },
     })
     expect(enable.statusCode).toBe(200)
     const after = await app.inject({
       method: 'GET',
-      url: '/csca/settings/as',
+      url: '/csca/settings/mnt',
       headers: { cookie: cscaCookie },
     })
     expect(after.json().useNiaDsc).toBe(true)
@@ -281,7 +281,7 @@ describe('M5 CSCA role', () => {
     // Switching to the AS's own DSC is refused until one is approved.
     const refused = await app.inject({
       method: 'PUT',
-      url: '/csca/settings/as',
+      url: '/csca/settings/mnt',
       headers: { cookie: cscaCookie },
       payload: { useNiaDsc: false },
     })
@@ -302,13 +302,13 @@ describe('M5 CSCA role', () => {
     })
     const status = await app.inject({
       method: 'GET',
-      url: '/csca/settings/as',
+      url: '/csca/settings/mnt',
       headers: { cookie: cscaCookie },
     })
     expect(status.json().hasActiveDsc).toBe(true)
     const own = await app.inject({
       method: 'PUT',
-      url: '/csca/settings/as',
+      url: '/csca/settings/mnt',
       headers: { cookie: cscaCookie },
       payload: { useNiaDsc: false },
     })

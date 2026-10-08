@@ -70,7 +70,7 @@ const documentTypeOptions = [
 ]
 
 interface Jurisdiction {
-  asn: number | null
+  mnts: string[]
   useNiaDsc: boolean | null
   notice: boolean
   ownDscUrl: string | null
@@ -164,7 +164,7 @@ onMounted(async () => {
         :title="$t('dsc.jurisdictionTitle')"
         style="margin-top: 12px"
       >
-        <div>{{ $t('dsc.jurisdictionBody', { asn: jurisdiction.asn }) }}</div>
+        <div>{{ $t('dsc.jurisdictionBody', { mnt: jurisdiction.mnts.join(', ') }) }}</div>
         <a
           v-if="jurisdiction.ownDscUrl"
           :href="jurisdiction.ownDscUrl"

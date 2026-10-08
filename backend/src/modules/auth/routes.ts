@@ -183,7 +183,6 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
       account: {
         id: principal.account.id,
         realm,
-        asn: principal.account.asn,
         activeMnt: principal.account.activeMnt,
         email: principal.account.email,
         name: principal.account.name,

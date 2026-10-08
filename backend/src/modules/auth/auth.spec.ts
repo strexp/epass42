@@ -66,7 +66,6 @@ describe('M4 authentication', () => {
     const me = await app.inject({ method: 'GET', url: '/auth/csca/me', headers: { cookie } })
     expect(me.statusCode).toBe(200)
     const body = me.json()
-    expect(body.account.asn).toBe(4242422189)
     expect(body.account.activeMnt).toBe('EXAMPLE-CSCA-MNT')
     expect(body.isAdmin).toBe(true)
     expect(body.csrf).toMatch(/^[A-Za-z0-9_-]+$/)
@@ -91,8 +90,8 @@ describe('M4 authentication', () => {
     })
     expect(cscaMe.statusCode).toBe(200)
     expect(dscMe.statusCode).toBe(200)
-    expect(cscaMe.json().account.asn).toBe(4242422189)
-    expect(dscMe.json().account.asn).toBe(4242420000)
+    expect(cscaMe.json().account.activeMnt).toBe('EXAMPLE-CSCA-MNT')
+    expect(dscMe.json().account.activeMnt).toBe('USER-MNT')
 
     // A CSCA cookie cannot authenticate the DSC realm.
     const cross = await app.inject({

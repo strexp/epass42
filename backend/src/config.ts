@@ -150,10 +150,16 @@ const configSchema = z.object({
         .prefault({}),
     })
     .prefault({}),
-  /** Static IP-prefix to ASN map used to resolve the requesting AS. */
+  /**
+   * dn42 whois used to resolve a client IP to its maintainer(s).  The endpoint
+   * `/dsc/jurisdiction` looks up the IP's `mnt-by` to decide whether the
+   * requesting maintainer uses its own DSC.
+   */
   jurisdiction: z
     .object({
-      routes: z.array(z.object({ prefix: z.string(), asn: z.number().int() })).default([]),
+      whois: z.string().default('whois.dn42'),
+      whoisPort: z.number().int().min(1).max(65535).default(43),
+      whoisTimeoutMs: z.number().int().min(100).default(5000),
     })
     .prefault({}),
   crl: z

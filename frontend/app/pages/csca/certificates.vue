@@ -13,7 +13,7 @@ interface Certificate {
   subjectDn: string
   status: string
   source: string
-  asn: number | null
+  mnt: string | null
   fingerprintSha256: string
   hasPrivateKey: boolean
 }
@@ -28,12 +28,12 @@ const certificates = ref<Certificate[]>([])
 
 const apiBase = (config.public.apiBase as string) || ''
 const isCscaAdmin = computed(() => state.value.me?.isAdmin ?? false)
-const myAsn = computed(() => state.value.me?.account.asn ?? null)
+const myMnt = computed(() => state.value.me?.account.activeMnt ?? null)
 
 /** Whether the current user may download this certificate's private key. */
 function canDownloadKey(row: Certificate): boolean {
   if (!row.hasPrivateKey || state.value.me === null) return false
-  return isCscaAdmin.value || (row.asn !== null && row.asn === myAsn.value)
+  return isCscaAdmin.value || (row.mnt !== null && row.mnt === myMnt.value)
 }
 
 function keyUrl(id: number): string {
@@ -81,7 +81,7 @@ async function revoke(id: number): Promise<void> {
 const columns = computed(() => [
   { title: '#', key: 'id' },
   { title: 'Subject', key: 'subjectDn' },
-  { title: 'AS', key: 'asn' },
+  { title: 'MNT', key: 'mnt' },
   {
     title: 'Status',
     key: 'status',

@@ -35,7 +35,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
       const scope = scopeOf(deps, request)
       const principal = request.principal
       if (!scope || !principal) return reply.code(401).send({ error: 'unauthorized' })
-      if (!canReview(scope, { asn: row.asn, dscSelection: row.dscSelection })) {
+      if (!canReview(scope, { mnt: row.mnt, dscSelection: row.dscSelection })) {
         return reply.code(403).send({ error: 'forbidden' })
       }
       if (scope.kind !== 'nia' && (request.body.deliveryMode || request.body.profileOverrides)) {
@@ -97,7 +97,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
       const scope = scopeOf(deps, request)
       const principal = request.principal
       if (!scope || !principal) return reply.code(401).send({ error: 'unauthorized' })
-      if (!canReview(scope, { asn: row.asn, dscSelection: row.dscSelection })) {
+      if (!canReview(scope, { mnt: row.mnt, dscSelection: row.dscSelection })) {
         return reply.code(403).send({ error: 'forbidden' })
       }
       service.reject(row, principal.account.id, request.body.reason)

@@ -16,6 +16,7 @@ import { openDatabase, type DbHandle } from './db/client'
 import { runMigrations } from './db/migrate'
 import { buildApp, type BuiltApp } from './app'
 import type { OidcDriver, OidcDriverFactory, OidcFlowStart } from './modules/auth/provider'
+import type { MntResolver } from './modules/jurisdiction/whois'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -90,15 +91,25 @@ export function makeTestConfig(overrides: RawConfig = {}): AppConfig {
   return parseConfig(mergeConfig(TEST_CONFIG, overrides))
 }
 
+/** A static IP→maintainer resolver for tests (no network). */
+export function staticMntResolver(map: Record<string, string[]> = {}): MntResolver {
+  return {
+    async resolve(ip: string) {
+      return map[ip] ?? []
+    },
+  }
+}
+
 /** Builds an in-memory application with the fake OIDC driver. */
 export async function makeTestApp(
   oidc: FakeOidc,
   overrides: RawConfig = {},
+  mntResolver: MntResolver = staticMntResolver(),
 ): Promise<BuiltApp & { dbHandle: DbHandle }> {
   const config = makeTestConfig(overrides)
   // Keep generated artifacts out of the repository.
   config.dataDir = mkdtempSync(join(tmpdir(), 'pkd42-artifacts-'))
   const dbHandle = openDatabase(':memory:')
   runMigrations(dbHandle)
-  return buildApp({ config, dbHandle, driverFactory: oidc.factory, logger: false })
+  return buildApp({ config, dbHandle, driverFactory: oidc.factory, mntResolver, logger: false })
 }

@@ -14,7 +14,6 @@ export interface Dn42Identity {
   email?: string
   name?: string
   preferredUsername?: string
-  asn?: number
   activeMnt?: string
   activeName?: string
   mntBy: string[]
@@ -70,7 +69,6 @@ export function mapClaims(
     email: asString(getPath(raw, map.email ?? 'email')),
     name: asString(getPath(raw, map.name ?? 'name')),
     preferredUsername: asString(getPath(raw, map.preferredUsername ?? 'preferred_username')),
-    asn: asNumber(dn42.asn ?? getPath(raw, map.asn ?? 'dn42.asn')),
     activeMnt: asString(dn42.active_mnt ?? getPath(raw, map.activeMnt ?? 'dn42.active_mnt')),
     activeName: asString(dn42.active_name ?? getPath(raw, map.activeName ?? 'dn42.active_name')),
     mntBy: asStringArray(dn42.mnt_by ?? getPath(raw, map.mntBy ?? 'dn42.mnt_by')),

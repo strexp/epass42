@@ -8,10 +8,11 @@ import { and, eq } from 'drizzle-orm'
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { account, asConfig, maintainer } from '../../db/schema'
+import { account, maintainer, mntConfig } from '../../db/schema'
 import { nowIso } from '../../util/time'
 import type { Realm } from '@pkd42/shared'
 import type { Dn42Identity } from './claims'
+import { mntIncludes } from '../jurisdiction/whois'
 
 export type AccountRow = typeof account.$inferSelect
 
@@ -51,7 +52,6 @@ export function upsertAccount(
     realm,
     providerId,
     subject: identity.subject,
-    asn: identity.asn ?? null,
     activeMnt: identity.activeMnt ?? null,
     email: identity.email ?? null,
     name: identity.name ?? identity.preferredUsername ?? null,
@@ -104,47 +104,48 @@ export function isAdmin(db: Db, config: AppConfig, realm: Realm, row: AccountRow
 /**
  * The DSC review scope of an account:
  *
- * - `nia`: a global NIA administrator (`DSC_ADMIN_MNTS`) — all ASes, all settings.
- * - `as`:  a delegated AS reviewer — only its own AS's NIA-signed requests,
- *          approve/reject only.
+ * - `nia`: a global NIA administrator (`DSC_ADMIN_MNTS`) — all maintainers,
+ *          all settings.
+ * - `mnt`: a delegated maintainer reviewer — only its own maintainer's
+ *          NIA-signed requests, approve/reject only.
  * - `none`: no review rights.
  */
-export type DscScope = { kind: 'nia' } | { kind: 'as'; asn: number } | { kind: 'none' }
+export type DscScope = { kind: 'nia' } | { kind: 'mnt'; mnt: string } | { kind: 'none' }
 
 /**
- * True when the AS has delegated its DSC issuance to the NIA DSC.  A missing
- * row means the default (delegated to the NIA DSC).
+ * True when the maintainer has delegated its DSC issuance to the NIA DSC.  A
+ * missing row means the default (delegated to the NIA DSC).
  */
-export function asDelegatesToNia(db: Db, asn: number): boolean {
-  const row = db.select().from(asConfig).where(eq(asConfig.asn, asn)).get()
+export function mntDelegatesToNia(db: Db, mnt: string): boolean {
+  const row = db.select().from(mntConfig).where(eq(mntConfig.mnt, mnt)).get()
   return row ? row.useNiaDsc : true
 }
 
-/** The ASes for which this MNT is recorded as a delegated AS admin. */
-export function asAdminAsns(db: Db, mnt: string): number[] {
-  return db
-    .select()
-    .from(maintainer)
-    .where(
-      and(eq(maintainer.realm, 'dsc'), eq(maintainer.role, 'as-admin'), eq(maintainer.mnt, mnt)),
-    )
-    .all()
-    .map((row) => row.asn)
-    .filter((asn): asn is number => asn !== null)
+/** True when the maintainer is recorded as a delegated DSC reviewer. */
+export function isDelegatedReviewer(db: Db, mnt: string): boolean {
+  return (
+    db
+      .select()
+      .from(maintainer)
+      .where(
+        and(eq(maintainer.realm, 'dsc'), eq(maintainer.role, 'as-admin'), eq(maintainer.mnt, mnt)),
+      )
+      .get() !== undefined
+  )
 }
 
-/** Records an AS administrator (`role='as-admin'`) for delegated review. */
-export function recordAsAdmin(db: Db, mnt: string, asn: number, note?: string): void {
+/** Records a maintainer as a delegated DSC reviewer. */
+export function recordAsAdmin(db: Db, mnt: string, note?: string): void {
   db.insert(maintainer)
-    .values({ mnt, realm: 'dsc', role: 'as-admin', asn, note: note ?? null })
+    .values({ mnt, realm: 'dsc', role: 'as-admin', note: note ?? null })
     .onConflictDoUpdate({
       target: [maintainer.mnt, maintainer.realm, maintainer.role],
-      set: { asn, note: note ?? null },
+      set: { note: note ?? null },
     })
     .run()
 }
 
-/** Removes the delegated AS administrator designation for an MNT. */
+/** Removes the delegated DSC reviewer designation for a maintainer. */
 export function removeAsAdmin(db: Db, mnt: string): void {
   db.delete(maintainer)
     .where(
@@ -156,25 +157,25 @@ export function removeAsAdmin(db: Db, mnt: string): void {
 /** Resolves the DSC review scope of an account. */
 export function dscScope(db: Db, config: AppConfig, row: AccountRow): DscScope {
   if (isAdmin(db, config, 'dsc', row)) return { kind: 'nia' }
-  if (row.activeMnt) {
-    for (const asn of asAdminAsns(db, row.activeMnt)) {
-      if (asDelegatesToNia(db, asn)) return { kind: 'as', asn }
-    }
+  const mnt = row.activeMnt
+  if (mnt && isDelegatedReviewer(db, mnt) && mntDelegatesToNia(db, mnt)) {
+    return { kind: 'mnt', mnt }
   }
   return { kind: 'none' }
 }
 
 /** A signing request described by the fields the scope checks. */
 export interface ReviewableRequest {
-  asn: number | null
+  /** Canonical (comma-joined) maintainers of the requesting IP. */
+  mnt: string | null
   dscSelection: string
 }
 
 /** True when the scope may see and review the request. */
 export function canReview(scope: DscScope, request: ReviewableRequest): boolean {
   if (scope.kind === 'nia') return true
-  if (scope.kind === 'as') {
-    return request.asn === scope.asn && request.dscSelection === 'nia'
+  if (scope.kind === 'mnt') {
+    return mntIncludes(request.mnt, scope.mnt) && request.dscSelection === 'nia'
   }
   return false
 }

@@ -41,7 +41,7 @@ export function certMetadata(row: typeof dscCert.$inferSelect) {
     subjectDn: row.subjectDn,
     status: row.status,
     source: row.source,
-    asn: row.asn,
+    mnt: row.mnt,
     notBefore: row.notBefore,
     notAfter: row.notAfter,
     fingerprintSha256: fingerprint,

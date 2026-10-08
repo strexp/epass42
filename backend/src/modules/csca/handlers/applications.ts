@@ -32,7 +32,6 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
       const result = db
         .insert(dscApplication)
         .values({
-          asn: principal.account.asn,
           mnt: principal.account.activeMnt,
           applicantAccountId: principal.account.id,
           keyMode: request.body.keyMode,

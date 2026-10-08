@@ -4,7 +4,7 @@
  *   requests   POST/GET /dsc/requests, status, preview, reveal, jurisdiction
  *   review     approve/reject/regenerate, the mode-B queue and admin reveal
  *   delivery   reference preview/reveal and the two-step email token
- *   settings   delivery mode, issuing profile and AS delegation
+ *   settings   delivery mode, issuing profile and maintainer delegation
  */
 import type { FastifyInstance } from 'fastify'
 

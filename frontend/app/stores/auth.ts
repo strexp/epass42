@@ -6,7 +6,6 @@ export interface Me {
   account: {
     id: number
     realm: Realm
-    asn: number | null
     activeMnt: string | null
     email: string | null
     name: string | null

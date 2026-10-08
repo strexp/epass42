@@ -88,11 +88,13 @@ paceEcdhGm3des = true
 paceEcdhGmAes128 = true
 aa = false
 
-# Static IP-prefix to ASN map for jurisdiction lookup; the endpoint
-# /dsc/jurisdiction tells applicants whose AS uses its own DSC to apply there.
-[[jurisdiction.routes]]
-prefix = "10.127.21.0/24"
-asn = 4242422189
+# dn42 whois used to resolve a client IP to its maintainer(s).  The endpoint
+# /dsc/jurisdiction looks up the IP's mnt-by to tell applicants whose
+# maintainer uses its own DSC to apply there.
+[jurisdiction]
+whois = "whois.dn42"
+whoisPort = 43
+whoisTimeoutMs = 5000
 
 # PKD directory (M9).
 [pkd]

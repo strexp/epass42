@@ -15,6 +15,7 @@ import type { Db } from '../../db/client'
 import { artifact, dscCert, signRequest } from '../../db/schema'
 import { nowIso } from '../../util/time'
 import { currentNiaDsc, type CscaService } from '../csca/service'
+import { mntIncludes } from '../jurisdiction/whois'
 import {
   buildPersoSigning,
   type IssuingDefaults,
@@ -42,8 +43,12 @@ export class DscArtifactService {
       if (!cert || cert.status !== 'active') {
         throw new AppError('certificate_not_found', 'owned DSC not found or inactive', 400)
       }
-      if (row.asn !== null && cert.asn !== null && cert.asn !== row.asn) {
-        throw new AppError('forbidden', 'owned DSC does not belong to the requester AS', 403)
+      if (row.mnt !== null && cert.mnt !== null && !mntIncludes(row.mnt, cert.mnt)) {
+        throw new AppError(
+          'forbidden',
+          'owned DSC does not belong to the requester maintainer',
+          403,
+        )
       }
       return { certPem: cert.certPem, keyPair: await this.csca.loadDscKeyPair(cert) }
     }

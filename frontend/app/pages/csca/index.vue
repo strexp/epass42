@@ -22,7 +22,7 @@ interface Application {
   id: number
   subjectCn: string | null
   status: string
-  asn: number | null
+  mnt: string | null
   keyMode: string
   createdAt: string
 }
@@ -37,8 +37,7 @@ const loading = ref(false)
 const rejectId = ref<number | null>(null)
 const rejectReason = ref('')
 const delegation = ref<{
-  asn: number | null
-  activeMnt: string | null
+  mnt: string | null
   useNiaDsc: boolean
   hasActiveDsc: boolean
 } | null>(null)
@@ -46,7 +45,7 @@ const delegation = ref<{
 const me = computed(() => state.value.me)
 const isAdmin = computed(() => me.value?.isAdmin ?? false)
 const signedIn = computed(() => me.value !== null)
-const hasAsn = computed(() => (me.value?.account.asn ?? null) !== null)
+const hasMnt = computed(() => (me.value?.account.activeMnt ?? null) !== null)
 
 async function loadApplications(): Promise<void> {
   loading.value = true
@@ -62,9 +61,9 @@ async function loadApplications(): Promise<void> {
 }
 
 async function loadDelegation(): Promise<void> {
-  if (!hasAsn.value) return
+  if (!hasMnt.value) return
   try {
-    delegation.value = await api('/csca/settings/as')
+    delegation.value = await api('/csca/settings/mnt')
   } catch {
     delegation.value = null
   }
@@ -73,14 +72,12 @@ async function loadDelegation(): Promise<void> {
 async function setDelegation(value: boolean): Promise<void> {
   try {
     const updated = await api<{
-      asn: number | null
-      activeMnt: string | null
+      mnt: string | null
       useNiaDsc: boolean
       hasActiveDsc: boolean
-    }>('/csca/settings/as', { method: 'PUT', body: { useNiaDsc: value } })
+    }>('/csca/settings/mnt', { method: 'PUT', body: { useNiaDsc: value } })
     delegation.value = {
-      asn: updated.asn,
-      activeMnt: updated.activeMnt,
+      mnt: updated.mnt,
       useNiaDsc: updated.useNiaDsc,
       hasActiveDsc: updated.hasActiveDsc,
     }
@@ -118,7 +115,7 @@ async function reject(): Promise<void> {
 const columns = [
   { title: '#', key: 'id' },
   { title: 'CN', key: 'subjectCn' },
-  { title: 'AS', key: 'asn' },
+  { title: 'MNT', key: 'mnt' },
   { title: 'Mode', key: 'keyMode' },
   {
     title: 'Status',
@@ -171,7 +168,7 @@ onMounted(async () => {
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'CSCA' }) }}</NText>
       </NCard>
 
-      <NCard v-if="hasAsn" :title="$t('csca.asDelegationTitle')" size="small">
+      <NCard v-if="hasMnt" :title="$t('csca.asDelegationTitle')" size="small">
         <NText depth="3">{{ $t('csca.asDelegationHint') }}</NText>
         <NText v-if="delegation && !delegation.hasActiveDsc" depth="3" style="display: block">
           {{ $t('csca.ownDscUnavailable') }}

@@ -11,7 +11,7 @@ definePageMeta({ layout: 'realm' })
 interface RequestRow {
   id: number
   status: string
-  asn: number | null
+  mnt: string | null
   dscSelection: string
   deliveryMode: string
 }
@@ -71,7 +71,7 @@ async function adminReveal(id: number): Promise<void> {
 
 const columns = [
   { title: '#', key: 'id' },
-  { title: 'AS', key: 'asn' },
+  { title: 'MNT', key: 'mnt' },
   { title: 'DSC', key: 'dscSelection' },
   {
     title: 'Status',
@@ -107,7 +107,7 @@ const columns = [
 
 const queueColumns = [
   { title: '#', key: 'id' },
-  { title: 'AS', key: 'asn' },
+  { title: 'MNT', key: 'mnt' },
   {
     title: '',
     key: 'actions',

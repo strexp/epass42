@@ -4,14 +4,14 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { and, eq } from 'drizzle-orm'
 
 import { buildMrzLines, validateMrzLines } from '@pkd42/pki'
 import { signRequestSchema, type SignRequest, LIMITS } from '@pkd42/shared'
 
 import { writeAudit } from '../../../audit/audit'
-import { asConfig, dscCert } from '../../../db/schema'
-import { findAsn } from '../../../util/ip'
+import { mntDelegatesToNia } from '../../auth/authorization'
+import { activeOwnDsc } from '../../mnt/delegation'
+import { canonicalMnts } from '../../jurisdiction/whois'
 import { resolvePrincipal, type AuthContext } from '../../auth/middleware'
 import { buildPreview } from '../preview'
 import { scopeOf, accessRow, idParams, referenceParams, type DscRouteDeps } from '../routeContext'
@@ -33,9 +33,10 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
         return reply.code(400).send({ error: 'mrz_invalid', details: mrzValidation.errors })
       }
       const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
+      const mnt = principal?.account.activeMnt ?? (await resolveIpMnt(deps, request.ip))
       const requester = {
         accountId: principal?.account.id ?? null,
-        asn: principal?.account.asn ?? null,
+        mnt,
         ip: request.ip,
       }
       const result = service.submit(payload, requester)
@@ -151,24 +152,38 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
     },
   )
 
-  // IP / session based AS jurisdiction: tells the applicant whether their AS
-  // uses its own DSC (so they can be redirected away from the NIA service).
+  // IP / session based maintainer jurisdiction: tells the applicant whether its
+  // maintainer uses its own DSC (so it can be redirected away from NIA).
   server.get('/dsc/jurisdiction', async (request) => {
     const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
-    let asn = principal?.account.asn ?? null
-    if (asn === null) asn = findAsn(deps.config.jurisdiction.routes, request.ip)
-    if (asn === null) return { asn: null, useNiaDsc: null, notice: false, ownDscUrl: null }
-    const row = db.select().from(asConfig).where(eq(asConfig.asn, asn)).get()
-    const useNiaDsc = row ? row.useNiaDsc : true
+    const mnts = principal?.account.activeMnt
+      ? [principal.account.activeMnt]
+      : await resolveIpMnts(deps, request.ip)
+    if (mnts.length === 0) return { mnts: [], useNiaDsc: null, notice: false, ownDscUrl: null }
+    // The notice applies when any of the IP's maintainers uses its own DSC.
+    const notice = mnts.some((mnt) => !mntDelegatesToNia(db, mnt))
     let ownDscUrl: string | null = null
-    if (!useNiaDsc) {
-      const cert = db
-        .select()
-        .from(dscCert)
-        .where(and(eq(dscCert.asn, asn), eq(dscCert.status, 'active')))
-        .get()
-      ownDscUrl = cert?.applicationUrl ?? null
+    for (const mnt of mnts) {
+      const cert = activeOwnDsc(db, mnt)
+      if (cert?.applicationUrl) {
+        ownDscUrl = cert.applicationUrl
+        break
+      }
     }
-    return { asn, useNiaDsc, notice: !useNiaDsc, ownDscUrl }
+    return { mnts, useNiaDsc: !notice, notice, ownDscUrl }
   })
+}
+
+/** Resolves the IP's maintainers, tolerating whois failures. */
+async function resolveIpMnts(deps: DscRouteDeps, ip: string): Promise<string[]> {
+  try {
+    return await deps.resolver.resolve(ip)
+  } catch {
+    return []
+  }
+}
+
+/** Resolves the IP's canonical maintainer set for storage. */
+async function resolveIpMnt(deps: DscRouteDeps, ip: string): Promise<string | null> {
+  return canonicalMnts(await resolveIpMnts(deps, ip))
 }

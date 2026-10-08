@@ -63,7 +63,7 @@ export class DscIssuanceService {
       keyBits: this.ctx.config.csca.niaDsc.keyBits,
       pss: this.ctx.config.csca.niaDsc.pss,
       source: 'nia',
-      asn: null,
+      mnt: null,
       keyMode: 'nia_generated',
     })
   }
@@ -79,7 +79,7 @@ export class DscIssuanceService {
     keyBits: number
     pss: boolean
     source: 'nia' | 'owned'
-    asn: number | null
+    mnt: string | null
     keyMode: 'nia_generated' | 'user_uploaded'
     subjectPublicKey?: SubjectPublicKey
     issuancePolicy?: string | null
@@ -126,8 +126,7 @@ export class DscIssuanceService {
         cscaKeyId: params.csca.id,
         serial: generated.serialHex,
         subjectDn: generated.certificate.subject,
-        asn: params.asn,
-        mnt: null,
+        mnt: params.mnt,
         source: params.source,
         certPem: generated.pem,
         keyRef: sealedKey,
@@ -176,14 +175,14 @@ export class DscIssuanceService {
     const cert = await this.issueDsc({
       csca,
       cscaPair,
-      commonName: application.subjectCn ?? `DSC for AS${application.asn ?? 'unknown'}`,
+      commonName: application.subjectCn ?? `DSC for ${application.mnt ?? 'unknown'}`,
       documentTypes: [application.documentType ?? 'P'],
       validityYears: Math.max(1, Math.round((application.validityDays ?? 3650) / 365)),
       privateKeyUsageYears: 1,
       keyBits: this.ctx.config.csca.niaDsc.keyBits,
       pss: this.ctx.config.csca.niaDsc.pss,
       source: 'owned',
-      asn: application.asn,
+      mnt: application.mnt,
       keyMode,
       subjectPublicKey,
       issuancePolicy: application.issuancePolicy,

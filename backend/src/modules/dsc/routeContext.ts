@@ -10,6 +10,7 @@ import { canReview, dscScope, type DscScope } from '../auth/authorization'
 import { resolvePrincipal, type AuthContext } from '../auth/middleware'
 import type { SessionStore } from '../auth/session'
 import type { Mailer } from '../../mail/mailer'
+import type { MntResolver } from '../jurisdiction/whois'
 import type { DscService, SignRequestRow } from './service'
 
 /** Dependencies for the DSC routes. */
@@ -19,6 +20,8 @@ export interface DscRouteDeps {
   sessions: SessionStore
   service: DscService
   mailer?: Mailer
+  /** IP → maintainer resolver (whois in production, a fake in tests). */
+  resolver: MntResolver
 }
 
 export const referenceParams = z.object({ reference: z.string().min(8).max(128) })

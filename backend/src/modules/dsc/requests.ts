@@ -12,7 +12,7 @@ import type { Db } from '../../db/client'
 import { dscCert, signRequest } from '../../db/schema'
 import { hashToken, randomToken } from '../../crypto/secret'
 import { nowIso } from '../../util/time'
-import { asDelegatesToNia, canReview, type DscScope } from '../auth/authorization'
+import { mntDelegatesToNia, canReview, type DscScope } from '../auth/authorization'
 import { mrzExpiry } from './build'
 import type { DscSettingsService } from './settings'
 import { buildPreview, type RequestPreview } from './preview'
@@ -23,7 +23,8 @@ export type SignRequestRow = typeof signRequest.$inferSelect
 /** Who is submitting the request (may be anonymous). */
 export interface Requester {
   accountId: number | null
-  asn: number | null
+  /** Canonical (sorted, comma-joined) maintainers of the requesting IP. */
+  mnt: string | null
   ip: string | null
 }
 
@@ -52,7 +53,8 @@ export class DscRequestService {
 
   /**
    * Derives the Document Signer selection.  The applicant does not choose: it
-   * follows the AS delegation setting (NIA DSC) or the AS's own active DSC.
+   * follows the maintainer delegation setting (NIA DSC) or the maintainer's own
+   * active DSC.
    */
   private resolveDscSelection(
     requester: Requester,
@@ -64,11 +66,11 @@ export class DscRequestService {
         certId: payload.dscSelection.mode === 'owned' ? payload.dscSelection.dscCertId : null,
       }
     }
-    if (requester.asn !== null && !asDelegatesToNia(this.db, requester.asn)) {
+    if (requester.mnt !== null && !mntDelegatesToNia(this.db, requester.mnt)) {
       const own = this.db
         .select()
         .from(dscCert)
-        .where(and(eq(dscCert.asn, requester.asn), eq(dscCert.status, 'active')))
+        .where(and(eq(dscCert.mnt, requester.mnt), eq(dscCert.status, 'active')))
         .get()
       if (own) return { mode: 'owned', certId: own.id }
     }
@@ -110,7 +112,7 @@ export class DscRequestService {
         .values({
           referenceHash: hashToken(reference),
           requesterAccountId: requester.accountId,
-          asn: requester.asn,
+          mnt: requester.mnt,
           ip: requester.ip,
           dscSelection: selection.mode,
           dscCertId: selection.certId,
@@ -164,7 +166,7 @@ export class DscRequestService {
       .filter((row) => {
         if (options.status && row.status !== options.status) return false
         if (options.scope) {
-          return canReview(options.scope, { asn: row.asn, dscSelection: row.dscSelection })
+          return canReview(options.scope, { mnt: row.mnt, dscSelection: row.dscSelection })
         }
         if (options.accountId !== undefined) return row.requesterAccountId === options.accountId
         return true
@@ -183,6 +185,7 @@ export class DscRequestService {
       deliveryMode: row.deliveryMode,
       consumedAt: row.consumedAt,
       dscSelection: row.dscSelection,
+      mnt: row.mnt,
       dataGroups: dataGroupList(payload, this.settings.issuingDefaults().security),
       email: row.email,
     }

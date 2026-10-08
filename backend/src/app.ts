@@ -42,6 +42,7 @@ import { registerCscaRoutes } from './modules/csca/routes'
 import { DscService } from './modules/dsc/service'
 import { registerDscRoutes } from './modules/dsc/routes'
 import { registerPkdRoutes } from './modules/pkd/rest'
+import { WhoisMntResolver, type MntResolver } from './modules/jurisdiction/whois'
 import { createMailer } from './mail/mailer'
 
 /** Options for {@link buildApp}. */
@@ -51,6 +52,8 @@ export interface BuildAppOptions {
   dbHandle?: DbHandle
   /** Override the OIDC driver (tests inject a fake). */
   driverFactory?: OidcDriverFactory
+  /** Override the IP→maintainer resolver (tests inject a fake). */
+  mntResolver?: MntResolver
   /** Force the Fastify logger off (tests). */
   logger?: boolean
 }
@@ -214,7 +217,8 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   }
   if (realmEnabled(config, 'dsc')) {
     const mailer = createMailer(config, (message) => app.log.info(message))
-    registerDscRoutes(app, { config, db: dbHandle.db, sessions, service: dsc, mailer })
+    const resolver = options.mntResolver ?? new WhoisMntResolver(config.jurisdiction)
+    registerDscRoutes(app, { config, db: dbHandle.db, sessions, service: dsc, mailer, resolver })
   }
   if ((config.roles as readonly string[]).includes('pkd')) {
     registerPkdRoutes(app, { config, db: dbHandle.db, sessions, csca })

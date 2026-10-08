@@ -3,7 +3,6 @@ CREATE TABLE `account` (
 	`realm` text NOT NULL,
 	`provider_id` integer,
 	`subject` text NOT NULL,
-	`asn` integer,
 	`active_mnt` text,
 	`email` text,
 	`name` text,
@@ -21,13 +20,6 @@ CREATE TABLE `artifact` (
 	`size` integer,
 	`enc` integer DEFAULT true NOT NULL,
 	`created_at` text NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE `as_config` (
-	`asn` integer PRIMARY KEY NOT NULL,
-	`use_nia_dsc` integer DEFAULT false NOT NULL,
-	`updated_by` integer,
-	`updated_at` text NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `audit_log` (
@@ -74,7 +66,6 @@ CREATE TABLE `csca_key` (
 CREATE UNIQUE INDEX `csca_key_serial_unique` ON `csca_key` (`serial`);--> statement-breakpoint
 CREATE TABLE `dsc_application` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`asn` integer,
 	`mnt` text,
 	`applicant_account_id` integer,
 	`key_mode` text NOT NULL,
@@ -99,7 +90,6 @@ CREATE TABLE `dsc_cert` (
 	`csca_key_id` integer,
 	`serial` text NOT NULL,
 	`subject_dn` text NOT NULL,
-	`asn` integer,
 	`mnt` text,
 	`source` text NOT NULL,
 	`cert_pem` text NOT NULL,
@@ -143,7 +133,6 @@ CREATE TABLE `maintainer` (
 	`mnt` text NOT NULL,
 	`realm` text NOT NULL,
 	`role` text NOT NULL,
-	`asn` integer,
 	`note` text,
 	PRIMARY KEY(`mnt`, `realm`, `role`)
 );
@@ -154,6 +143,13 @@ CREATE TABLE `master_list` (
 	`der` blob NOT NULL,
 	`published_at` text,
 	`created_at` text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `mnt_config` (
+	`mnt` text PRIMARY KEY NOT NULL,
+	`use_nia_dsc` integer DEFAULT false NOT NULL,
+	`updated_by` integer,
+	`updated_at` text NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `oauth_flow` (
@@ -204,7 +200,7 @@ CREATE TABLE `sign_request` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`reference_hash` text NOT NULL,
 	`requester_account_id` integer,
-	`asn` integer,
+	`mnt` text,
 	`ip` text,
 	`dsc_selection` text NOT NULL,
 	`dsc_cert_id` integer,
@@ -236,4 +232,4 @@ CREATE TABLE `system_setting` (
 );
 
 --> statement-breakpoint
-CREATE UNIQUE INDEX `ux_sign_request_mrz` ON `sign_request` (`asn`, json_extract(`payload_json`, '$.mrz.documentNumber'));
+CREATE UNIQUE INDEX `ux_sign_request_mrz` ON `sign_request` (`mnt`, json_extract(`payload_json`, '$.mrz.documentNumber'));

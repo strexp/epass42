@@ -40,7 +40,6 @@ export const account = sqliteTable(
     realm: text('realm').notNull(),
     providerId: integer('provider_id').references(() => oauthProvider.id),
     subject: text('subject').notNull(),
-    asn: integer('asn'),
     activeMnt: text('active_mnt'),
     email: text('email'),
     name: text('name'),
@@ -70,8 +69,6 @@ export const maintainer = sqliteTable(
     mnt: text('mnt').notNull(),
     realm: text('realm').notNull(),
     role: text('role').notNull(),
-    /** For `role='as-admin'`, the delegated AS this maintainer may review. */
-    asn: integer('asn'),
     note: text('note'),
   },
   (table) => [primaryKey({ columns: [table.mnt, table.realm, table.role] })],
@@ -116,7 +113,6 @@ export const cscaKey = sqliteTable('csca_key', {
 
 export const dscApplication = sqliteTable('dsc_application', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  asn: integer('asn'),
   mnt: text('mnt'),
   applicantAccountId: integer('applicant_account_id').references(() => account.id),
   keyMode: text('key_mode').notNull(),
@@ -140,7 +136,6 @@ export const dscCert = sqliteTable('dsc_cert', {
   cscaKeyId: integer('csca_key_id').references(() => cscaKey.id),
   serial: text('serial').notNull().unique(),
   subjectDn: text('subject_dn').notNull(),
-  asn: integer('asn'),
   mnt: text('mnt'),
   source: text('source').notNull(),
   certPem: text('cert_pem').notNull(),
@@ -188,7 +183,8 @@ export const signRequest = sqliteTable('sign_request', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   referenceHash: text('reference_hash').notNull().unique(),
   requesterAccountId: integer('requester_account_id').references(() => account.id),
-  asn: integer('asn'),
+  /** Canonical (sorted, comma-joined) maintainers of the requesting IP. */
+  mnt: text('mnt'),
   ip: text('ip'),
   dscSelection: text('dsc_selection').notNull(),
   dscCertId: integer('dsc_cert_id').references(() => dscCert.id),
@@ -224,8 +220,8 @@ export const artifact = sqliteTable('artifact', {
  * AS jurisdiction / settings
  * ------------------------------------------------------------------ */
 
-export const asConfig = sqliteTable('as_config', {
-  asn: integer('asn').primaryKey(),
+export const mntConfig = sqliteTable('mnt_config', {
+  mnt: text('mnt').primaryKey(),
   useNiaDsc: integer('use_nia_dsc', { mode: 'boolean' }).notNull().default(false),
   updatedBy: integer('updated_by'),
   updatedAt: text('updated_at').notNull(),
