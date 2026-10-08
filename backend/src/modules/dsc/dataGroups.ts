@@ -4,8 +4,9 @@ import type { SignRequest } from '@epass42/shared'
 export function dataGroupList(
   payload: SignRequest,
   security: SignRequest['security'] = payload.security,
+  lds2Enabled = false,
 ): number[] {
-  const groups = [1, 2, 12, 14]
+  const groups = [1, 2, 12]
   if (payload.dg3) groups.push(3)
   if (payload.dg4) groups.push(4)
   if (payload.dg5) groups.push(5)
@@ -13,6 +14,9 @@ export function dataGroupList(
   if (payload.dg11) groups.push(11)
   if (payload.dg13) groups.push(13)
   if (payload.dg16) groups.push(16)
+  // DG14 (Security Options) is only present when it carries Chip or Active
+  // Authentication; a PACE-only document keeps EF.CardAccess in the MF.
+  if (security?.ca.enabled || lds2Enabled || security?.aa.enabled) groups.push(14)
   if (security?.aa.enabled) groups.push(15)
   return [...new Set(groups)].sort((a, b) => a - b)
 }

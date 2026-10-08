@@ -17,6 +17,7 @@ import { mrzExpiry } from './build'
 import type { DscSettingsService } from './settings'
 import { buildPreview, type RequestPreview } from './preview'
 import { dataGroupList } from './dataGroups'
+import { isLds2Enabled } from './securityOptions'
 
 export type SignRequestRow = typeof signRequest.$inferSelect
 
@@ -177,6 +178,7 @@ export class DscRequestService {
   /** Metadata safe to return for a request reference (no artifact bytes). */
   metadata(row: SignRequestRow): Record<string, unknown> {
     const payload = JSON.parse(row.payloadJson) as SignRequest
+    const profile = this.settings.issuingDefaults()
     return {
       id: row.id,
       status: row.status,
@@ -187,7 +189,7 @@ export class DscRequestService {
       dscSelection: row.dscSelection,
       mnt: row.mnt,
       ip: row.ip,
-      dataGroups: dataGroupList(payload, this.settings.issuingDefaults().security),
+      dataGroups: dataGroupList(payload, profile.security, isLds2Enabled(profile.lds2)),
       email: row.email,
     }
   }
@@ -197,10 +199,12 @@ export class DscRequestService {
     const row = this.getByReference(reference)
     if (!row) return null
     const payload = JSON.parse(row.payloadJson) as SignRequest
+    const profile = this.settings.issuingDefaults()
     return buildPreview(
       payload,
       undefined,
-      payload.security ?? this.settings.issuingDefaults().security,
+      payload.security ?? profile.security,
+      isLds2Enabled(profile.lds2),
     )
   }
 }

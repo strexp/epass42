@@ -98,3 +98,8 @@ export function mergeSecurity(
 
 /** The schema defaults (used for a request that carries no security block). */
 export const DEFAULT_SECURITY: SecurityOptions = securityOptionsSchema.parse({})
+
+/** True when the profile emits at least one LDS2 application. */
+export function isLds2Enabled(lds2: { enabled: boolean; roles: readonly unknown[] }): boolean {
+  return lds2.enabled && lds2.roles.length > 0
+}

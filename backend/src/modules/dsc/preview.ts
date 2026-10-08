@@ -70,6 +70,7 @@ export function buildPreview(
   payload: SignRequest,
   rules: MaskRules = DEFAULT_MASK,
   security: SignRequest['security'] = payload.security,
+  lds2Enabled = false,
 ): RequestPreview {
   const mask = (value: string | undefined): ReturnType<typeof field> => field(value, true)
   void rules
@@ -84,7 +85,7 @@ export function buildPreview(
     dateOfExpiry: { present: true, value: maskDate(payload.mrz.dateOfExpiry ?? '') },
     nationality: payload.mrz.nationality,
     sex: payload.mrz.sex,
-    dataGroups: dataGroupList(payload, resolved),
+    dataGroups: dataGroupList(payload, resolved, lds2Enabled),
     images: { dg2: true, dg5: Boolean(payload.dg5), dg7: Boolean(payload.dg7) },
     biometrics: { dg3: Boolean(payload.dg3), dg4: Boolean(payload.dg4) },
     security: resolved,

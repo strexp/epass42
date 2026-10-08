@@ -41,7 +41,7 @@ import {
 import type { SecurityOptions, SignRequest } from '@epass42/shared'
 import { AppError } from '@epass42/shared'
 
-import { mergeSecurity, toSecurityOverlay } from './securityOptions'
+import { isLds2Enabled, mergeSecurity, toSecurityOverlay } from './securityOptions'
 
 /** The LDS2 roles a document may emit (empty applications by default). */
 export type Lds2Role = 'travel' | 'visa' | 'biometrics'
@@ -214,7 +214,7 @@ export async function buildPersoSigning(
   // Security mechanisms are administrator defaults the applicant does not see.
   const security = mergeSecurity(profile.security, toSecurityOverlay(request.security))
 
-  const lds2Enabled = profile.lds2.enabled && profile.lds2.roles.length > 0
+  const lds2Enabled = isLds2Enabled(profile.lds2)
   const paceEnabled = security.pace.ecdhGm3des || security.pace.ecdhGmAes128
   // EF.CardAccess and EF.CardSecurity live in the master file (Doc 9303-10
   // §3.11.3/§3.11.4), so LDS1 and the LDS2 applications share one CA key pair
@@ -246,8 +246,12 @@ export async function buildPersoSigning(
     aaSignatureAlgOid: AA_SIGNATURE_ALG_OIDS[security.aa.algorithm],
   })
 
-  // DG14 mirrors EF.CardAccess.
-  groups.push({ number: 14, bytes: buildDg14(cardAccess) })
+  // DG14 (Security Options) is emitted only when it carries Chip or Active
+  // Authentication; a PACE-only document keeps the SecurityInfos in the
+  // master-file EF.CardAccess alone.
+  if (caEnabled || security.aa.enabled) {
+    groups.push({ number: 14, bytes: buildDg14(cardAccess) })
+  }
 
   // Active Authentication: RSA-2048 key; only the public key is published.
   let aaPrivateKey: Uint8Array | undefined

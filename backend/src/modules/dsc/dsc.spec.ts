@@ -375,7 +375,8 @@ describe('M7 DSC signing service', () => {
       payload: {},
     })
     const firstPerso = parsePerso(artifactText(dsc, firstRow.id))
-    expect(firstPerso.dataGroups.has(14)).toBe(true)
+    // A PACE-only document keeps SecurityInfos in EF.CardAccess, so no DG14.
+    expect(firstPerso.dataGroups.has(14)).toBe(false)
     expect(firstPerso.dataGroups.has(15)).toBe(false)
 
     const update = await app.inject({
@@ -396,6 +397,7 @@ describe('M7 DSC signing service', () => {
       payload: {},
     })
     const secondPerso = parsePerso(artifactText(dsc, secondRow.id))
+    expect(secondPerso.dataGroups.has(14)).toBe(true)
     expect(secondPerso.dataGroups.has(15)).toBe(true)
   })
 

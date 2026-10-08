@@ -14,6 +14,7 @@ import { activeOwnDsc } from '../../mnt/delegation'
 import { canonicalMnts } from '../../jurisdiction/whois'
 import { resolvePrincipal, type AuthContext } from '../../auth/middleware'
 import { buildPreview } from '../preview'
+import { isLds2Enabled } from '../securityOptions'
 import { scopeOf, accessRow, idParams, referenceParams, type DscRouteDeps } from '../routeContext'
 
 /** Registers the request submission and status routes. */
@@ -82,8 +83,14 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
       const access = accessRow(deps, request, row)
       if (!access.ok) return reply.code(access.status ?? 403).send({ error: 'forbidden' })
       const payload = JSON.parse(row.payloadJson) as SignRequest
+      const profile = service.issuingDefaults()
       return reply.send(
-        buildPreview(payload, undefined, payload.security ?? service.issuingDefaults().security),
+        buildPreview(
+          payload,
+          undefined,
+          payload.security ?? profile.security,
+          isLds2Enabled(profile.lds2),
+        ),
       )
     },
   )
