@@ -282,13 +282,13 @@ pkd42/
 - [x] T4.8 匿名访问：DSC realm 允许匿名提交（见 M7/M8）。
 - [x] T4.9 防 CSRF、防开放重定向、防 SSRF（issuer 白名单/预置 discovery 结果）。
 - [x] T4.10 单测：mock OIDC 完成登录；越权被拒；两 realm 互不影响。
-- [ ] T4.11 DSC realm 的**委派 AS 评审**范围：当某个 AS 的管理员在 CSCA realm 委派由 NIA
+- [x] T4.11 DSC realm 的**委派 AS 评审**范围：当某个 AS 的管理员在 CSCA realm 委派由 NIA
       DSC 签发（`as_config.use_nia_dsc = true`）时，该 AS 的管理员可用同一 ds 身份登录 DSC
       realm，作为**受委派 AS 评审**审核**本 AS**（且 `dsc_selection='nia'`）的申请：
-  - [ ] 只能查看/审核 `asn == 自己 ASN` 且委派到 NIA DSC 的申请，**看不到其它 AS 的申请**。
-  - [ ] 只能审批/拒绝（approve/reject），**不得修改全局设定**（交付模式、签发字段默认值等）。
-  - [ ] 判定依据：DSC realm 身份 `asn` 对应 `as_config.use_nia_dsc = true`；非全局 NIA 管理员。
-  - [ ] NIA 管理员（`DSC_ADMIN_MNTS`）仍可查看/审阅**所有** AS 的申请。
+  - [x] 只能查看/审核 `asn == 自己 ASN` 且委派到 NIA DSC 的申请，**看不到其它 AS 的申请**。
+  - [x] 只能审批/拒绝（approve/reject），**不得修改全局设定**（交付模式、签发字段默认值等）。
+  - [x] 判定依据：DSC realm 身份 `asn` 对应 `as_config.use_nia_dsc = true`；非全局 NIA 管理员。
+  - [x] NIA 管理员（`DSC_ADMIN_MNTS`）仍可查看/审阅**所有** AS 的申请。
 
 **验收**：两个 realm 可同时登录；非管理员访问管理接口返回 403。
 

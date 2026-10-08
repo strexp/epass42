@@ -13,10 +13,18 @@ import { z } from 'zod'
 
 import { buildMrzLines, validateMrzLines } from '@pkd42/pki'
 import { signRequestSchema, type SignRequest, LIMITS } from '@pkd42/shared'
+import { eq } from 'drizzle-orm'
 import { writeAudit } from '../../audit/audit'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { canReview, dscScope, type DscScope } from '../auth/authorization'
+import { asConfig } from '../../db/schema'
+import {
+  canReview,
+  dscScope,
+  recordAsAdmin,
+  removeAsAdmin,
+  type DscScope,
+} from '../auth/authorization'
 import { requireAdmin, resolvePrincipal, type AuthContext } from '../auth/middleware'
 import type { SessionStore } from '../auth/session'
 import type { Mailer } from '../../mail/mailer'
@@ -384,6 +392,61 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
         detail: request.body,
       })
       return updated
+    },
+  )
+
+  // Self-service AS delegation (M4/T4.11, E2): an AS administrator configures
+  // whether its certificates are signed by the NIA DSC; doing so registers the
+  // caller as a delegated reviewer for that AS.
+  server.get('/dsc/settings/as', async (request, reply) => {
+    const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
+    if (!principal) return reply.code(401).send({ error: 'unauthorized' })
+    if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
+    const row = db.select().from(asConfig).where(eq(asConfig.asn, principal.account.asn)).get()
+    return {
+      asn: principal.account.asn,
+      activeMnt: principal.account.activeMnt,
+      useNiaDsc: row?.useNiaDsc ?? false,
+    }
+  })
+
+  server.put(
+    '/dsc/settings/as',
+    { schema: { body: z.object({ useNiaDsc: z.boolean() }) } },
+    async (request, reply) => {
+      const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
+      if (!principal) return reply.code(401).send({ error: 'unauthorized' })
+      if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
+      const asn = principal.account.asn
+      db.insert(asConfig)
+        .values({
+          asn,
+          useNiaDsc: request.body.useNiaDsc,
+          updatedBy: principal.account.id,
+          updatedAt: new Date().toISOString(),
+        })
+        .onConflictDoUpdate({
+          target: asConfig.asn,
+          set: {
+            useNiaDsc: request.body.useNiaDsc,
+            updatedBy: principal.account.id,
+            updatedAt: new Date().toISOString(),
+          },
+        })
+        .run()
+      if (request.body.useNiaDsc && principal.account.activeMnt) {
+        recordAsAdmin(db, principal.account.activeMnt, asn)
+      } else if (principal.account.activeMnt) {
+        removeAsAdmin(db, principal.account.activeMnt)
+      }
+      writeAudit(db, {
+        actorAccountId: principal.account.id,
+        realm: 'dsc',
+        action: 'dsc.settings.as',
+        ip: request.ip,
+        detail: { asn, useNiaDsc: request.body.useNiaDsc },
+      })
+      return { asn, useNiaDsc: request.body.useNiaDsc }
     },
   )
 }

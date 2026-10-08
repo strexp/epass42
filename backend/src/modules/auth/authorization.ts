@@ -141,6 +141,15 @@ export function recordAsAdmin(db: Db, mnt: string, asn: number, note?: string): 
     .run()
 }
 
+/** Removes the delegated AS administrator designation for an MNT. */
+export function removeAsAdmin(db: Db, mnt: string): void {
+  db.delete(maintainer)
+    .where(
+      and(eq(maintainer.realm, 'dsc'), eq(maintainer.role, 'as-admin'), eq(maintainer.mnt, mnt)),
+    )
+    .run()
+}
+
 /** Resolves the DSC review scope of an account. */
 export function dscScope(db: Db, config: AppConfig, row: AccountRow): DscScope {
   if (isAdmin(db, config, 'dsc', row)) return { kind: 'nia' }

@@ -274,4 +274,79 @@ describe('M7 DSC signing service', () => {
     expect(settings.statusCode).toBe(403)
     expect(settings.json().error).toBe('forbidden_settings')
   })
+
+  it('configures AS delegation and grants the reviewer scope', async () => {
+    const { app, oidc, dsc } = await harness()
+    const userCookie = await login(app, oidc, 'dsc', 'dsc-client', USER)
+
+    // Without delegation the user has no review scope.
+    const before = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: userCookie },
+      payload: payload('A1111111', { dscSelection: { mode: 'nia' } }),
+    })
+    const beforeId = dsc.getByReference(before.json().reference as string)!.id
+    const forbidden = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${beforeId}/approve`,
+      headers: { cookie: userCookie },
+      payload: {},
+    })
+    expect(forbidden.statusCode).toBe(403)
+
+    // Enable delegation for the AS.
+    const enable = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/as',
+      headers: { cookie: userCookie },
+      payload: { useNiaDsc: true },
+    })
+    expect(enable.statusCode).toBe(200)
+    const status = await app.inject({
+      method: 'GET',
+      url: '/dsc/settings/as',
+      headers: { cookie: userCookie },
+    })
+    expect(status.json().useNiaDsc).toBe(true)
+
+    // Now the AS admin can review its own NIA-signed request.
+    const list = await app.inject({
+      method: 'GET',
+      url: '/dsc/requests',
+      headers: { cookie: userCookie },
+    })
+    expect((list.json().items as { id: number }[]).some((entry) => entry.id === beforeId)).toBe(
+      true,
+    )
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${beforeId}/approve`,
+      headers: { cookie: userCookie },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(200)
+
+    // Disabling delegation removes the reviewer scope.
+    await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/as',
+      headers: { cookie: userCookie },
+      payload: { useNiaDsc: false },
+    })
+    const next = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: userCookie },
+      payload: payload('B2222222', { dscSelection: { mode: 'nia' } }),
+    })
+    const nextId = dsc.getByReference(next.json().reference as string)!.id
+    const denied = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${nextId}/approve`,
+      headers: { cookie: userCookie },
+      payload: {},
+    })
+    expect(denied.statusCode).toBe(403)
+  })
 })
