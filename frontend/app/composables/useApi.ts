@@ -35,4 +35,5 @@ const ERROR_KEYS = new Set([
   'request_already_consumed',
   'reveal_not_allowed',
   'document_number_conflict',
+  'no_active_dsc',
 ])

@@ -36,9 +36,12 @@ const applications = ref<Application[]>([])
 const loading = ref(false)
 const rejectId = ref<number | null>(null)
 const rejectReason = ref('')
-const delegation = ref<{ asn: number | null; activeMnt: string | null; useNiaDsc: boolean } | null>(
-  null,
-)
+const delegation = ref<{
+  asn: number | null
+  activeMnt: string | null
+  useNiaDsc: boolean
+  hasActiveDsc: boolean
+} | null>(null)
 
 const me = computed(() => auth.realms.csca.me)
 const isAdmin = computed(() => me.value?.isAdmin ?? false)
@@ -165,6 +168,9 @@ onMounted(async () => {
 
       <NCard v-if="hasAsn" :title="$t('csca.asDelegationTitle')" size="small">
         <NText depth="3">{{ $t('csca.asDelegationHint') }}</NText>
+        <NText v-if="delegation && !delegation.hasActiveDsc" depth="3" style="display: block">
+          {{ $t('csca.ownDscUnavailable') }}
+        </NText>
         <template #action>
           <NSpace>
             <NButton
@@ -180,6 +186,7 @@ onMounted(async () => {
             <NButton
               size="small"
               :type="delegation && !delegation.useNiaDsc ? 'primary' : 'default'"
+              :disabled="!delegation?.hasActiveDsc"
               @click="setDelegation(false)"
             >
               <template #icon

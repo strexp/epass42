@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NTag, NText } from 'naive-ui'
-import { Check, FilePlus2, ListChecks, Search, X } from '@lucide/vue'
+import { FilePlus2, ListChecks, Search } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 
@@ -17,7 +17,6 @@ interface RequestRow {
 const auth = useAuthStore()
 const api = useApi()
 const requests = ref<RequestRow[]>([])
-const delegation = ref<{ asn: number | null; useNiaDsc: boolean } | null>(null)
 
 const signedIn = computed(() => auth.realms.dsc.me !== null)
 
@@ -37,10 +36,6 @@ const columns = [
   { title: 'DGs', key: 'dataGroups', render: (row: RequestRow) => row.dataGroups.join(', ') },
 ]
 
-async function setDelegation(value: boolean): Promise<void> {
-  delegation.value = await api('/dsc/settings/as', { method: 'PUT', body: { useNiaDsc: value } })
-}
-
 onMounted(async () => {
   if (!auth.realms.dsc.loaded) await auth.fetchMe('dsc')
   if (!signedIn.value) return
@@ -48,11 +43,6 @@ onMounted(async () => {
     requests.value = (await api<{ items: RequestRow[] }>('/dsc/requests')).items ?? []
   } catch {
     requests.value = []
-  }
-  try {
-    delegation.value = await api('/dsc/settings/as')
-  } catch {
-    delegation.value = null
   }
 })
 </script>
@@ -91,34 +81,6 @@ onMounted(async () => {
           </NButton>
         </NuxtLink>
       </NSpace>
-
-      <NCard v-if="signedIn" :title="$t('dsc.asDelegation')" size="small">
-        <NText depth="3">{{ $t('dsc.asDelegationHint') }}</NText>
-        <template #action>
-          <NSpace>
-            <NButton
-              size="small"
-              :type="delegation?.useNiaDsc ? 'primary' : 'default'"
-              @click="setDelegation(true)"
-            >
-              <template #icon
-                ><NIcon><Check /></NIcon
-              ></template>
-              {{ $t('dsc.useNiaDsc') }}
-            </NButton>
-            <NButton
-              size="small"
-              :type="delegation && !delegation.useNiaDsc ? 'primary' : 'default'"
-              @click="setDelegation(false)"
-            >
-              <template #icon
-                ><NIcon><X /></NIcon
-              ></template>
-              {{ $t('common.cancel') }}
-            </NButton>
-          </NSpace>
-        </template>
-      </NCard>
 
       <NCard v-if="signedIn" :title="$t('dsc.statusTitle')" size="small">
         <NDataTable v-if="requests.length" :columns="columns" :data="requests" size="small" />

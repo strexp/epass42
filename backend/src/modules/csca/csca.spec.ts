@@ -215,6 +215,7 @@ describe('M5 CSCA role', () => {
     })
     expect(before.statusCode).toBe(200)
     expect(before.json().useNiaDsc).toBe(false)
+    expect(before.json().hasActiveDsc).toBe(false)
 
     const enable = await app.inject({
       method: 'PUT',
@@ -229,5 +230,42 @@ describe('M5 CSCA role', () => {
       headers: { cookie: cscaCookie },
     })
     expect(after.json().useNiaDsc).toBe(true)
+
+    // Switching to the AS's own DSC is refused until one is approved.
+    const refused = await app.inject({
+      method: 'PUT',
+      url: '/csca/settings/as',
+      headers: { cookie: cscaCookie },
+      payload: { useNiaDsc: false },
+    })
+    expect(refused.statusCode).toBe(409)
+    expect(refused.json().error).toBe('no_active_dsc')
+
+    // After an application is approved for this AS, the switch is allowed.
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'nia_generated', subjectCn: 'AS own DSC', documentType: 'P' },
+    })
+    await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${submit.json().id}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    const status = await app.inject({
+      method: 'GET',
+      url: '/csca/settings/as',
+      headers: { cookie: cscaCookie },
+    })
+    expect(status.json().hasActiveDsc).toBe(true)
+    const own = await app.inject({
+      method: 'PUT',
+      url: '/csca/settings/as',
+      headers: { cookie: cscaCookie },
+      payload: { useNiaDsc: false },
+    })
+    expect(own.statusCode).toBe(200)
+    expect(own.json().useNiaDsc).toBe(false)
   })
 })

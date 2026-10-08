@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NGrid, NTag } from 'naive-ui'
+import { NCard, NTag } from 'naive-ui'
 import { computed } from 'vue'
 import type { MrzFields } from '@pkd42/shared'
 
@@ -10,6 +10,18 @@ const props = defineProps<{
 }>()
 
 const fullName = computed(() => `${props.mrz.givenNames} ${props.mrz.surname}`.trim() || '—')
+const rows = computed(() => [
+  {
+    key: 'emrtd.document',
+    value: `${props.documentType ?? props.mrz.documentCode} ${props.mrz.documentNumber}`.trim(),
+    mono: true,
+  },
+  { key: 'emrtd.name', value: fullName.value },
+  { key: 'emrtd.nationality', value: props.mrz.nationality },
+  { key: 'emrtd.dob', value: props.mrz.dateOfBirth, mono: true },
+  { key: 'emrtd.sex', value: props.mrz.sex },
+  { key: 'emrtd.expiry', value: props.mrz.dateOfExpiry, mono: true },
+])
 </script>
 
 <template>
@@ -17,24 +29,18 @@ const fullName = computed(() => `${props.mrz.givenNames} ${props.mrz.surname}`.t
     <div class="emrtd-preview">
       <div class="emrtd-photo">
         <img v-if="portraitDataUrl" :src="portraitDataUrl" alt="" />
-        <div v-else class="emrtd-photo-placeholder">DG2</div>
+        <span v-else class="emrtd-photo-placeholder">DG2</span>
       </div>
-      <dl>
-        <dt>{{ documentType ?? mrz.documentCode }}</dt>
-        <dd class="pkd42-mono">{{ mrz.documentNumber }}</dd>
-        <dt>Name</dt>
-        <dd>{{ fullName }}</dd>
-        <dt>Nationality</dt>
-        <dd>{{ mrz.nationality }}</dd>
-        <dt>Date of birth</dt>
-        <dd>{{ mrz.dateOfBirth }}</dd>
-        <dt>Expiry</dt>
-        <dd>{{ mrz.dateOfExpiry }}</dd>
+      <dl class="emrtd-fields">
+        <template v-for="row in rows" :key="row.key">
+          <dt>{{ $t(row.key) }}</dt>
+          <dd :class="{ 'pkd42-mono': row.mono }">{{ row.value }}</dd>
+        </template>
       </dl>
-      <NGrid>
-        <NTag size="small">DG1</NTag>
-        <NTag size="small">DG2</NTag>
-      </NGrid>
+    </div>
+    <div class="emrtd-dgs">
+      <NTag size="small">DG1</NTag>
+      <NTag size="small">DG2</NTag>
     </div>
   </NCard>
 </template>
@@ -42,18 +48,20 @@ const fullName = computed(() => `${props.mrz.givenNames} ${props.mrz.surname}`.t
 <style scoped>
 .emrtd-preview {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   align-items: flex-start;
 }
 .emrtd-photo {
+  flex: 0 0 auto;
   width: 120px;
   height: 150px;
-  background: #eee;
+  background: rgba(128, 128, 128, 0.15);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 4px;
 }
 .emrtd-photo img {
   width: 100%;
@@ -61,20 +69,30 @@ const fullName = computed(() => `${props.mrz.givenNames} ${props.mrz.surname}`.t
   object-fit: cover;
 }
 .emrtd-photo-placeholder {
-  color: #999;
+  opacity: 0.5;
   font-size: 12px;
 }
-dl {
+.emrtd-fields {
+  flex: 1 1 220px;
+  min-width: 0;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 16px;
   margin: 0;
+  align-content: start;
 }
 dt {
   opacity: 0.6;
   font-size: 12px;
+  white-space: nowrap;
 }
 dd {
   margin: 0;
+  overflow-wrap: anywhere;
+}
+.emrtd-dgs {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
 }
 </style>

@@ -41,10 +41,10 @@ const keyModeOptions = computed(() => [
 ])
 
 const policyOptions = computed(() => [
-  { label: t('csca.policyDefault'), value: 'default' },
-  { label: t('csca.policyNia'), value: 'nia-managed' },
-  { label: t('csca.policyAsManaged'), value: 'as-managed' },
-  { label: t('csca.policyStrict'), value: 'strict' },
+  { label: t('csca.policyDefault'), value: 'open' },
+  { label: t('csca.policyNia'), value: 'selective' },
+  { label: t('csca.policyAsManaged'), value: 'internal' },
+  { label: t('csca.policyStrict'), value: 'restricted' },
 ])
 
 const documentTypeOptions = [

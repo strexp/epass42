@@ -89,10 +89,11 @@ export default defineI18nConfig(() => ({
           'Choose whether this AS uses the NIA DSC (delegated, reviewable here) or its own certificate.',
         useNiaDsc: 'Use NIA DSC (delegated)',
         useOwnDsc: 'Use this AS’s own DSC',
-        policyDefault: 'Default',
-        policyNia: 'NIA-managed issuance',
-        policyAsManaged: 'AS-managed issuance',
-        policyStrict: 'Strict',
+        ownDscUnavailable: 'Available only after this AS has an approved, active DSC.',
+        policyDefault: 'Open — anyone may apply',
+        policyNia: 'Selective — reviewed case by case',
+        policyAsManaged: 'Internal — own organisation only',
+        policyStrict: 'Restricted',
         statuses: {
           submitted: 'Submitted',
           approved: 'Approved',
@@ -162,6 +163,14 @@ export default defineI18nConfig(() => ({
       mask: {
         hidden: 'hidden',
       },
+      emrtd: {
+        document: 'Document',
+        name: 'Name',
+        nationality: 'Nationality',
+        dob: 'Date of birth',
+        sex: 'Sex',
+        expiry: 'Date of expiry',
+      },
       errors: {
         generic: 'Something went wrong.',
         unauthorized: 'Please sign in first.',
@@ -171,6 +180,7 @@ export default defineI18nConfig(() => ({
         request_already_consumed: 'This request has already been claimed.',
         reveal_not_allowed: 'Delivery is restricted to reviewers.',
         document_number_conflict: 'This document number already exists for your AS.',
+        no_active_dsc: 'No approved DSC is available for this AS yet.',
       },
     },
   },

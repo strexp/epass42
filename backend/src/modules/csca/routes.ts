@@ -13,7 +13,7 @@
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAudit } from '../../audit/audit'
@@ -337,10 +337,17 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
     if (!principal) return reply.code(401).send({ error: 'unauthorized' })
     if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
     const row = db.select().from(asConfig).where(eq(asConfig.asn, principal.account.asn)).get()
+    const active = db
+      .select()
+      .from(dscCert)
+      .where(and(eq(dscCert.asn, principal.account.asn), eq(dscCert.status, 'active')))
+      .get()
     return {
       asn: principal.account.asn,
       activeMnt: principal.account.activeMnt,
       useNiaDsc: row?.useNiaDsc ?? false,
+      // Switching to the AS's own DSC requires an approved, active DSC.
+      hasActiveDsc: active !== undefined,
     }
   })
 
@@ -352,6 +359,14 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
       if (!principal) return reply.code(401).send({ error: 'unauthorized' })
       if (principal.account.asn === null) return reply.code(400).send({ error: 'no_asn' })
       const asn = principal.account.asn
+      if (!request.body.useNiaDsc) {
+        const active = db
+          .select()
+          .from(dscCert)
+          .where(and(eq(dscCert.asn, asn), eq(dscCert.status, 'active')))
+          .get()
+        if (!active) return reply.code(409).send({ error: 'no_active_dsc' })
+      }
       db.insert(asConfig)
         .values({
           asn,
