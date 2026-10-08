@@ -20,6 +20,17 @@ export const SECURITY_INFO_OIDS = {
 /** Standardised domain parameter id for P-256 (BSI TR-03110-3). */
 const PARAM_ID_P256 = 12
 
+/**
+ * Active Authentication signature algorithm OIDs (RFC 8017) by signing-profile
+ * name.  card42's card signs with ISO/IEC 9796-2 Digital Signature Scheme 1 and
+ * SHA-1 (`EmrtdApplet` constructs `AaCrypto(2048, AA_SHA1)`), so SHA-1 is the
+ * only profile wired up today; the announced algorithm must match.
+ */
+export const AA_SIGNATURE_ALG_OIDS = {
+  rsaSha1: '1.2.840.113549.1.1.5',
+  rsaSha256: '1.2.840.113549.1.1.11',
+} as const
+
 /** The mechanism selection stored on a signing request. */
 export interface SecurityInfoSelection {
   paceEcdhGm3des: boolean
@@ -28,7 +39,7 @@ export interface SecurityInfoSelection {
   caEcdhAes128: boolean
   caKeyId: number
   aa: boolean
-  /** AA signature algorithm OID (default RSA PKCS#1 v1.5 SHA-256). */
+  /** AA signature algorithm OID (default SHA-1, matching card42's card). */
   aaSignatureAlgOid?: string
 }
 
@@ -63,7 +74,7 @@ function securityInfoEntries(info: SecurityInfoSelection): Bytes[] {
     entries.push(chipAuthenticationInfo(SECURITY_INFO_OIDS.caEcdhAes128, info.caKeyId))
   }
   if (info.aa) {
-    entries.push(activeAuthenticationInfo(info.aaSignatureAlgOid ?? '1.2.840.113549.1.1.11'))
+    entries.push(activeAuthenticationInfo(info.aaSignatureAlgOid ?? AA_SIGNATURE_ALG_OIDS.rsaSha1))
   }
   return entries
 }

@@ -31,6 +31,24 @@ describe('SecurityInfo', () => {
     ).toThrow()
   })
 
+  it('advertises the card42 AA signature algorithm (SHA-1)', () => {
+    const cardAccess = buildCardAccess({
+      paceEcdhGm3des: false,
+      paceEcdhGmAes128: false,
+      caEcdh3des: false,
+      caEcdhAes128: false,
+      caKeyId: 1,
+      aa: true,
+    })
+    const root = parseTlv(cardAccess)
+    expect(root.children).toHaveLength(1)
+    // ActiveAuthenticationInfo SEQUENCE { id-AA, version 1, SHA-1 with RSA }.
+    const [oid, version, signatureAlg] = root.children[0].children
+    expect(oid.value).toEqual(derOid(SECURITY_INFO_OIDS.idAa).slice(2))
+    expect(version.value).toEqual(new Uint8Array([1]))
+    expect(signatureAlg.value).toEqual(derOid('1.2.840.113549.1.1.5').slice(2))
+  })
+
   it('adds the CA public key to the SecurityObject', () => {
     const cardAccess = buildCardAccess({
       paceEcdhGm3des: true,
