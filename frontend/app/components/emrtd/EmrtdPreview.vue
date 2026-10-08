@@ -19,7 +19,7 @@ const rows = computed(() => [
   { key: 'emrtd.name', value: fullName.value },
   { key: 'emrtd.nationality', value: props.mrz.nationality },
   { key: 'emrtd.dob', value: props.mrz.dateOfBirth, mono: true },
-  { key: 'emrtd.sex', value: props.mrz.sex },
+  { key: 'emrtd.sex', value: props.mrz.sex === '<' ? 'X' : props.mrz.sex },
   { key: 'emrtd.expiry', value: props.mrz.dateOfExpiry ?? '—', mono: true },
 ])
 </script>

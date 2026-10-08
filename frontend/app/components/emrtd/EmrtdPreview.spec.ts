@@ -27,4 +27,13 @@ describe('EmrtdPreview', () => {
     expect(wrapper.text()).toContain('JANE DOE')
     expect(wrapper.find('[data-testid="emrtd-preview"]').exists()).toBe(true)
   })
+
+  it('renders the unspecified sex as X', () => {
+    const wrapper = mount(EmrtdPreview, {
+      props: { mrz: { ...mrz, sex: '<' } },
+      global: { mocks: { $t: (key: string) => key } },
+    })
+    expect(wrapper.text()).toContain('X')
+    expect(wrapper.text()).not.toContain('<')
+  })
 })

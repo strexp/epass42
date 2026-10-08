@@ -141,7 +141,9 @@ export class DscService {
       ...payload,
       mrz: {
         ...payload.mrz,
-        // Always server-computed; a supplied value is ignored.
+        // Issuing state, nationality and expiry are server-owned.
+        issuingState: profile.issuingState as SignRequest['mrz']['issuingState'],
+        nationality: profile.issuingState,
         dateOfExpiry: mrzExpiry(profile.validityYears),
       },
     }

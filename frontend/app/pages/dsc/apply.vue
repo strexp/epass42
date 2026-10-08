@@ -18,6 +18,7 @@ import {
 import { Send } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@pkd42/shared'
+import { COUNTRY_ALPHA3 } from '@pkd42/shared'
 import type { EncodedFile } from '~/components/common/FileField.vue'
 import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
@@ -30,11 +31,12 @@ const message = useMessage()
 
 const mrz = reactive<MrzFields>({
   documentCode: 'P',
-  issuingState: 'UDN',
+  issuingState: COUNTRY_ALPHA3,
   surname: '',
   givenNames: '',
   documentNumber: '',
-  nationality: 'UDN',
+  // Nationality is defined by the NIA configuration, not by the applicant.
+  nationality: COUNTRY_ALPHA3,
   dateOfBirth: '',
   sex: '<',
   personalNumber: '',
@@ -195,9 +197,6 @@ onMounted(async () => {
           </NFormItem>
           <NFormItem label="Sex">
             <NSelect v-model:value="mrz.sex" :options="sexOptions" />
-          </NFormItem>
-          <NFormItem label="Nationality">
-            <NInput v-model:value="mrz.nationality" maxlength="3" />
           </NFormItem>
         </div>
       </NForm>

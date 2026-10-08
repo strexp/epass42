@@ -111,6 +111,7 @@ function buildDataGroups(
     bytes: buildDg1({
       ...request.mrz,
       issuingState: profile.issuingState,
+      nationality: profile.issuingState,
       dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
     }),
   })

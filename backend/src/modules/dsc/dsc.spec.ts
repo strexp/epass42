@@ -423,6 +423,19 @@ describe('M7 DSC signing service', () => {
     expect(Buffer.from(dg1).toString('latin1')).toContain(mrzExpiry(5))
   })
 
+  it('server-sets the MRZ nationality', async () => {
+    const { app, dsc } = await harness()
+    const response = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      payload: { ...payload('N1111111'), mrz: { ...mrz('N1111111'), nationality: 'AAA' } },
+    })
+    expect(response.statusCode).toBe(201)
+    const row = dsc.getByReference(response.json().reference as string)!
+    const stored = JSON.parse(row.payloadJson) as { mrz: { nationality: string } }
+    expect(stored.mrz.nationality).toBe('UDN')
+  })
+
   it('reports AS jurisdiction from the IP route table and settings', async () => {
     const { app, db } = await harness({
       PKD42_JURISDICTION_ROUTES: JSON.stringify([{ prefix: '10.0.0.0/8', asn: 4242420001 }]),
