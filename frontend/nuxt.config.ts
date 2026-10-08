@@ -44,6 +44,10 @@ export default defineNuxtConfig({
     transpile: ['naive-ui', 'vueuc', '@css-render/vue3-ssr', '@juggle/resize-observer'],
   },
 
+  // The backend defaults to 127.0.0.1:3000; run the dev UI on 3001 so the two
+  // never contend for the port.
+  devServer: { port: 3001 },
+
   app: {
     head: {
       title: 'pkd42',
