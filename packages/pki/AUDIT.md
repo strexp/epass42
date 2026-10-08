@@ -81,20 +81,20 @@ third-party SODs that use the constructed form.
 
 ## 4. Data groups (Doc 9303-10 §4.7; Appendix G)
 
-| DG   | Structure                                                                                                    | Notes                                                                                                                 |
-| ---- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| DG1  | `61 { 5F1F MRZ }`                                                                                            | `mrz.buildMrzLines` + `buildDg1`; byte-identical to the card42 sample except for the composite check digit (see §4.1) |
-| DG2  | `75 { 7F61 { 02 01 01, 7F60 { A1{SBH}, 5F2E ISO 19794-5 } } }`                                               | mirrors card42 `Dg2Builder`, including the 14/4-byte length fields                                                    |
-| DG3  | `63 { <7F61 template> }`                                                                                     | service wraps the uploaded inner template; validates outer tag, count and BDB presence                                |
-| DG4  | `76 { <7F61 template> }`                                                                                     | as DG3                                                                                                                |
-| DG5  | `65 { 02 01 01, 5F40 JPEG }`                                                                                 |                                                                                                                       |
-| DG7  | `67 { 02 01 01, 5F43 JPEG }`                                                                                 |                                                                                                                       |
-| DG11 | `6B { 5C taglist, 5F0E, [A0{02,5F0F}], 5F10, 5F2B, 5F11, 5F42, 5F12, 5F13, 5F14, 5F15, [5F16], 5F17, 5F18 }` | `5C` computed from the fields present                                                                                 |
-| DG12 | `6C { 5C, 5F19, 5F26, [A0{02,5F1A}], 5F1B, 5F1C, [5F1D], [5F1E], 5F55, 5F56 }`                               | `5F55`/`5F56` are server-filled                                                                                       |
-| DG13 | `6D { … }`                                                                                                   | issuer-defined; text encoded as `6D { 5F0E text }`                                                                    |
-| DG14 | `6E { SecurityInfos }`                                                                                       | identical content to EF.CardAccess                                                                                    |
-| DG15 | `6F { SubjectPublicKeyInfo }`                                                                                | `buildDg15(spki)`                                                                                                     |
-| DG16 | `70 { 02 count, A1{5F50,5F51,5F52,5F53}… }`                                                                  |                                                                                                                       |
+| DG   | Structure                                                                                                    | Notes                                                                                                                             |
+| ---- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| DG1  | `61 { 5F1F MRZ }`                                                                                            | `mrz.buildMrzLines` + `buildDg1`; byte-identical to the card42 sample except for the composite check digit (see §4.1)             |
+| DG2  | `75 { 7F61 { 02 01 01, 7F60 { A1{SBH}, 5F2E ISO 19794-5 } } }`                                               | mirrors card42 `Dg2Builder`, including the 14/4-byte length fields                                                                |
+| DG3  | `63 { <7F61 template> }`                                                                                     | service wraps the uploaded inner template; validates outer tag, count and BDB presence                                            |
+| DG4  | `76 { <7F61 template> }`                                                                                     | as DG3                                                                                                                            |
+| DG5  | `65 { 02 01 01, 5F40 JPEG }`                                                                                 |                                                                                                                                   |
+| DG7  | `67 { 02 01 01, 5F43 JPEG }`                                                                                 |                                                                                                                                   |
+| DG11 | `6B { 5C taglist, 5F0E, [A0{02,5F0F}], 5F10, 5F2B, 5F11, 5F42, 5F12, 5F13, 5F14, 5F15, [5F16], 5F17, 5F18 }` | `5C` computed from the fields present                                                                                             |
+| DG12 | `6C { 5C, 5F19, 5F26, [A0{02,5F1A}], 5F1B, 5F1C, [5F1D], [5F1E], 5F55, 5F56 }`                               | `5F55`/`5F56` are server-filled                                                                                                   |
+| DG13 | `6D { … }`                                                                                                   | issuer-defined; text encoded as `6D { 5F0E text }`                                                                                |
+| DG14 | `6E { SET OF SecurityInfo }`                                                                                 | repeats the EF.CardSecurity eContent (EF.CardAccess set + `ChipAuthenticationPublicKeyInfo`); with AA only, the EF.CardAccess set |
+| DG15 | `6F { SubjectPublicKeyInfo }`                                                                                | `buildDg15(spki)`                                                                                                                 |
+| DG16 | `70 { 02 count, A1{5F50,5F51,5F52,5F53}… }`                                                                  |                                                                                                                                   |
 
 ### 4.1 Composite check digit
 
@@ -123,6 +123,11 @@ tag number (`tag & 0x20`). For a tag such as `5F2B` the low byte `0x2B` has bit
   9796-2 Scheme 1 and SHA-1 (`EmrtdApplet` → `AaCrypto(2048, AA_SHA1)`).
 - EF.CardSecurity eContent (`id-SecurityObject`) = CardAccess set plus
   `ChipAuthenticationPublicKeyInfo`: OK.
+- EF.DG14 (`6E { SET OF SecurityInfo }`, Doc 9303-10 §4.7.14) reuses that same
+  set — the EF.CardAccess SecurityInfos plus the chip's static CA public key
+  (`id-PK-ECDH`) — so DG14 matches the EF.CardSecurity eContent (card42
+  `3e7c02f`). With Active Authentication but no Chip Authentication there is no
+  CA public key, so DG14 carries the EF.CardAccess set.
 
 ## 6. Perso script (`card42.host.emrtd.perso.LdsScript`)
 

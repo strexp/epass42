@@ -246,13 +246,6 @@ export async function buildPersoSigning(
     aaSignatureAlgOid: AA_SIGNATURE_ALG_OIDS[security.aa.algorithm],
   })
 
-  // DG14 (Security Options) is emitted only when it carries Chip or Active
-  // Authentication; a PACE-only document keeps the SecurityInfos in the
-  // master-file EF.CardAccess alone.
-  if (caEnabled || security.aa.enabled) {
-    groups.push({ number: 14, bytes: buildDg14(cardAccess) })
-  }
-
   // Active Authentication: RSA-2048 key; only the public key is published.
   let aaPrivateKey: Uint8Array | undefined
   if (security.aa.enabled) {
@@ -264,17 +257,29 @@ export async function buildPersoSigning(
   // Chip Authentication: one P-256 key pair shared by every role.  The private
   // scalar is personalized as DGI FF03 and the static public key is published
   // in the master-file EF.CardSecurity (DGI FF05 for LDS1, FID 011D for LDS2).
+  // Its SecurityInfos are the EF.CardAccess set plus the chip's static CA public
+  // key (ChipAuthenticationPublicKeyInfo, id-PK-ECDH); DG14 reuses that set.
   let caScalar: Uint8Array | undefined
   let cardSecurity: Uint8Array | undefined
+  let caSecurityObject: Uint8Array | undefined
   if (caEnabled) {
     const ca = generateP256KeyPair()
     caScalar = ca.scalar
-    const securityObject = buildSecurityObject(cardAccess, ca.spki, security.ca.keyId)
+    caSecurityObject = buildSecurityObject(cardAccess, ca.spki, security.ca.keyId)
     cardSecurity = await buildCardSecurity(
-      securityObject,
+      caSecurityObject,
       pemToDer(dsc.certPem),
       dsc.keyPair.privateKey,
     )
+  }
+
+  // DG14 (Security Options) = 6E { SET OF SecurityInfo } (Doc 9303-10 §4.7.14),
+  // emitted only when it carries Chip or Active Authentication.  With Chip
+  // Authentication it repeats the EF.CardSecurity eContent verbatim, i.e. the
+  // EF.CardAccess SecurityInfos plus the chip's static CA public key; with only
+  // Active Authentication there is no CA public key, so it repeats EF.CardAccess.
+  if (caEnabled || security.aa.enabled) {
+    groups.push({ number: 14, bytes: buildDg14(caSecurityObject ?? cardAccess) })
   }
 
   groups.sort((a, b) => a.number - b.number)

@@ -1,7 +1,14 @@
 import type { FastifyInstance } from 'fastify'
 import { describe, expect, it } from 'vitest'
 
-import { hexToBytes, parseCertificatePem, verifySod } from '@epass42/pki'
+import {
+  derOid,
+  hexToBytes,
+  parseCertificatePem,
+  parseTlv,
+  SECURITY_INFO_OIDS,
+  verifySod,
+} from '@epass42/pki'
 import { FakeOidc, makeTestApp, staticMntResolver } from '../../test-support'
 import type { Db } from '../../db/client'
 import { mntConfig } from '../../db/schema'
@@ -399,6 +406,46 @@ describe('M7 DSC signing service', () => {
     const secondPerso = parsePerso(artifactText(dsc, secondRow.id))
     expect(secondPerso.dataGroups.has(14)).toBe(true)
     expect(secondPerso.dataGroups.has(15)).toBe(true)
+  })
+
+  it('carries the CA public key in DG14 alongside EF.CardSecurity', async () => {
+    const { app, oidc, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { security: { ca: { enabled: true } } },
+    })
+    expect(update.statusCode).toBe(200)
+
+    const reference = await submit(app, 'C1111111')
+    const row = dsc.getByReference(reference)!
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${row.id}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+
+    const perso = parsePerso(artifactText(dsc, row.id))
+    const dg14 = perso.dataGroups.get(14)
+    expect(dg14).toBeTruthy()
+    // DG14 = 6E { SET OF SecurityInfo } (Doc 9303-10 §4.7.14).
+    const dg = parseTlv(dg14!)
+    expect(dg.tag).toBe(0x6e)
+    const securityInfos = dg.children[0]
+    expect(securityInfos.tag).toBe(0x31)
+    // The set repeats EF.CardAccess and adds the chip's static CA public key,
+    // i.e. the same SecurityInfos EF.CardSecurity signs.
+    const caOid = derOid(SECURITY_INFO_OIDS.idPkEcdh).slice(2)
+    const hasCaPublicKey = securityInfos.children.some(
+      (info) =>
+        info.tag === 0x30 &&
+        info.children[0]?.tag === 0x06 &&
+        Buffer.from(info.children[0].value).equals(Buffer.from(caOid)),
+    )
+    expect(hasCaPublicKey).toBe(true)
   })
 
   it('derives the document expiry from the issuing profile', async () => {
