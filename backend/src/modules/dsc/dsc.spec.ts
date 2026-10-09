@@ -219,6 +219,62 @@ describe('M7 DSC signing service', () => {
     void reference
   })
 
+  it('personalises the optional PACE Card Access Number (CAN) for LDS1 only', async () => {
+    const { app, oidc, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    // Emit an LDS2 application too, to show @can stays in the LDS1 section.
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { lds2: { enabled: true, roles: ['travel'] } },
+    })
+    expect(update.statusCode).toBe(200)
+
+    // Without a CAN there is no @can directive.
+    const plain = await submit(app, 'C1111111')
+    const plainId = dsc.getByReference(plain)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${plainId}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(artifactText(dsc, plainId)).not.toMatch(/^@can /m)
+
+    // With a CAN it is written once, in the LDS1 (master file) section.
+    const withCan = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      payload: payload('C2222222', { can: '123456' }),
+    })
+    expect(withCan.statusCode).toBe(201)
+    const canId = dsc.getByReference(withCan.json().reference as string)!.id
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${canId}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    const perso = artifactText(dsc, canId)
+    const lds1 = perso.split('@instance A0000002472001')[0]!
+    expect(lds1).toMatch(/^@can 123456$/m)
+    expect(perso.match(/^@can /gm) ?? []).toHaveLength(1)
+  })
+
+  it('rejects a malformed Card Access Number', async () => {
+    const { app } = await harness()
+    for (const can of ['12345', '1234567', 'abcdef']) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/dsc/requests',
+        payload: payload('C3333333', { can }),
+      })
+      expect(response.statusCode).toBe(400)
+      expect(response.json().error).toBe('validation_failed')
+    }
+  })
+
   it('scopes delegated maintainer reviewers to their own NIA-signed requests', async () => {
     const { app, oidc, db, dsc } = await harness()
     db.insert(mntConfig)

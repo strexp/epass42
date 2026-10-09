@@ -49,6 +49,13 @@ export const displayImageSchema = z.object({
   jpeg: base64,
 })
 
+/**
+ * PACE Card Access Number (CAN): exactly six decimal digits, printed on the
+ * document data page (BSI TR-03110-3 A.2.3, ICAO Doc 9303-11). PACE can also
+ * use the MRZ password, so the applicant may omit the CAN.
+ */
+export const canSchema = z.string().regex(/^\d{6}$/, 'expected 6 digits')
+
 /** DG11 additional personal details (subset; expanded in M7). */
 export const dg11Schema = z.object({
   fullName: z.string().max(70).optional(),
@@ -127,6 +134,8 @@ export const dscSelectionSchema = z.discriminatedUnion('mode', [
 /** The full DSC signing request. */
 export const signRequestSchema = z.object({
   mrz: mrzFieldsSchema,
+  /** Optional PACE Card Access Number (six digits); omitted uses the MRZ. */
+  can: canSchema.optional(),
   dg2: dg2Schema,
   dg3: biometricTemplateSchema.optional(),
   dg4: biometricTemplateSchema.optional(),

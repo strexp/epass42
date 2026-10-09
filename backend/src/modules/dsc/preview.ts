@@ -52,6 +52,8 @@ export interface RequestPreview {
   dateOfExpiry: ReturnType<typeof field>
   nationality: string
   sex: string
+  /** Optional PACE Card Access Number. */
+  can: ReturnType<typeof field>
   dataGroups: number[]
   images: { dg2: boolean; dg5: boolean; dg7: boolean }
   biometrics: { dg3: boolean; dg4: boolean }
@@ -85,6 +87,7 @@ export function buildPreview(
     dateOfExpiry: { present: true, value: maskDate(payload.mrz.dateOfExpiry ?? '') },
     nationality: payload.mrz.nationality,
     sex: payload.mrz.sex,
+    can: mask(payload.can),
     dataGroups: dataGroupList(payload, resolved, lds2Enabled),
     images: { dg2: true, dg5: Boolean(payload.dg5), dg7: Boolean(payload.dg7) },
     biometrics: { dg3: Boolean(payload.dg3), dg4: Boolean(payload.dg4) },

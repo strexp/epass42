@@ -294,6 +294,9 @@ export async function buildPersoSigning(
       documentNumber: request.mrz.documentNumber,
       dateOfBirth: request.mrz.dateOfBirth,
       dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
+      // The CAN is a PACE password (master-file DGI FF06); it is written only
+      // for LDS1 and only when the applicant provided one (Doc 9303-11).
+      can: request.can,
       dataGroups: groups,
       sod,
       aaPrivateKey,

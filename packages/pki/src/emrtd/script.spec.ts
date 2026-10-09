@@ -10,6 +10,7 @@ describe('perso script writer', () => {
         documentNumber: 'L898902C<',
         dateOfBirth: '690806',
         dateOfExpiry: '940623',
+        can: '123456',
         dataGroups: [
           { number: 1, bytes: new Uint8Array([0x61, 0x01, 0x00]) },
           { number: 2, bytes: new Uint8Array([0x75, 0x01, 0x00]) },
@@ -20,6 +21,7 @@ describe('perso script writer', () => {
     ])
     expect(script).toContain('@instance A0000002471001')
     expect(script).toContain('@doc L898902C<')
+    expect(script).toContain('@can 123456')
     expect(script).toContain('@dg 1 610100')
     expect(script).toContain('@dg 2 750100')
     expect(script).toContain('@cardaccess 3100')

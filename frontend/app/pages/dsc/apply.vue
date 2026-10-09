@@ -15,13 +15,14 @@ import {
   NText,
   useMessage,
 } from 'naive-ui'
-import { Send } from '@lucide/vue'
+import { Send, Dices } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@epass42/shared'
 import { COUNTRY_ALPHA3 } from '@epass42/shared'
 import type { EncodedFile } from '~/components/common/FileField.vue'
 import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
+import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
 
 definePageMeta({ layout: 'realm' })
 
@@ -48,6 +49,8 @@ const dg5 = ref<EncodedFile | null>(null)
 const dg7 = ref<EncodedFile | null>(null)
 const dg3 = ref<EncodedFile | null>(null)
 const dg4 = ref<EncodedFile | null>(null)
+/** Optional PACE Card Access Number (six digits). */
+const can = ref('')
 const fullName = ref('')
 const placeOfBirth = ref('')
 const address = ref('')
@@ -90,9 +93,20 @@ const previewExpiry = computed(() => {
 })
 const previewMrz = computed(() => ({ ...mrz, dateOfExpiry: previewExpiry.value }))
 
+/** A CAN is six digits when provided; an empty value means "use the MRZ". */
+const canValid = computed(() => canIsValid(can.value))
+
 const canSubmit = computed(
-  () => mrz.surname !== '' && mrz.documentNumber !== '' && mrz.dateOfBirth !== '',
+  () => mrz.surname !== '' && mrz.documentNumber !== '' && mrz.dateOfBirth !== '' && canValid.value,
 )
+
+function setCan(value: string): void {
+  can.value = normaliseCan(value)
+}
+
+function generateCan(): void {
+  can.value = randomCan()
+}
 
 function addPerson(): void {
   people.value.push({ name: '', telephone: '', address: '', dateRecorded: '' })
@@ -117,6 +131,7 @@ async function submit(): Promise<void> {
         height: portrait.value.height,
       },
     }
+    if (can.value) body.can = can.value
     if (dg3.value) body.dg3 = { bytes: dg3.value.base64 }
     if (dg4.value) body.dg4 = { bytes: dg4.value.base64 }
     if (dg5.value) body.dg5 = { jpeg: dg5.value.base64 }
@@ -223,6 +238,29 @@ onMounted(async () => {
 
         <NDivider>{{ $t('dsc.optionalInfo') }}</NDivider>
         <NCollapse>
+          <NCollapseItem :title="$t('dsc.canSection')" name="can">
+            <NForm label-placement="top">
+              <NFormItem :label="$t('dsc.can')">
+                <NSpace align="center" :size="8">
+                  <NInput
+                    :value="can"
+                    maxlength="6"
+                    :placeholder="$t('dsc.canPlaceholder')"
+                    :status="canValid ? undefined : 'error'"
+                    style="max-width: 160px"
+                    @update:value="setCan"
+                  />
+                  <NButton @click="generateCan">
+                    <template #icon
+                      ><NIcon><Dices /></NIcon
+                    ></template>
+                    {{ $t('dsc.canGenerate') }}
+                  </NButton>
+                </NSpace>
+              </NFormItem>
+              <NText depth="3" style="font-size: 12px">{{ $t('dsc.canHint') }}</NText>
+            </NForm>
+          </NCollapseItem>
           <NCollapseItem :title="$t('dsc.contactSection')" name="contact">
             <NForm label-placement="top">
               <NFormItem label="Full name"

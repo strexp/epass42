@@ -40,6 +40,12 @@ export interface PersoSection {
   dateOfBirth: string
   /** YYMMDD, for the BAC/PACE seed. */
   dateOfExpiry: string
+  /**
+   * Optional PACE Card Access Number (six digits, password reference 0x02).
+   * Written only for the LDS1 (master file) section; PACE falls back to the MRZ
+   * password of `documentNumber`/`dateOfBirth`/`dateOfExpiry` when absent.
+   */
+  can?: string
   dataGroups: PersoDataGroup[]
   /** EF.SOD content (`77`-wrapped CMS). */
   sod?: Bytes
@@ -64,6 +70,7 @@ function header(): string[] {
     '#   @doc <MRZ document number>   BAC document number',
     '#   @dob <YYMMDD>                BAC date of birth',
     '#   @doe <YYMMDD>                BAC date of expiry',
+    '#   @can <6 digits>              PACE Card Access Number (password ref 0x02)',
     '#   @dg <n> <hex>                EF.DG<n> content (DG1 mandatory)',
     '#   @sod <hex>                   EF.SOD content',
     '#   @aa <hex>                    AA private key (modLen || modulus || expLen || exponent)',
@@ -86,6 +93,7 @@ function renderSection(section: PersoSection): string[] {
   lines.push(`@doc ${section.documentNumber}`)
   lines.push(`@dob ${section.dateOfBirth}`)
   lines.push(`@doe ${section.dateOfExpiry}`)
+  if (section.can) lines.push(`@can ${section.can}`)
 
   for (const group of [...section.dataGroups].sort((a, b) => a.number - b.number)) {
     lines.push(`@dg ${group.number} ${bytesToHex(group.bytes)}`)

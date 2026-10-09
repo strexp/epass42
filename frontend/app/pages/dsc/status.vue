@@ -20,6 +20,7 @@ interface RequestPreview {
   givenNames: { present: boolean; value?: string }
   documentNumber: { present: boolean; value?: string }
   dateOfBirth: { present: boolean; value?: string }
+  can: { present: boolean; value?: string }
   images: { dg2: boolean; dg5: boolean; dg7: boolean }
 }
 
@@ -130,6 +131,9 @@ onMounted(() => {
             {{ preview.documentNumber.value ?? $t('mask.hidden') }}
           </NDescriptionsItem>
           <NDescriptionsItem label="Birth">{{ preview.dateOfBirth.value }}</NDescriptionsItem>
+          <NDescriptionsItem label="CAN">
+            {{ preview.can.present ? (preview.can.value ?? $t('mask.hidden')) : '—' }}
+          </NDescriptionsItem>
           <NDescriptionsItem label="Images">
             DG2 {{ preview.images.dg2 ? '✓' : '—' }} / DG5 {{ preview.images.dg5 ? '✓' : '—' }} /
             DG7

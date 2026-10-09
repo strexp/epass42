@@ -185,6 +185,12 @@ export default defineI18nConfig(() => ({
         securityLds2Mirror:
           'LDS2 requires PACE and Chip Authentication; both are shared with LDS1.',
         personalDetails: 'Your details',
+        canSection: 'Card access (PACE)',
+        can: 'Card Access Number (CAN)',
+        canHint:
+          'Optional six digits printed on the document. PACE falls back to the MRZ when left empty.',
+        canPlaceholder: '123456',
+        canGenerate: 'Generate',
         photoSection: 'Your photo',
         optionalInfo: 'Additional information (optional)',
         contactSection: 'Address and contact',
