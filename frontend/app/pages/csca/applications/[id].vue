@@ -27,6 +27,8 @@ interface Application {
   ip: string | null
   keyMode: string
   subjectCn: string | null
+  subjectO: string | null
+  subjectOu: string | null
   csrPem: string | null
   publicKeyPem: string | null
   documentType: string | null
@@ -117,6 +119,12 @@ onMounted(async () => {
         <NDescriptions :column="2" size="small" :bordered="false">
           <NDescriptionsItem :label="$t('csca.subjectCn')">
             {{ application.subjectCn ?? '—' }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('csca.subjectO')">
+            {{ application.subjectO ?? '—' }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('csca.subjectOu')">
+            {{ application.subjectOu ?? '—' }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.keyMode')">
             {{

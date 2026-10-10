@@ -73,6 +73,9 @@ export class DscIssuanceService {
     csca: CscaKeyRow
     cscaPair: RsaKeyPair
     commonName: string
+    /** Applicant-chosen subject names; fall back to the CSCA profile. */
+    organization?: string | null
+    organizationalUnit?: string | null
     documentTypes: string[]
     validityYears: number
     privateKeyUsageYears: number
@@ -108,8 +111,8 @@ export class DscIssuanceService {
       {
         commonName: params.commonName,
         country: config.countryAlpha2,
-        organization: config.csca.organization,
-        organizationalUnit: config.csca.organizationalUnit,
+        organization: params.organization ?? config.csca.organization,
+        organizationalUnit: params.organizationalUnit ?? config.csca.organizationalUnit,
         documentTypes: params.documentTypes,
         notBefore: now,
         notAfter: addYears(now, params.validityYears),
@@ -178,6 +181,8 @@ export class DscIssuanceService {
       csca,
       cscaPair,
       commonName: application.subjectCn ?? `DSC for ${application.mnt ?? 'unknown'}`,
+      organization: application.subjectO,
+      organizationalUnit: application.subjectOu,
       documentTypes: [application.documentType ?? 'P'],
       validityYears: Math.max(1, Math.round((application.validityDays ?? 3650) / 365)),
       privateKeyUsageYears: 1,

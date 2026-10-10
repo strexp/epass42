@@ -118,6 +118,9 @@ export const dscApplication = sqliteTable('dsc_application', {
   ip: text('ip'),
   keyMode: text('key_mode').notNull(),
   subjectCn: text('subject_cn'),
+  /** Applicant-chosen organization (O) and organizational unit (OU). */
+  subjectO: text('subject_o'),
+  subjectOu: text('subject_ou'),
   csrPem: text('csr_pem'),
   publicKeyPem: text('public_key_pem'),
   documentType: text('document_type'),

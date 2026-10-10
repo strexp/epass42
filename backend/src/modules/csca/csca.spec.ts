@@ -477,4 +477,42 @@ describe('M5 CSCA role', () => {
     })
     expect((active.json().items as { id: number }[]).some((row) => row.id === nia.id)).toBe(true)
   })
+
+  it('carries the applicant-chosen O and OU into the issued DSC', async () => {
+    const { app, cscaCookie } = await harness()
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'nia_generated',
+        subjectCn: 'OU DSC',
+        subjectO: 'Example Org',
+        subjectOu: 'Example Unit',
+        documentType: 'P',
+      },
+    })
+    const id = json(submit).id as number
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/csca/applications/${id}`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(json(detail).subjectO).toBe('Example Org')
+    expect(json(detail).subjectOu).toBe('Example Unit')
+
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${id}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    const pem = await app.inject({
+      method: 'GET',
+      url: `/csca/certificates/${json(approve).id}.pem`,
+    })
+    const certificate = parseCertificatePem(pem.body)
+    expect(certificate.subjectName.getField('O')).toEqual(['Example Org'])
+    expect(certificate.subjectName.getField('OU')).toEqual(['Example Unit'])
+  })
 })

@@ -18,6 +18,8 @@ export interface CscaRouteDeps extends AuthContext {
 export const applicationBody = z.object({
   keyMode: z.enum(['nia_generated', 'user_uploaded']).default('nia_generated'),
   subjectCn: z.string().min(1).max(64),
+  subjectO: z.string().max(64).optional(),
+  subjectOu: z.string().max(64).optional(),
   csrPem: z.string().max(20_000).optional(),
   publicKeyPem: z.string().max(20_000).optional(),
   documentType: z.string().min(1).max(2).default('P'),

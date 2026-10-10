@@ -7,6 +7,8 @@ export default {
   stepReview: '复核并提交',
   reviewSummary: '提交审批前请复核申请内容。',
   subjectCn: '证书通用名称',
+  subjectO: '组织（O）',
+  subjectOu: '组织单位（OU）',
   keyMode: '密钥方式',
   keyModeNia: '由 NIA 生成',
   keyModeUpload: '上传 CSR / 公钥',

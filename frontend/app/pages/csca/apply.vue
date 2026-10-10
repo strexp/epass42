@@ -35,6 +35,8 @@ const signedIn = computed(() => state.value.me !== null)
 const form = reactive({
   keyMode: 'nia_generated' as 'nia_generated' | 'user_uploaded',
   subjectCn: '',
+  subjectO: '',
+  subjectOu: '',
   csrPem: '',
   publicKeyPem: '',
   documentType: 'P',
@@ -114,6 +116,8 @@ async function submit(): Promise<void> {
       body: {
         keyMode: form.keyMode,
         subjectCn: form.subjectCn,
+        subjectO: form.subjectO || undefined,
+        subjectOu: form.subjectOu || undefined,
         csrPem: form.csrPem || undefined,
         publicKeyPem: form.publicKeyPem || undefined,
         documentType: form.documentType,
@@ -158,6 +162,12 @@ onMounted(async () => {
           <NFormItem :label="$t('csca.subjectCn')">
             <NInput v-model:value="form.subjectCn" maxlength="64" />
           </NFormItem>
+          <NFormItem :label="$t('csca.subjectO')">
+            <NInput v-model:value="form.subjectO" maxlength="64" />
+          </NFormItem>
+          <NFormItem :label="$t('csca.subjectOu')">
+            <NInput v-model:value="form.subjectOu" maxlength="64" />
+          </NFormItem>
           <NFormItem v-if="form.keyMode === 'user_uploaded'" :label="$t('csca.csr')">
             <NInput v-model:value="form.csrPem" type="textarea" :rows="6" />
           </NFormItem>
@@ -192,6 +202,12 @@ onMounted(async () => {
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.subjectCn')">
             {{ form.subjectCn }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('csca.subjectO')">
+            {{ form.subjectO || '—' }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('csca.subjectOu')">
+            {{ form.subjectOu || '—' }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.documentType')">
             {{ form.documentType }}
