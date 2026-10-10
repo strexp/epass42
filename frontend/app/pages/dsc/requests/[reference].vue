@@ -156,9 +156,12 @@ async function loadReview(): Promise<void> {
 async function approve(): Promise<void> {
   busy.value = true
   try {
-    // The delivery mode is a service-wide setting; a reviewer does not
-    // override it per request.
-    await api(`/dsc/requests/${reference.value}/approve`, { method: 'POST', body: {} })
+    // A NIA admin may override the service-wide default per request; the
+    // delivery mode is only editable until the request is approved.
+    await api(`/dsc/requests/${reference.value}/approve`, {
+      method: 'POST',
+      body: isAdmin.value ? { deliveryMode: deliveryMode.value } : {},
+    })
     message.success(t('common.success'))
     await load()
     await loadReview()
@@ -311,12 +314,18 @@ onMounted(async () => {
           </NDescriptions>
 
           <div v-if="isAdmin" style="margin-top: 12px">
-            <NText depth="3" style="font-size: 12px">{{ $t('dsc.deliveryModeLocked') }}</NText>
+            <NText depth="3" style="font-size: 12px">
+              {{
+                meta?.status === 'submitted'
+                  ? $t('dsc.deliveryModeHint')
+                  : $t('dsc.deliveryModeLocked')
+              }}
+            </NText>
             <NSelect
               v-model:value="deliveryMode"
               :options="deliveryOptions"
               size="small"
-              disabled
+              :disabled="meta?.status !== 'submitted'"
               style="max-width: 320px; margin-top: 4px"
             />
           </div>

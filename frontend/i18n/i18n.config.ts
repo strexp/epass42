@@ -195,7 +195,7 @@ export default defineI18nConfig(() => ({
         deliveryMode: 'Delivery mode',
         deliveryApplicant: 'The applicant claims it',
         deliveryReviewer: 'Produced by staff',
-        deliveryModeLocked: 'The delivery mode is set service-wide by the NIA administrator.',
+        deliveryModeLocked: 'The delivery mode is fixed once the request is approved.',
         dataGroups: {
           dg1: 'Machine Readable Zone (MRZ)',
           dg2: 'Encoded face (portrait)',
