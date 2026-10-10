@@ -5,8 +5,6 @@ import {
   NAlert,
   NButton,
   NCard,
-  NCollapse,
-  NCollapseItem,
   NDescriptions,
   NDescriptionsItem,
   NFormItem,
@@ -21,7 +19,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
-import { LogIn } from '@lucide/vue'
+import { ChevronDown, ChevronUp, LogIn } from '@lucide/vue'
 import type { SignRequest } from '@epass42/shared'
 import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey } from '~/composables/useApi'
@@ -60,6 +58,8 @@ const masked = ref<Record<string, unknown> | null>(null)
 const reviewed = ref<RequestMeta | null>(null)
 const loading = ref(true)
 const busy = ref(false)
+/** The "Included information" data-group list is collapsed by default. */
+const showDataGroups = ref(false)
 
 const rejectOpen = ref(false)
 const rejectReason = ref('')
@@ -381,16 +381,26 @@ onMounted(async () => {
       </NCard>
 
       <!-- Included information: what each data group carries (collapsed). -->
-      <NCollapse v-if="meta">
-        <NCollapseItem :title="$t('dsc.includedData')" name="dgs">
-          <div class="epass42-dg-list">
-            <div v-for="dg in dataGroups" :key="dg" class="epass42-dg-item">
-              <NTag size="small" type="info">DG{{ dg }}</NTag>
-              <NText depth="2">{{ dataGroupLabel(dg) }}</NText>
-            </div>
+      <NCard v-if="meta" size="small" :title="$t('dsc.includedData')">
+        <template #header-extra>
+          <NButton
+            quaternary
+            size="tiny"
+            :aria-expanded="showDataGroups"
+            @click="showDataGroups = !showDataGroups"
+          >
+            <template #icon>
+              <NIcon><ChevronUp v-if="showDataGroups" /><ChevronDown v-else /></NIcon>
+            </template>
+          </NButton>
+        </template>
+        <div v-show="showDataGroups" class="epass42-dg-list">
+          <div v-for="dg in dataGroups" :key="dg" class="epass42-dg-item">
+            <NTag size="small" type="info">DG{{ dg }}</NTag>
+            <NText depth="2">{{ dataGroupLabel(dg) }}</NText>
           </div>
-        </NCollapseItem>
-      </NCollapse>
+        </div>
+      </NCard>
 
       <NuxtLink to="/dsc">
         <NButton quaternary size="small">{{ $t('common.back') }}</NButton>

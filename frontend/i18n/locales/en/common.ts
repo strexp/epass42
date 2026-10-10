@@ -54,8 +54,6 @@ export default {
   },
   home: {
     intro: 'Official document-signing service of the National Immigration Agency.',
-    publicHint:
-      'Issue Document Signer certificates, request personalization files, and verify published certificates.',
     cscaCard: 'Apply for a Document Signer certificate for your organisation.',
     dscCard: 'Request the personalization file for a passport or identity card.',
     pkdCard: 'Verify published certificates, revocation lists and revoked documents.',
