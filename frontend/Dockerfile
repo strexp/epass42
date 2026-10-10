@@ -37,8 +37,12 @@ WORKDIR /app
 # host state (node_modules, .output, …) is excluded by the root .dockerignore.
 COPY . .
 
-# Only the frontend and its workspace dependencies are installed.
-RUN pnpm install --frozen-lockfile --filter @epass42/frontend...
+# Only the frontend and its workspace dependencies are installed.  Nuxt's
+# build-time graph pulls in better-sqlite3 as an (unused) optional peer of db0,
+# so skip lifecycle scripts: nothing in the frontend closure needs a native
+# build (esbuild ships its binary as an optional dependency, nuxt has no install
+# script, and `nuxt generate` prepares itself).
+RUN pnpm install --frozen-lockfile --filter @epass42/frontend... --ignore-scripts
 
 # Placeholder value substituted at container start (see the entrypoint below).
 ARG NUXT_PUBLIC_API_BASE=__EPASS42_API_BASE__
