@@ -95,9 +95,21 @@ async function revokePassport(): Promise<void> {
   }
 }
 
-/** Whether the current user may claim the produced file right now. */
-const canRevealApplicant = computed(
-  () => meta.value?.status === 'approved' && !meta.value.consumedAt,
+/** Whether the produced perso may still be handed out (not yet consumed). */
+const pendingDelivery = computed(() => meta.value?.status === 'approved' && !meta.value.consumedAt)
+
+/**
+ * The owner claiming their own applicant-delivery file.  Only this path is a
+ * one-time "claim": a reviewer producing a file on the applicant's behalf is
+ * not a claim and must not carry the claim warning.
+ */
+const canClaim = computed(
+  () => isOwner.value && pendingDelivery.value && meta.value?.deliveryMode === 'applicant',
+)
+
+/** A NIA admin producing a reviewer-delivery file from the queue. */
+const canProduce = computed(
+  () => isAdmin.value && pendingDelivery.value && meta.value?.deliveryMode === 'reviewer',
 )
 
 /** Whether a reviewer may show/preview the unmasked submission. */
@@ -192,7 +204,9 @@ async function reject(): Promise<void> {
 }
 
 async function reveal(): Promise<void> {
-  const url = isAdmin.value ? '/dsc/admin/requests' : '/dsc/requests'
+  // Reviewer delivery is produced by staff through the admin queue; applicant
+  // delivery is claimed by the owner.
+  const url = canProduce.value ? '/dsc/admin/requests' : '/dsc/requests'
   try {
     const perso = await api<string>(`${url}/${reference.value}/reveal`, { method: 'POST' })
     downloadText(`perso-${reference.value}.txt`, perso)
@@ -256,7 +270,7 @@ onMounted(async () => {
           {{ meta.revokeReason ?? '' }}
         </NAlert>
         <NAlert
-          v-if="canRevealApplicant"
+          v-if="canClaim"
           type="warning"
           :title="$t('dsc.revealWarningTitle')"
           style="margin-top: 12px"
@@ -264,19 +278,11 @@ onMounted(async () => {
           {{ $t('dsc.revealWarning') }}
         </NAlert>
         <div class="epass42-actions" style="margin-top: 12px">
-          <NButton
-            v-if="canRevealApplicant && meta.deliveryMode === 'applicant'"
-            type="warning"
-            @click="reveal"
-          >
+          <NButton v-if="canClaim" type="warning" @click="reveal">
             {{ $t('dsc.reveal') }}
           </NButton>
-          <NButton
-            v-if="canRevealApplicant && meta.deliveryMode === 'reviewer' && isAdmin"
-            type="warning"
-            @click="reveal"
-          >
-            {{ $t('dsc.reveal') }}
+          <NButton v-if="canProduce" type="warning" @click="reveal">
+            {{ $t('dsc.produce') }}
           </NButton>
           <NButton v-if="canRevoke" type="error" @click="revokeOpen = true">
             {{ $t('dsc.revokePassport') }}

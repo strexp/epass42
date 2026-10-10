@@ -106,7 +106,7 @@ const queueColumns = computed(() => [
           { size: 'tiny', onClick: () => adminReveal(row.reference) },
           {
             icon: () => h(NIcon, null, { default: () => h(Download) }),
-            default: () => t('dsc.reveal'),
+            default: () => t('dsc.produce'),
           },
         ),
       ]),

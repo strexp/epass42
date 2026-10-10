@@ -34,7 +34,7 @@ onMounted(async () => {
   <div class="epass42-page">
     <NCard :title="$t('dsc.statusTitle')">
       <NAlert
-        v-if="!consumed"
+        v-if="!consumed && metadata?.deliveryMode === 'applicant'"
         type="warning"
         :title="$t('dsc.revealWarningTitle')"
         style="margin-bottom: 12px"

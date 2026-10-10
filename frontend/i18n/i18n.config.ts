@@ -184,6 +184,7 @@ export default defineI18nConfig(() => ({
         reference: 'Reference',
         statusTitle: 'Request status',
         reveal: 'Claim (one-time)',
+        produce: 'Produce perso',
         revealWarningTitle: 'One-time, irreversible claim',
         revealWarning:
           'This file lets your document be personalized and can be claimed only once. It is deleted from the server right after you claim it. Save it somewhere safe before leaving this page.',
