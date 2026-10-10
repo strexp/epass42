@@ -4,7 +4,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 import type { SignRequest } from '@epass42/shared'
 import { AppError } from '@epass42/shared'
@@ -13,6 +13,7 @@ import { verifySod } from '@epass42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { artifact, dscCert, signRequest } from '../../db/schema'
+import { randomToken } from '../../crypto/secret'
 import { nowIso } from '../../util/time'
 import { currentNiaDsc, type CscaService } from '../csca/service'
 import { mntIncludes } from '../jurisdiction/whois'
@@ -62,7 +63,7 @@ export class DscArtifactService {
   async buildArtifact(
     row: SignRequestRow,
     overrides: Partial<IssuingDefaults> = {},
-  ): Promise<PersoBuildResult & { artifactId: number }> {
+  ): Promise<PersoBuildResult & { artifactId: string }> {
     const payload = JSON.parse(row.payloadJson) as SignRequest
     const profile = this.settings.issuingDefaults(overrides)
     const material = await this.selectSigningMaterial(row)
@@ -83,13 +84,15 @@ export class DscArtifactService {
 
     const dir = join(this.config.dataDir, 'artifacts')
     mkdirSync(dir, { recursive: true })
-    const path = join(dir, `perso-${row.id}.txt`)
+    const path = join(dir, `perso-${row.reference}.txt`)
     // The perso carries the AA/CA private keys: seal it at rest (M13/T13.10).
     const sealed = this.csca.seal(new TextEncoder().encode(built.perso))
     writeFileSync(path, sealed, { mode: 0o600 })
-    const inserted = this.db
+    const artifactId = randomToken(16)
+    this.db
       .insert(artifact)
       .values({
+        id: artifactId,
         kind: 'perso',
         path,
         sha256: built.sha256,
@@ -98,11 +101,10 @@ export class DscArtifactService {
         createdAt: nowIso(),
       })
       .run()
-    const artifactId = Number(inserted.lastInsertRowid)
     this.db
       .update(signRequest)
       .set({ resultArtifactId: artifactId })
-      .where(eq(signRequest.id, row.id))
+      .where(eq(signRequest.reference, row.reference))
       .run()
     return { ...built, artifactId }
   }
@@ -122,16 +124,18 @@ export class DscArtifactService {
    */
   destroyArtifact(row: SignRequestRow): void {
     if (!row.resultArtifactId) return
+    // Null the reference first: the FK from sign_request to artifact would
+    // otherwise block deleting the artifact row.
+    this.db
+      .update(signRequest)
+      .set({ resultArtifactId: null })
+      .where(eq(signRequest.reference, row.reference))
+      .run()
     const art = this.db.select().from(artifact).where(eq(artifact.id, row.resultArtifactId)).get()
     if (art) {
       rmSync(art.path, { force: true })
       this.db.delete(artifact).where(eq(artifact.id, art.id)).run()
     }
-    this.db
-      .update(signRequest)
-      .set({ resultArtifactId: null })
-      .where(eq(signRequest.id, row.id))
-      .run()
   }
 
   /** Approves a request: builds the artifact and snapshots the delivery mode. */
@@ -156,9 +160,9 @@ export class DscArtifactService {
             ? JSON.stringify(options.profileOverrides)
             : row.profileOverrides,
       })
-      .where(eq(signRequest.id, row.id))
+      .where(eq(signRequest.reference, row.reference))
       .run()
-    return this.requests.getById(row.id) as SignRequestRow
+    return this.requests.getByReference(row.reference) as SignRequestRow
   }
 
   /** Rejects a request. */
@@ -169,11 +173,11 @@ export class DscArtifactService {
         status: 'rejected',
         reviewedBy: actorAccountId,
         reviewedAt: nowIso(),
-        consumedChannel: reason,
+        rejectReason: reason,
       })
-      .where(and(eq(signRequest.id, row.id)))
+      .where(eq(signRequest.reference, row.reference))
       .run()
-    return this.requests.getById(row.id) as SignRequestRow
+    return this.requests.getByReference(row.reference) as SignRequestRow
   }
 
   /** Rebuilds the artifact for an already-produced request (new AA/CA keys). */
@@ -188,11 +192,11 @@ export class DscArtifactService {
         consumedAt: null,
         consumedBy: null,
         consumedChannel: null,
-        regeneratedFrom: row.id,
+        regeneratedFrom: row.reference,
         reviewedAt: nowIso(),
       })
-      .where(eq(signRequest.id, row.id))
+      .where(eq(signRequest.reference, row.reference))
       .run()
-    return this.requests.getById(row.id) as SignRequestRow
+    return this.requests.getByReference(row.reference) as SignRequestRow
   }
 }

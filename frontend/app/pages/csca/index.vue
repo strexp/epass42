@@ -1,15 +1,5 @@
 <script setup lang="ts">
-import {
-  NButton,
-  NCard,
-  NDataTable,
-  NEmpty,
-  NIcon,
-  NInput,
-  NSpace,
-  NText,
-  useMessage,
-} from 'naive-ui'
+import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
 import { Check, FilePlus2, KeyRound, RefreshCw, ScrollText, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
@@ -35,8 +25,6 @@ const message = useMessage()
 
 const applications = ref<Application[]>([])
 const loading = ref(false)
-const rejectId = ref<number | null>(null)
-const rejectReason = ref('')
 const delegation = ref<{
   mnt: string | null
   useNiaDsc: boolean
@@ -88,29 +76,8 @@ async function setDelegation(value: boolean): Promise<void> {
   }
 }
 
-async function approve(id: number): Promise<void> {
-  try {
-    await api(`/csca/applications/${id}/approve`, { method: 'POST' })
-    message.success(t('common.success'))
-    await loadApplications()
-  } catch (error) {
-    message.error(t(errorMessageKey(error)))
-  }
-}
-
-async function reject(): Promise<void> {
-  if (rejectId.value === null) return
-  try {
-    await api(`/csca/applications/${rejectId.value}/reject`, {
-      method: 'POST',
-      body: { reason: rejectReason.value },
-    })
-    rejectId.value = null
-    rejectReason.value = ''
-    await loadApplications()
-  } catch (error) {
-    message.error(t(errorMessageKey(error)))
-  }
+function openDetails(row: Application): void {
+  void navigateTo(`/csca/applications/${row.id}`)
 }
 
 const columns = [
@@ -128,16 +95,11 @@ const columns = [
     title: '',
     key: 'actions',
     render: (row: Application) =>
-      row.status === 'submitted' && isAdmin.value
-        ? h('div', { class: 'epass42-actions' }, [
-            h(NButton, { size: 'tiny', type: 'primary', onClick: () => approve(row.id) }, () =>
-              t('common.approve'),
-            ),
-            h(NButton, { size: 'tiny', onClick: () => (rejectId.value = row.id) }, () =>
-              t('common.reject'),
-            ),
-          ])
-        : null,
+      h(
+        NButton,
+        { size: 'tiny', onClick: () => openDetails(row) },
+        { default: () => t('csca.viewApplication') },
+      ),
   },
 ]
 
@@ -153,7 +115,7 @@ onMounted(async () => {
   <div class="epass42-page">
     <NSpace vertical size="large">
       <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
-        <NText depth="3">{{ $t('home.cscaCard') }}</NText>
+        <NText depth="3">{{ $t('csca.publicHint') }}</NText>
         <template #action>
           <NuxtLink to="/csca/apply">
             <NButton type="primary">
@@ -241,24 +203,6 @@ onMounted(async () => {
           size="small"
         />
         <NEmpty v-else :description="$t('common.empty')" />
-        <NCard
-          v-if="rejectId !== null"
-          style="margin-top: 12px"
-          size="small"
-          :title="$t('csca.rejectReason')"
-        >
-          <NInput v-model:value="rejectReason" type="textarea" />
-          <template #action>
-            <NSpace>
-              <NButton size="small" type="primary" @click="reject">{{
-                $t('common.confirm')
-              }}</NButton>
-              <NButton size="small" quaternary @click="rejectId = null">{{
-                $t('common.cancel')
-              }}</NButton>
-            </NSpace>
-          </template>
-        </NCard>
       </NCard>
     </NSpace>
   </div>

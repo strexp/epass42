@@ -16,7 +16,7 @@ import { oauthFlow } from '../../db/schema'
 import { isExpired, isoInSeconds, nowIso } from '../../util/time'
 import type { Realm } from '@epass42/shared'
 import { mapClaims } from './claims'
-import { upsertAccount } from './authorization'
+import { dscScope, upsertAccount } from './authorization'
 import {
   csrfValid,
   realmEnabled,
@@ -179,6 +179,9 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
     if (!realmEnabled(config, realm)) return reply.code(404).send({ error: 'not_found' })
     const principal = resolvePrincipal(deps, request, realm)
     if (!principal) return reply.code(401).send({ error: 'unauthorized' })
+    // The DSC realm also exposes the review scope so the UI can hide the review
+    // queue from anonymous / ordinary users (M16).
+    const reviewScope = realm === 'dsc' ? dscScope(db, config, principal.account).kind : 'none'
     return reply.send({
       account: {
         id: principal.account.id,
@@ -188,6 +191,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
         name: principal.account.name,
       },
       isAdmin: principal.isAdmin,
+      reviewScope,
       csrf: principal.session.data.csrf,
       prefill: prefillFromAccount(principal.account.rawClaims),
     })

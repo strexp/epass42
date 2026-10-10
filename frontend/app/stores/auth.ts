@@ -11,6 +11,8 @@ export interface Me {
     name: string | null
   }
   isAdmin: boolean
+  /** DSC review scope: `nia`/`mnt` reviewers, otherwise `none`. */
+  reviewScope: 'nia' | 'mnt' | 'none'
   csrf: string
   prefill: Record<string, unknown>
 }

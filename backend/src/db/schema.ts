@@ -181,8 +181,12 @@ export const masterList = sqliteTable('master_list', {
  * ------------------------------------------------------------------ */
 
 export const signRequest = sqliteTable('sign_request', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  referenceHash: text('reference_hash').notNull().unique(),
+  /**
+   * The opaque, high-entropy public identifier of a request.  It doubles as the
+   * anonymous capability (status lookup and one-time claim) and replaces the
+   * former sequential integer id everywhere in the API and UI.
+   */
+  reference: text('reference').primaryKey(),
   requesterAccountId: integer('requester_account_id').references(() => account.id),
   /** Canonical (sorted, comma-joined) maintainers of the requesting IP. */
   mnt: text('mnt'),
@@ -195,20 +199,22 @@ export const signRequest = sqliteTable('sign_request', {
     .notNull()
     .default('applicant'),
   profileOverrides: text('profile_overrides'),
-  resultArtifactId: integer('result_artifact_id'),
+  resultArtifactId: text('result_artifact_id').references(() => artifact.id),
   email: text('email'),
   reviewedBy: integer('reviewed_by'),
   reviewedAt: text('reviewed_at'),
+  rejectReason: text('reject_reason'),
   consumedAt: text('consumed_at'),
   consumedBy: integer('consumed_by'),
   consumedChannel: text('consumed_channel'),
-  regeneratedFrom: integer('regenerated_from'),
+  regeneratedFrom: text('regenerated_from'),
   createdAt: text('created_at').notNull(),
   expiresAt: text('expires_at'),
 })
 
 export const artifact = sqliteTable('artifact', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+  /** An opaque internal identifier (never a sequential integer). */
+  id: text('id').primaryKey(),
   kind: text('kind').notNull(),
   path: text('path').notNull(),
   sha256: text('sha256').notNull(),
@@ -272,7 +278,7 @@ export const mailToken = sqliteTable('mail_token', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   tokenHash: text('token_hash').notNull(),
   purpose: text('purpose').notNull(),
-  signRequestId: integer('sign_request_id'),
+  signRequestReference: text('sign_request_reference'),
   expiresAt: text('expires_at').notNull(),
   usedAt: text('used_at'),
 })
@@ -281,7 +287,7 @@ export const revealToken = sqliteTable('reveal_token', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   tokenHash: text('token_hash').notNull(),
   kind: text('kind', { enum: ['confirm', 'consume'] }).notNull(),
-  signRequestId: integer('sign_request_id').references(() => signRequest.id),
+  signRequestReference: text('sign_request_reference').references(() => signRequest.reference),
   expiresAt: text('expires_at').notNull(),
   usedAt: text('used_at'),
 })

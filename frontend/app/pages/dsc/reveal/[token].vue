@@ -1,7 +1,15 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'realm' })
 
-import { NAlert, NCard, NDescriptions, NDescriptionsItem, NTag, useMessage } from 'naive-ui'
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NDescriptions,
+  NDescriptionsItem,
+  NTag,
+  useMessage,
+} from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 
@@ -11,6 +19,7 @@ const { t } = useI18n()
 const message = useMessage()
 const metadata = ref<Record<string, unknown> | null>(null)
 const consumed = computed(() => Boolean(metadata.value?.consumedAt))
+const reference = computed(() => (metadata.value?.reference as string | undefined) ?? '')
 
 onMounted(async () => {
   try {
@@ -27,17 +36,21 @@ onMounted(async () => {
       <NAlert
         v-if="!consumed"
         type="warning"
-        :title="$t('dsc.revealWarning')"
+        :title="$t('dsc.revealWarningTitle')"
         style="margin-bottom: 12px"
-      />
+      >
+        {{ $t('dsc.revealWarning') }}
+      </NAlert>
       <NDescriptions v-if="metadata" :column="2" size="small">
-        <NDescriptionsItem label="Status">
+        <NDescriptionsItem :label="$t('dsc.statusTitle')">
           <NTag size="small">{{ metadata.status }}</NTag>
         </NDescriptionsItem>
-        <NDescriptionsItem label="Delivery">{{ metadata.deliveryMode }}</NDescriptionsItem>
+        <NDescriptionsItem :label="$t('dsc.submittedAt')">
+          {{ metadata.createdAt }}
+        </NDescriptionsItem>
       </NDescriptions>
-      <NuxtLink to="/dsc/status" style="display: inline-block; margin-top: 12px">
-        {{ $t('dsc.statusTitle') }}
+      <NuxtLink v-if="reference" :to="`/dsc/requests/${reference}`" style="margin-top: 12px">
+        <NButton size="small">{{ $t('dsc.viewDetails') }}</NButton>
       </NuxtLink>
     </NCard>
   </div>

@@ -25,7 +25,6 @@ export interface DscRouteDeps {
 }
 
 export const referenceParams = z.object({ reference: z.string().min(8).max(128) })
-export const idParams = z.object({ id: z.coerce.number().int().positive() })
 
 /** Returns the caller's DSC review scope, or null when unauthenticated. */
 export function scopeOf(deps: DscRouteDeps, request: FastifyRequest): DscScope | null {

@@ -103,6 +103,14 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
       if (!principal.isAdmin && row.applicantAccountId !== principal.account.id) {
         return reply.code(403).send({ error: 'forbidden' })
       }
+      writeAudit(db, {
+        actorAccountId: principal.account.id,
+        realm: 'csca',
+        action: 'dsc.application.view',
+        targetType: 'dsc_application',
+        targetId: row.id,
+        ip: request.ip,
+      })
       return row
     },
   )

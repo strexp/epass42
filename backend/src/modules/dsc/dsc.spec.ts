@@ -120,8 +120,8 @@ function parsePerso(text: string): ParsedPerso {
   return { dataGroups, sod }
 }
 
-function artifactText(dsc: DscService, requestId: number): string {
-  const row = dsc.getById(requestId)!
+function artifactText(dsc: DscService, reference: string): string {
+  const row = dsc.getByReference(reference)!
   return dsc.readArtifact(row)
 }
 
@@ -198,7 +198,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: adminCookie },
     })
     expect(list.statusCode).toBe(200)
-    const id = (list.json().items as { id: number }[])[0].id
+    const id = (list.json().items as { reference: string }[])[0].reference
 
     const approve = await app.inject({
       method: 'POST',
@@ -233,7 +233,7 @@ describe('M7 DSC signing service', () => {
 
     // Without a CAN there is no @can directive.
     const plain = await submit(app, 'C1111111')
-    const plainId = dsc.getByReference(plain)!.id
+    const plainId = plain
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${plainId}/approve`,
@@ -249,7 +249,7 @@ describe('M7 DSC signing service', () => {
       payload: payload('C2222222', { can: '123456' }),
     })
     expect(withCan.statusCode).toBe(201)
-    const canId = dsc.getByReference(withCan.json().reference as string)!.id
+    const canId = withCan.json().reference as string
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${canId}/approve`,
@@ -276,7 +276,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('scopes delegated maintainer reviewers to their own NIA-signed requests', async () => {
-    const { app, oidc, db, dsc } = await harness()
+    const { app, oidc, db } = await harness()
     db.insert(mntConfig)
       .values({ mnt: 'AS1-REV-MNT', useNiaDsc: true, updatedAt: new Date().toISOString() })
       .run()
@@ -292,7 +292,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: reviewerCookie },
       payload: payload('X1234567', { dscSelection: { mode: 'nia' } }),
     })
-    const ownId = dsc.getByReference(own.json().reference as string)!.id
+    const ownId = own.json().reference as string
 
     // Another AS submits one too.
     const foreign = await app.inject({
@@ -301,7 +301,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: userCookie },
       payload: payload('Z7654321', { dscSelection: { mode: 'nia' } }),
     })
-    const foreignId = dsc.getByReference(foreign.json().reference as string)!.id
+    const foreignId = foreign.json().reference as string
 
     const list = await app.inject({
       method: 'GET',
@@ -309,7 +309,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: reviewerCookie },
     })
     expect(list.statusCode).toBe(200)
-    const visible = (list.json().items as { id: number }[]).map((entry) => entry.id)
+    const visible = (list.json().items as { reference: string }[]).map((entry) => entry.reference)
     expect(visible).toContain(ownId)
     expect(visible).not.toContain(foreignId)
 
@@ -338,7 +338,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: reviewerCookie },
       payload: payload('Q1111111', { dscSelection: { mode: 'nia' } }),
     })
-    const anotherId = dsc.getByReference(another.json().reference as string)!.id
+    const anotherId = another.json().reference as string
     const settings = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${anotherId}/approve`,
@@ -350,7 +350,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('configures maintainer delegation and grants the reviewer scope', async () => {
-    const { app, oidc, dsc } = await harness()
+    const { app, oidc } = await harness()
     const userCookie = await login(app, oidc, 'dsc', 'dsc-client', USER)
 
     // Without delegation the user has no review scope.
@@ -360,7 +360,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: userCookie },
       payload: payload('A1111111', { dscSelection: { mode: 'nia' } }),
     })
-    const beforeId = dsc.getByReference(before.json().reference as string)!.id
+    const beforeId = before.json().reference as string
     const forbidden = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${beforeId}/approve`,
@@ -390,9 +390,9 @@ describe('M7 DSC signing service', () => {
       url: '/dsc/requests',
       headers: { cookie: userCookie },
     })
-    expect((list.json().items as { id: number }[]).some((entry) => entry.id === beforeId)).toBe(
-      true,
-    )
+    expect(
+      (list.json().items as { reference: string }[]).some((entry) => entry.reference === beforeId),
+    ).toBe(true)
     const approve = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${beforeId}/approve`,
@@ -414,7 +414,7 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: userCookie },
       payload: payload('B2222222', { dscSelection: { mode: 'nia' } }),
     })
-    const nextId = dsc.getByReference(next.json().reference as string)!.id
+    const nextId = next.json().reference as string
     const denied = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${nextId}/approve`,
@@ -433,11 +433,11 @@ describe('M7 DSC signing service', () => {
     expect(firstRow.dscSelection).toBe('nia')
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${firstRow.id}/approve`,
+      url: `/dsc/requests/${firstRow.reference}/approve`,
       headers: { cookie: admin },
       payload: {},
     })
-    const firstPerso = parsePerso(artifactText(dsc, firstRow.id))
+    const firstPerso = parsePerso(artifactText(dsc, firstRow.reference))
     // A PACE-only document keeps SecurityInfos in EF.CardAccess, so no DG14.
     expect(firstPerso.dataGroups.has(14)).toBe(false)
     expect(firstPerso.dataGroups.has(15)).toBe(false)
@@ -455,11 +455,11 @@ describe('M7 DSC signing service', () => {
     const secondRow = dsc.getByReference(second)!
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${secondRow.id}/approve`,
+      url: `/dsc/requests/${secondRow.reference}/approve`,
       headers: { cookie: admin },
       payload: {},
     })
-    const secondPerso = parsePerso(artifactText(dsc, secondRow.id))
+    const secondPerso = parsePerso(artifactText(dsc, secondRow.reference))
     expect(secondPerso.dataGroups.has(14)).toBe(true)
     expect(secondPerso.dataGroups.has(15)).toBe(true)
   })
@@ -479,12 +479,12 @@ describe('M7 DSC signing service', () => {
     const row = dsc.getByReference(reference)!
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${row.id}/approve`,
+      url: `/dsc/requests/${row.reference}/approve`,
       headers: { cookie: admin },
       payload: {},
     })
 
-    const perso = parsePerso(artifactText(dsc, row.id))
+    const perso = parsePerso(artifactText(dsc, row.reference))
     const dg14 = perso.dataGroups.get(14)
     expect(dg14).toBeTruthy()
     // DG14 = 6E { SET OF SecurityInfo } (Doc 9303-10 §4.7.14).
@@ -521,11 +521,11 @@ describe('M7 DSC signing service', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${row.id}/approve`,
+      url: `/dsc/requests/${row.reference}/approve`,
       headers: { cookie: admin },
       payload: {},
     })
-    const dg1 = parsePerso(artifactText(dsc, row.id)).dataGroups.get(1)!
+    const dg1 = parsePerso(artifactText(dsc, row.reference)).dataGroups.get(1)!
     expect(Buffer.from(dg1).toString('latin1')).toContain(mrzExpiry(5))
   })
 
@@ -547,7 +547,7 @@ describe('M7 DSC signing service', () => {
 
     // Default: LDS1 only, no LDS2 section.
     const first = await submit(app, 'H1111111')
-    const firstId = dsc.getByReference(first)!.id
+    const firstId = first
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${firstId}/approve`,
@@ -567,7 +567,7 @@ describe('M7 DSC signing service', () => {
     expect(update.json().lds2).toEqual({ enabled: true, roles: ['travel'] })
 
     const second = await submit(app, 'H2222222')
-    const secondId = dsc.getByReference(second)!.id
+    const secondId = second
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${secondId}/approve`,
@@ -588,7 +588,7 @@ describe('M7 DSC signing service', () => {
 
     // Default: LDS1 is PACE + AA only, with no CA key or EF.CardSecurity.
     const first = await submit(app, 'H3333333')
-    const firstId = dsc.getByReference(first)!.id
+    const firstId = first
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${firstId}/approve`,
@@ -610,7 +610,7 @@ describe('M7 DSC signing service', () => {
     expect(update.json().security.ca.enabled).toBe(true)
 
     const second = await submit(app, 'H4444444')
-    const secondId = dsc.getByReference(second)!.id
+    const secondId = second
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${secondId}/approve`,
@@ -637,7 +637,7 @@ describe('M7 DSC signing service', () => {
     expect(update.statusCode).toBe(200)
 
     const reference = await submit(app, 'H5555555')
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,
@@ -658,7 +658,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('rejects Chip Authentication without any PACE profile', async () => {
-    const { app, oidc, dsc } = await harness()
+    const { app, oidc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
     const update = await app.inject({
@@ -675,7 +675,7 @@ describe('M7 DSC signing service', () => {
     expect(update.statusCode).toBe(200)
 
     const reference = await submit(app, 'H6666666')
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     const approve = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,
@@ -687,7 +687,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('requires at least one security mechanism', async () => {
-    const { app, oidc, dsc } = await harness()
+    const { app, oidc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
     const update = await app.inject({
@@ -705,7 +705,7 @@ describe('M7 DSC signing service', () => {
     expect(update.statusCode).toBe(200)
 
     const reference = await submit(app, 'H7777777')
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     const approve = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,
@@ -753,8 +753,8 @@ describe('M7 DSC signing service', () => {
     expect(outOfRange.json()).toMatchObject({ mnts: [], notice: false })
   })
 
-  it('lets the owner view status/preview and reveal by id', async () => {
-    const { app, oidc, dsc } = await harness()
+  it('lets the owner view status/preview and reveal by reference', async () => {
+    const { app, oidc } = await harness()
     const user = await login(app, oidc, 'dsc', 'dsc-client', USER)
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
@@ -764,17 +764,17 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: user },
       payload: payload('F1111111'),
     })
-    const id = dsc.getByReference(created.json().reference as string)!.id
+    const reference = created.json().reference as string
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${id}/approve`,
+      url: `/dsc/requests/${reference}/approve`,
       headers: { cookie: admin },
       payload: {},
     })
 
     const status = await app.inject({
       method: 'GET',
-      url: `/dsc/requests/id/${id}`,
+      url: `/dsc/requests/${reference}`,
       headers: { cookie: user },
     })
     expect(status.statusCode).toBe(200)
@@ -782,7 +782,7 @@ describe('M7 DSC signing service', () => {
 
     const preview = await app.inject({
       method: 'GET',
-      url: `/dsc/requests/id/${id}/preview`,
+      url: `/dsc/requests/${reference}/preview`,
       headers: { cookie: user },
     })
     expect(preview.statusCode).toBe(200)
@@ -790,7 +790,7 @@ describe('M7 DSC signing service', () => {
 
     const reveal = await app.inject({
       method: 'POST',
-      url: `/dsc/requests/id/${id}/reveal`,
+      url: `/dsc/requests/${reference}/reveal`,
       headers: { cookie: user },
     })
     expect(reveal.statusCode).toBe(200)
@@ -798,17 +798,65 @@ describe('M7 DSC signing service', () => {
 
     const again = await app.inject({
       method: 'POST',
-      url: `/dsc/requests/id/${id}/reveal`,
+      url: `/dsc/requests/${reference}/reveal`,
       headers: { cookie: user },
     })
     expect(again.statusCode).toBe(410)
 
+    // The public status route is a capability; the unmasked reviewer view is
+    // not available to an unrelated maintainer.
     const other = await login(app, oidc, 'dsc', 'dsc-client', AS_REVIEWER)
     const forbidden = await app.inject({
       method: 'GET',
-      url: `/dsc/requests/id/${id}`,
+      url: `/dsc/requests/${reference}/review`,
       headers: { cookie: other },
     })
     expect(forbidden.statusCode).toBe(403)
+  })
+
+  it('exposes the unmasked submission to reviewers only', async () => {
+    const { app, oidc } = await harness()
+    const user = await login(app, oidc, 'dsc', 'dsc-client', USER)
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: user },
+      payload: payload('R1000001'),
+    })
+    const reference = created.json().reference as string
+
+    // Anonymous cannot read the reviewer view.
+    const anon = await app.inject({ method: 'GET', url: `/dsc/requests/${reference}/review` })
+    expect(anon.statusCode).toBe(401)
+
+    // A NIA administrator sees the raw document number.
+    const adminView = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/${reference}/review`,
+      headers: { cookie: admin },
+    })
+    expect(adminView.statusCode).toBe(200)
+    expect(adminView.json().payload.mrz.documentNumber).toBe('R1000001')
+
+    // The public status route stays masked (no unmasked payload field).
+    const status = await app.inject({ method: 'GET', url: `/dsc/requests/${reference}` })
+    expect(status.statusCode).toBe(200)
+    expect(status.json().payload).toBeUndefined()
+  })
+
+  it('reports the DSC review scope in /me', async () => {
+    const { app, oidc } = await harness()
+    const user = await login(app, oidc, 'dsc', 'dsc-client', USER)
+    const me = await app.inject({ method: 'GET', url: '/auth/dsc/me', headers: { cookie: user } })
+    expect(me.json().reviewScope).toBe('none')
+
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const adminMe = await app.inject({
+      method: 'GET',
+      url: '/auth/dsc/me',
+      headers: { cookie: admin },
+    })
+    expect(adminMe.json().reviewScope).toBe('nia')
   })
 })

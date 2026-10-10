@@ -15,6 +15,7 @@ const cards = [
       <div>
         <h1 style="margin: 0">{{ $t('app.name') }}</h1>
         <NText depth="2">{{ $t('home.intro') }}</NText>
+        <NText depth="3" style="display: block; margin-top: 4px">{{ $t('home.publicHint') }}</NText>
       </div>
       <NGrid
         :cols="3"

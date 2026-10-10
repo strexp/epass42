@@ -10,7 +10,7 @@ import { buildDg2, fromBase64, validateDg2 } from '@epass42/pki'
 
 import type { Db } from '../../db/client'
 import { dscCert, signRequest } from '../../db/schema'
-import { hashToken, randomToken } from '../../crypto/secret'
+import { randomToken } from '../../crypto/secret'
 import { nowIso } from '../../util/time'
 import { mntDelegatesToNia, canReview, type DscScope } from '../auth/authorization'
 import { mrzExpiry } from './build'
@@ -32,7 +32,6 @@ export interface Requester {
 /** The result of submitting a request. */
 export interface SubmitResult {
   reference: string
-  id: number
   status: string
 }
 
@@ -106,12 +105,11 @@ export class DscRequestService {
         dateOfExpiry: mrzExpiry(profile.validityYears),
       },
     }
-    let result
     try {
-      result = this.db
+      this.db
         .insert(signRequest)
         .values({
-          referenceHash: hashToken(reference),
+          reference,
           requesterAccountId: requester.accountId,
           mnt: requester.mnt,
           ip: requester.ip,
@@ -135,21 +133,12 @@ export class DscRequestService {
       }
       throw error
     }
-    return { reference, id: Number(result.lastInsertRowid), status: 'submitted' }
+    return { reference, status: 'submitted' }
   }
 
-  /** Loads a request by its raw reference token. */
+  /** Loads a request by its reference. */
   getByReference(reference: string): SignRequestRow | undefined {
-    return this.db
-      .select()
-      .from(signRequest)
-      .where(eq(signRequest.referenceHash, hashToken(reference)))
-      .get()
-  }
-
-  /** Loads a request by id. */
-  getById(id: number): SignRequestRow | undefined {
-    return this.db.select().from(signRequest).where(eq(signRequest.id, id)).get()
+    return this.db.select().from(signRequest).where(eq(signRequest.reference, reference)).get()
   }
 
   /** Lists requests visible to a scope or an account. */
@@ -162,7 +151,7 @@ export class DscRequestService {
   }): SignRequestRow[] {
     const limit = options.limit ?? 50
     const offset = options.offset ?? 0
-    const rows = this.db.select().from(signRequest).orderBy(desc(signRequest.id)).all()
+    const rows = this.db.select().from(signRequest).orderBy(desc(signRequest.createdAt)).all()
     return rows
       .filter((row) => {
         if (options.status && row.status !== options.status) return false
@@ -180,18 +169,29 @@ export class DscRequestService {
     const payload = JSON.parse(row.payloadJson) as SignRequest
     const profile = this.settings.issuingDefaults()
     return {
-      id: row.id,
+      reference: row.reference,
       status: row.status,
       createdAt: row.createdAt,
       expiresAt: row.expiresAt,
       deliveryMode: row.deliveryMode,
       consumedAt: row.consumedAt,
+      reviewedAt: row.reviewedAt,
+      rejectReason: row.rejectReason,
       dscSelection: row.dscSelection,
       mnt: row.mnt,
       ip: row.ip,
       dataGroups: dataGroupList(payload, profile.security, isLds2Enabled(profile.lds2)),
       email: row.email,
     }
+  }
+
+  /**
+   * The unmasked, structured submission.  Callers must authorize the request
+   * (owner or reviewer) before returning it; it is never exposed via the public
+   * status endpoint.
+   */
+  full(row: SignRequestRow): SignRequest {
+    return JSON.parse(row.payloadJson) as SignRequest
   }
 
   /** Builds the non-destructive masked preview for a reference. */

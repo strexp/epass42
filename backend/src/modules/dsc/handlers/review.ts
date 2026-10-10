@@ -1,5 +1,6 @@
 /**
- * DSC review routes (M7): approve, reject, regenerate and the mode-B queue.
+ * DSC review routes (M7): the reviewer detail view, approve/reject/regenerate
+ * and the mode-B queue.  Requests are addressed by their public reference.
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
@@ -9,18 +10,45 @@ import { writeAudit } from '../../../audit/audit'
 import { canReview } from '../../auth/authorization'
 import { requireAdmin } from '../../auth/middleware'
 import type { IssuingDefaults } from '../build'
-import { scopeOf, idParams, type DscRouteDeps } from '../routeContext'
+import { scopeOf, referenceParams, type DscRouteDeps } from '../routeContext'
 
 /** Registers the review routes. */
 export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
   const { db, service } = deps
 
+  // Reviewer detail view: the unmasked structured submission, for judging a
+  // request.  Only the owner's reviewers (delegated MNT or NIA admin) may read
+  // it; the access is audited.
+  server.get(
+    '/dsc/requests/:reference/review',
+    { schema: { params: referenceParams } },
+    async (request, reply) => {
+      const row = service.getByReference(request.params.reference)
+      if (!row) return reply.code(404).send({ error: 'request_not_found' })
+      const scope = scopeOf(deps, request)
+      const principal = request.principal
+      if (!scope || !principal) return reply.code(401).send({ error: 'unauthorized' })
+      if (!canReview(scope, { mnt: row.mnt, dscSelection: row.dscSelection })) {
+        return reply.code(403).send({ error: 'forbidden' })
+      }
+      writeAudit(db, {
+        actorAccountId: principal.account.id,
+        realm: 'dsc',
+        action: 'dsc.request.view',
+        targetType: 'sign_request',
+        targetId: row.reference,
+        ip: request.ip,
+      })
+      return reply.send({ ...service.metadata(row), payload: service.full(row) })
+    },
+  )
+
   server.post(
-    '/dsc/requests/:id/approve',
+    '/dsc/requests/:reference/approve',
     {
       schema: {
-        params: idParams,
+        params: referenceParams,
         body: z
           .object({
             deliveryMode: z.enum(['applicant', 'reviewer']).optional(),
@@ -30,7 +58,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
       },
     },
     async (request, reply) => {
-      const row = service.getById(request.params.id)
+      const row = service.getByReference(request.params.reference)
       if (!row) return reply.code(404).send({ error: 'request_not_found' })
       const scope = scopeOf(deps, request)
       const principal = request.principal
@@ -52,14 +80,14 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
         realm: 'dsc',
         action: 'dsc.request.approve',
         targetType: 'sign_request',
-        targetId: row.id,
+        targetId: row.reference,
         ip: request.ip,
       })
 
       // Email notification with a two-step (non-consuming) landing link.
       if (updated.email && deps.mailer) {
-        const confirmToken = service.createRevealToken(updated.id, 'confirm', 7 * 86_400)
-        service.createMailToken(updated.id, 'approved', 7 * 86_400)
+        const confirmToken = service.createRevealToken(updated.reference, 'confirm', 7 * 86_400)
+        service.createMailToken(updated.reference, 'approved', 7 * 86_400)
         const link = `${deps.config.publicUrl.replace(/\/$/, '')}/dsc/reveal/${confirmToken}`
         await deps.mailer
           .send({
@@ -75,24 +103,24 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
           realm: 'dsc',
           action: 'dsc.request.email',
           targetType: 'sign_request',
-          targetId: row.id,
+          targetId: row.reference,
           ip: request.ip,
         })
       }
-      return reply.send({ id: updated.id, ...service.metadata(updated) })
+      return reply.send(service.metadata(updated))
     },
   )
 
   server.post(
-    '/dsc/requests/:id/reject',
+    '/dsc/requests/:reference/reject',
     {
       schema: {
-        params: idParams,
+        params: referenceParams,
         body: z.object({ reason: z.string().min(1).max(2000) }),
       },
     },
     async (request, reply) => {
-      const row = service.getById(request.params.id)
+      const row = service.getByReference(request.params.reference)
       if (!row) return reply.code(404).send({ error: 'request_not_found' })
       const scope = scopeOf(deps, request)
       const principal = request.principal
@@ -106,21 +134,21 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
         realm: 'dsc',
         action: 'dsc.request.reject',
         targetType: 'sign_request',
-        targetId: row.id,
+        targetId: row.reference,
         ip: request.ip,
       })
-      return reply.send({ id: row.id, status: 'rejected' })
+      return reply.send({ reference: row.reference, status: 'rejected' })
     },
   )
 
   server.post(
-    '/dsc/requests/:id/regenerate',
+    '/dsc/requests/:reference/regenerate',
     {
-      schema: { params: idParams, body: z.object({}).default({}) },
+      schema: { params: referenceParams, body: z.object({}).default({}) },
       preHandler: requireAdmin(deps, 'dsc'),
     },
     async (request, reply) => {
-      const row = service.getById(request.params.id)
+      const row = service.getByReference(request.params.reference)
       if (!row) return reply.code(404).send({ error: 'request_not_found' })
       if (row.status !== 'approved') return reply.code(409).send({ error: 'request_not_approved' })
       const updated = await service.regenerate(row, request.principal!.account.id)
@@ -129,10 +157,10 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
         realm: 'dsc',
         action: 'dsc.request.regenerate',
         targetType: 'sign_request',
-        targetId: row.id,
+        targetId: row.reference,
         ip: request.ip,
       })
-      return reply.send({ id: updated.id, ...service.metadata(updated) })
+      return reply.send(service.metadata(updated))
     },
   )
 
@@ -142,16 +170,19 @@ export function registerReviewRoutes(app: FastifyInstance, deps: DscRouteDeps): 
   })
 
   server.post(
-    '/dsc/admin/requests/:id/reveal',
-    { schema: { params: idParams }, preHandler: requireAdmin(deps, 'dsc') },
+    '/dsc/admin/requests/:reference/reveal',
+    { schema: { params: referenceParams }, preHandler: requireAdmin(deps, 'dsc') },
     async (request, reply) => {
-      const result = service.revealById(request.params.id, request.principal!.account.id)
+      const result = service.revealForReviewer(
+        request.params.reference,
+        request.principal!.account.id,
+      )
       writeAudit(db, {
         actorAccountId: request.principal!.account.id,
         realm: 'dsc',
         action: 'dsc.request.reveal',
         targetType: 'sign_request',
-        targetId: result.row.id,
+        targetId: result.row.reference,
         ip: request.ip,
         detail: { channel: 'reviewer' },
       })

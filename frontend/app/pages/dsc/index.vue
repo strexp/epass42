@@ -8,7 +8,7 @@ import StatusTag from '~/components/common/StatusTag.vue'
 definePageMeta({ layout: 'realm' })
 
 interface RequestRow {
-  id: number
+  reference: string
   status: string
   deliveryMode: string
   mnt: string | null
@@ -23,26 +23,41 @@ const { t } = useI18n()
 const requests = ref<RequestRow[]>([])
 
 const signedIn = computed(() => state.value.me !== null)
-const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
+const isReviewer = computed(() => (state.value.me?.reviewScope ?? 'none') !== 'none')
 
-const columns = [
-  { title: '#', key: 'id' },
-  {
-    title: 'Status',
-    key: 'status',
-    render: (row: RequestRow) => h(StatusTag, { status: row.status }),
-  },
-  { title: 'MNT', key: 'mnt' },
-  { title: 'IP', key: 'ip' },
-  { title: 'Delivery', key: 'deliveryMode' },
-  { title: 'DGs', key: 'dataGroups', render: (row: RequestRow) => row.dataGroups.join(', ') },
-  {
+function openDetails(row: RequestRow): void {
+  void navigateTo(`/dsc/requests/${row.reference}`)
+}
+
+const columns = computed(() => {
+  const base = [
+    {
+      title: t('dsc.statusTitle'),
+      key: 'status',
+      render: (row: RequestRow) => h(StatusTag, { status: row.status }),
+    },
+    {
+      title: t('dsc.requestReference'),
+      key: 'reference',
+      render: (row: RequestRow) => h('span', { class: 'epass42-mono' }, row.reference),
+    },
+    { title: t('dsc.submittedAt'), key: 'createdAt' },
+  ]
+  if (isReviewer.value) {
+    base.push({ title: 'MNT', key: 'mnt' }, { title: 'IP', key: 'ip' })
+  }
+  base.push({
     title: '',
     key: 'actions',
     render: (row: RequestRow) =>
-      h('a', { href: `/dsc/status?id=${row.id}` }, () => t('dsc.statusTitle')),
-  },
-]
+      h(
+        NButton,
+        { size: 'tiny', onClick: () => openDetails(row) },
+        { default: () => t('dsc.viewDetails') },
+      ),
+  })
+  return base
+})
 
 onMounted(async () => {
   await ensureLoaded()
@@ -80,7 +95,7 @@ onMounted(async () => {
             {{ $t('dsc.statusTitle') }}
           </NButton>
         </NuxtLink>
-        <NuxtLink to="/dsc/admin">
+        <NuxtLink v-if="isReviewer" to="/dsc/admin">
           <NButton>
             <template #icon
               ><NIcon><ListChecks /></NIcon
@@ -88,7 +103,7 @@ onMounted(async () => {
             {{ $t('dsc.reviewQueue') }}
           </NButton>
         </NuxtLink>
-        <NuxtLink v-if="isAdmin" to="/dsc/settings">
+        <NuxtLink v-if="state.me?.isAdmin" to="/dsc/settings">
           <NButton>
             <template #icon
               ><NIcon><Settings /></NIcon
@@ -98,9 +113,12 @@ onMounted(async () => {
         </NuxtLink>
       </NSpace>
 
-      <NCard v-if="signedIn" :title="$t('dsc.statusTitle')" size="small">
+      <NCard v-if="signedIn" :title="$t('dsc.myRequests')" size="small">
         <NDataTable v-if="requests.length" :columns="columns" :data="requests" size="small" />
         <NEmpty v-else :description="$t('common.empty')" />
+      </NCard>
+      <NCard v-else size="small">
+        <NText depth="3">{{ $t('dsc.statusIntro') }}</NText>
       </NCard>
     </NSpace>
   </div>

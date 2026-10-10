@@ -3,8 +3,9 @@ definePageMeta({ layout: 'realm' })
 
 import { NButton, NCard, NDataTable, useDialog, useMessage } from 'naive-ui'
 import { computed, h, onMounted, ref } from 'vue'
-import { errorMessageKey } from '~/composables/useApi'
+import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 
 interface Certificate {
@@ -19,14 +20,13 @@ interface Certificate {
 }
 
 const api = useApi()
+const apiBase = useApiBase()
 const { state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
 const message = useMessage()
 const dialog = useDialog()
-const config = useRuntimeConfig()
 const certificates = ref<Certificate[]>([])
 
-const apiBase = (config.public.apiBase as string) || ''
 const isCscaAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const myMnt = computed(() => state.value.me?.account.activeMnt ?? null)
 
@@ -48,12 +48,7 @@ function downloadKey(row: Certificate): void {
     positiveText: t('common.confirm'),
     negativeText: t('common.cancel'),
     onPositiveClick: () => {
-      const link = document.createElement('a')
-      link.href = keyUrl(row.id)
-      link.download = `dsc-${row.id}.key`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      downloadUrl(keyUrl(row.id), `dsc-${row.id}.key`)
       // The key is consumed by the download; refresh so the action disappears.
       window.setTimeout(() => void load(), 1500)
     },
@@ -93,8 +88,24 @@ const columns = computed(() => [
     key: 'download',
     render: (row: Certificate) =>
       h('div', { class: 'epass42-actions' }, [
-        h('a', { href: `/csca/certificates/${row.id}.pem` }, () => 'PEM'),
-        h('a', { href: `/csca/certificates/${row.id}.der` }, () => 'DER'),
+        h(
+          NButton,
+          {
+            size: 'tiny',
+            onClick: () =>
+              downloadUrl(`${apiBase}/csca/certificates/${row.id}.pem`, `dsc-${row.id}.pem`),
+          },
+          { default: () => 'PEM' },
+        ),
+        h(
+          NButton,
+          {
+            size: 'tiny',
+            onClick: () =>
+              downloadUrl(`${apiBase}/csca/certificates/${row.id}.der`, `dsc-${row.id}.der`),
+          },
+          { default: () => 'DER' },
+        ),
         canDownloadKey(row)
           ? h(NButton, { size: 'tiny', onClick: () => downloadKey(row) }, () =>
               t('csca.privateKey'),
@@ -117,7 +128,9 @@ onMounted(async () => {
   <div class="epass42-page">
     <NCard :title="$t('csca.certificatesTitle')">
       <template #header-extra>
-        <a href="/csca/crl.pem">{{ $t('csca.crl') }} (PEM)</a>
+        <NButton size="small" @click="downloadUrl(`${apiBase}/csca/crl.pem`, 'crl.pem')">
+          {{ $t('csca.crl') }} (PEM)
+        </NButton>
       </template>
       <NDataTable :columns="columns" :data="certificates" size="small" />
       <template #footer>

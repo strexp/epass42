@@ -13,7 +13,7 @@ CREATE TABLE `account` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `ux_account` ON `account` (`realm`,`provider_id`,`subject`);--> statement-breakpoint
 CREATE TABLE `artifact` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`id` text PRIMARY KEY NOT NULL,
 	`kind` text NOT NULL,
 	`path` text NOT NULL,
 	`sha256` text NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE `mail_token` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`token_hash` text NOT NULL,
 	`purpose` text NOT NULL,
-	`sign_request_id` integer,
+	`sign_request_reference` text,
 	`expires_at` text NOT NULL,
 	`used_at` text
 );
@@ -180,10 +180,10 @@ CREATE TABLE `reveal_token` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`token_hash` text NOT NULL,
 	`kind` text NOT NULL,
-	`sign_request_id` integer,
+	`sign_request_reference` text,
 	`expires_at` text NOT NULL,
 	`used_at` text,
-	FOREIGN KEY (`sign_request_id`) REFERENCES `sign_request`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`sign_request_reference`) REFERENCES `sign_request`(`reference`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `session` (
@@ -198,8 +198,7 @@ CREATE TABLE `session` (
 --> statement-breakpoint
 CREATE INDEX `ix_session_expires` ON `session` (`expires_at`);--> statement-breakpoint
 CREATE TABLE `sign_request` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`reference_hash` text NOT NULL,
+	`reference` text PRIMARY KEY NOT NULL,
 	`requester_account_id` integer,
 	`mnt` text,
 	`ip` text,
@@ -209,21 +208,22 @@ CREATE TABLE `sign_request` (
 	`status` text DEFAULT 'submitted' NOT NULL,
 	`delivery_mode` text DEFAULT 'applicant' NOT NULL,
 	`profile_overrides` text,
-	`result_artifact_id` integer,
+	`result_artifact_id` text,
 	`email` text,
 	`reviewed_by` integer,
 	`reviewed_at` text,
+	`reject_reason` text,
 	`consumed_at` text,
 	`consumed_by` integer,
 	`consumed_channel` text,
-	`regenerated_from` integer,
+	`regenerated_from` text,
 	`created_at` text NOT NULL,
 	`expires_at` text,
 	FOREIGN KEY (`requester_account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`dsc_cert_id`) REFERENCES `dsc_cert`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`dsc_cert_id`) REFERENCES `dsc_cert`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`result_artifact_id`) REFERENCES `artifact`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `sign_request_reference_hash_unique` ON `sign_request` (`reference_hash`);--> statement-breakpoint
 CREATE TABLE `system_setting` (
 	`key` text PRIMARY KEY NOT NULL,
 	`value` text NOT NULL,

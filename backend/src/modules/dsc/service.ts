@@ -72,16 +72,17 @@ export class DscService {
     return this.requests.getByReference(reference)
   }
 
-  getById(id: number): SignRequestRow | undefined {
-    return this.requests.getById(id)
-  }
-
   list(options: Parameters<DscRequestService['list']>[0]): SignRequestRow[] {
     return this.requests.list(options)
   }
 
   metadata(row: SignRequestRow): Record<string, unknown> {
     return this.requests.metadata(row)
+  }
+
+  /** The unmasked structured submission (callers must authorize first). */
+  full(row: SignRequestRow): SignRequest {
+    return this.requests.full(row)
   }
 
   preview(reference: string): ReturnType<DscRequestService['preview']> {
@@ -97,7 +98,7 @@ export class DscService {
   buildArtifact(
     row: SignRequestRow,
     overrides: Partial<IssuingDefaults> = {},
-  ): Promise<PersoBuildResult & { artifactId: number }> {
+  ): Promise<PersoBuildResult & { artifactId: string }> {
     return this.artifacts.buildArtifact(row, overrides)
   }
 
@@ -132,8 +133,8 @@ export class DscService {
     return this.delivery.revealOwned(row, actorAccountId)
   }
 
-  revealById(id: number, actorAccountId: number | null): RevealResult {
-    return this.delivery.revealById(id, actorAccountId)
+  revealForReviewer(reference: string, actorAccountId: number | null): RevealResult {
+    return this.delivery.revealForReviewer(reference, actorAccountId)
   }
 
   adminQueue(): SignRequestRow[] {
@@ -141,18 +142,18 @@ export class DscService {
   }
 
   createRevealToken(
-    signRequestId: number,
+    signRequestReference: string,
     kind: 'confirm' | 'consume',
     ttlSeconds: number,
   ): string {
-    return this.delivery.createRevealToken(signRequestId, kind, ttlSeconds)
+    return this.delivery.createRevealToken(signRequestReference, kind, ttlSeconds)
   }
 
   resolveRevealToken(raw: string): SignRequestRow {
     return this.delivery.resolveRevealToken(raw)
   }
 
-  createMailToken(signRequestId: number, purpose: string, ttlSeconds: number): string {
-    return this.delivery.createMailToken(signRequestId, purpose, ttlSeconds)
+  createMailToken(signRequestReference: string, purpose: string, ttlSeconds: number): string {
+    return this.delivery.createMailToken(signRequestReference, purpose, ttlSeconds)
   }
 }

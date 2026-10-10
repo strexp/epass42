@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
-import { Check, Download, RefreshCw, ScrollText, Settings, X } from '@lucide/vue'
+import { Download, RefreshCw, ScrollText, Settings } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -10,7 +10,7 @@ import StatusTag from '~/components/common/StatusTag.vue'
 definePageMeta({ layout: 'realm' })
 
 interface RequestRow {
-  id: number
+  reference: string
   status: string
   mnt: string | null
   ip: string | null
@@ -27,6 +27,11 @@ const requests = ref<RequestRow[]>([])
 const queue = ref<RequestRow[]>([])
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
+const isReviewer = computed(() => (state.value.me?.reviewScope ?? 'none') !== 'none')
+
+function openDetails(row: RequestRow): void {
+  void navigateTo(`/dsc/requests/${row.reference}`)
+}
 
 async function load(): Promise<void> {
   try {
@@ -42,9 +47,10 @@ async function load(): Promise<void> {
   }
 }
 
-async function approve(id: number): Promise<void> {
+async function adminReveal(reference: string): Promise<void> {
   try {
-    await api(`/dsc/requests/${id}/approve`, { method: 'POST', body: {} })
+    const perso = await api<string>(`/dsc/admin/requests/${reference}/reveal`, { method: 'POST' })
+    downloadText(`perso-${reference}.txt`, perso)
     message.success(t('common.success'))
     await load()
   } catch (error) {
@@ -52,33 +58,17 @@ async function approve(id: number): Promise<void> {
   }
 }
 
-async function reject(id: number): Promise<void> {
-  try {
-    await api(`/dsc/requests/${id}/reject`, { method: 'POST', body: { reason: 'rejected' } })
-    await load()
-  } catch (error) {
-    message.error(t(errorMessageKey(error)))
-  }
-}
-
-async function adminReveal(id: number): Promise<void> {
-  try {
-    const perso = await api<string>(`/dsc/admin/requests/${id}/reveal`, { method: 'POST' })
-    downloadText(`perso-${id}.txt`, perso)
-    message.success(t('common.success'))
-    await load()
-  } catch (error) {
-    message.error(t(errorMessageKey(error)))
-  }
-}
-
-const columns = [
-  { title: '#', key: 'id' },
+const columns = computed(() => [
+  {
+    title: t('dsc.requestReference'),
+    key: 'reference',
+    render: (row: RequestRow) => h('span', { class: 'epass42-mono' }, row.reference),
+  },
   { title: 'MNT', key: 'mnt' },
   { title: 'IP', key: 'ip' },
-  { title: 'DSC', key: 'dscSelection' },
+  { title: t('dsc.signingCertificate'), key: 'dscSelection' },
   {
-    title: 'Status',
+    title: t('dsc.statusTitle'),
     key: 'status',
     render: (row: RequestRow) => h(StatusTag, { status: row.status }),
   },
@@ -86,50 +76,50 @@ const columns = [
     title: '',
     key: 'actions',
     render: (row: RequestRow) =>
-      row.status === 'submitted'
-        ? h('div', { class: 'epass42-actions' }, [
-            h(
-              NButton,
-              { size: 'tiny', type: 'primary', onClick: () => approve(row.id) },
-              {
-                icon: () => h(NIcon, null, { default: () => h(Check) }),
-                default: () => t('common.approve'),
-              },
-            ),
-            h(
-              NButton,
-              { size: 'tiny', onClick: () => reject(row.id) },
-              {
-                icon: () => h(NIcon, null, { default: () => h(X) }),
-                default: () => t('common.reject'),
-              },
-            ),
-          ])
-        : null,
+      h(
+        NButton,
+        { size: 'tiny', onClick: () => openDetails(row) },
+        { default: () => t('dsc.viewDetails') },
+      ),
   },
-]
+])
 
-const queueColumns = [
-  { title: '#', key: 'id' },
+const queueColumns = computed(() => [
+  {
+    title: t('dsc.requestReference'),
+    key: 'reference',
+    render: (row: RequestRow) => h('span', { class: 'epass42-mono' }, row.reference),
+  },
   { title: 'MNT', key: 'mnt' },
-  { title: 'IP', key: 'ip' },
   {
     title: '',
     key: 'actions',
     render: (row: RequestRow) =>
-      h(
-        NButton,
-        { size: 'tiny', onClick: () => adminReveal(row.id) },
-        {
-          icon: () => h(NIcon, null, { default: () => h(Download) }),
-          default: () => t('dsc.reveal'),
-        },
-      ),
+      h('div', { class: 'epass42-actions' }, [
+        h(
+          NButton,
+          { size: 'tiny', onClick: () => openDetails(row) },
+          { default: () => t('dsc.viewDetails') },
+        ),
+        h(
+          NButton,
+          { size: 'tiny', onClick: () => adminReveal(row.reference) },
+          {
+            icon: () => h(NIcon, null, { default: () => h(Download) }),
+            default: () => t('dsc.reveal'),
+          },
+        ),
+      ]),
   },
-]
+])
 
 onMounted(async () => {
   await ensureLoaded()
+  // The review queue is not for ordinary users.
+  if (!isReviewer.value) {
+    await navigateTo('/dsc')
+    return
+  }
   await load()
 })
 </script>
@@ -139,7 +129,7 @@ onMounted(async () => {
     <NSpace vertical size="large">
       <div>
         <h1 style="margin: 0">{{ $t('dsc.adminTitle') }}</h1>
-        <NText v-if="!isAdmin" depth="3">{{ $t('dsc.reviewerOnly') }}</NText>
+        <NText depth="3">{{ $t('dsc.reviewHint') }}</NText>
       </div>
 
       <NCard :title="$t('dsc.reviewQueue')" size="small">

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "09b89485-d596-4582-852c-d26220528643",
+  "id": "17268ea9-9191-4a07-b4ee-f6d23188aa9c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -106,10 +106,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "autoincrement": false
         },
         "kind": {
           "name": "kind",
@@ -856,9 +856,9 @@
           "notNull": true,
           "autoincrement": false
         },
-        "sign_request_id": {
-          "name": "sign_request_id",
-          "type": "integer",
+        "sign_request_reference": {
+          "name": "sign_request_reference",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1183,9 +1183,9 @@
           "notNull": true,
           "autoincrement": false
         },
-        "sign_request_id": {
-          "name": "sign_request_id",
-          "type": "integer",
+        "sign_request_reference": {
+          "name": "sign_request_reference",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1207,15 +1207,15 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "reveal_token_sign_request_id_sign_request_id_fk": {
-          "name": "reveal_token_sign_request_id_sign_request_id_fk",
+        "reveal_token_sign_request_reference_sign_request_reference_fk": {
+          "name": "reveal_token_sign_request_reference_sign_request_reference_fk",
           "tableFrom": "reveal_token",
           "tableTo": "sign_request",
           "columnsFrom": [
-            "sign_request_id"
+            "sign_request_reference"
           ],
           "columnsTo": [
-            "id"
+            "reference"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -1302,17 +1302,10 @@
     "sign_request": {
       "name": "sign_request",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "reference_hash": {
-          "name": "reference_hash",
+        "reference": {
+          "name": "reference",
           "type": "text",
-          "primaryKey": false,
+          "primaryKey": true,
           "notNull": true,
           "autoincrement": false
         },
@@ -1383,7 +1376,7 @@
         },
         "result_artifact_id": {
           "name": "result_artifact_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1404,6 +1397,13 @@
         },
         "reviewed_at": {
           "name": "reviewed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reject_reason": {
+          "name": "reject_reason",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -1432,7 +1432,7 @@
         },
         "regenerated_from": {
           "name": "regenerated_from",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1452,15 +1452,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "sign_request_reference_hash_unique": {
-          "name": "sign_request_reference_hash_unique",
-          "columns": [
-            "reference_hash"
-          ],
-          "isUnique": true
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "sign_request_requester_account_id_account_id_fk": {
           "name": "sign_request_requester_account_id_account_id_fk",
@@ -1481,6 +1473,19 @@
           "tableTo": "dsc_cert",
           "columnsFrom": [
             "dsc_cert_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sign_request_result_artifact_id_artifact_id_fk": {
+          "name": "sign_request_result_artifact_id_artifact_id_fk",
+          "tableFrom": "sign_request",
+          "tableTo": "artifact",
+          "columnsFrom": [
+            "result_artifact_id"
           ],
           "columnsTo": [
             "id"

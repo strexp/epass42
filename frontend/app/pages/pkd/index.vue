@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NTabPane, NTabs } from 'naive-ui'
 import { h, onMounted, ref } from 'vue'
+import { useApiBase } from '~/composables/useApi'
+import { downloadUrl } from '~/utils/download'
 
 interface PkdCertificate {
   id: string
@@ -14,6 +16,7 @@ interface PkdCrl {
 }
 
 const api = useApi()
+const apiBase = useApiBase()
 
 const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
@@ -21,8 +24,16 @@ const masterlists = ref<{ id: string }[]>([])
 
 function downloadLinks(id: string) {
   return h('div', { class: 'epass42-actions' }, [
-    h('a', { href: `/pkd/objects/${id}.der` }, () => 'DER'),
-    h('a', { href: `/pkd/objects/${id}.pem` }, () => 'PEM'),
+    h(
+      NButton,
+      { size: 'tiny', onClick: () => downloadUrl(`${apiBase}/pkd/objects/${id}.der`, `${id}.der`) },
+      { default: () => 'DER' },
+    ),
+    h(
+      NButton,
+      { size: 'tiny', onClick: () => downloadUrl(`${apiBase}/pkd/objects/${id}.pem`, `${id}.pem`) },
+      { default: () => 'PEM' },
+    ),
   ])
 }
 
@@ -64,9 +75,9 @@ onMounted(async () => {
       <NTabPane name="ldif" :tab="$t('pkd.ldif')">
         <NCard size="small">
           <p>{{ $t('pkd.ldifHint') }}</p>
-          <a href="/pkd/ldif"
-            ><NButton size="small">{{ $t('common.download') }} LDIF</NButton></a
-          >
+          <NButton size="small" @click="downloadUrl(`${apiBase}/pkd/ldif`, 'epass42.ldif')">
+            {{ $t('common.download') }} LDIF
+          </NButton>
         </NCard>
       </NTabPane>
     </NTabs>

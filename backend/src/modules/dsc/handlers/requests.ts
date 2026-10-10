@@ -13,9 +13,7 @@ import { mntDelegatesToNia } from '../../auth/authorization'
 import { activeOwnDsc } from '../../mnt/delegation'
 import { canonicalMnts } from '../../jurisdiction/whois'
 import { resolvePrincipal, type AuthContext } from '../../auth/middleware'
-import { buildPreview } from '../preview'
-import { isLds2Enabled } from '../securityOptions'
-import { scopeOf, accessRow, idParams, referenceParams, type DscRouteDeps } from '../routeContext'
+import { scopeOf, referenceParams, type DscRouteDeps } from '../routeContext'
 
 /** Registers the request submission and status routes. */
 export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps): void {
@@ -46,7 +44,7 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
         realm: 'dsc',
         action: 'dsc.request.submit',
         targetType: 'sign_request',
-        targetId: result.id,
+        targetId: result.reference,
         ip: request.ip,
       })
       return reply.code(201).send({ reference: result.reference, status: result.status })
@@ -63,66 +61,6 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
       const row = service.getByReference(request.params.reference)
       if (!row) return reply.code(404).send({ error: 'request_not_found' })
       return reply.send(service.metadata(row))
-    },
-  )
-
-  server.get('/dsc/requests/id/:id', { schema: { params: idParams } }, async (request, reply) => {
-    const row = service.getById(request.params.id)
-    if (!row) return reply.code(404).send({ error: 'request_not_found' })
-    const access = accessRow(deps, request, row)
-    if (!access.ok) return reply.code(access.status ?? 403).send({ error: 'forbidden' })
-    return reply.send(service.metadata(row))
-  })
-
-  server.get(
-    '/dsc/requests/id/:id/preview',
-    { schema: { params: idParams } },
-    async (request, reply) => {
-      const row = service.getById(request.params.id)
-      if (!row) return reply.code(404).send({ error: 'request_not_found' })
-      const access = accessRow(deps, request, row)
-      if (!access.ok) return reply.code(access.status ?? 403).send({ error: 'forbidden' })
-      const payload = JSON.parse(row.payloadJson) as SignRequest
-      const profile = service.issuingDefaults()
-      return reply.send(
-        buildPreview(
-          payload,
-          undefined,
-          payload.security ?? profile.security,
-          isLds2Enabled(profile.lds2),
-        ),
-      )
-    },
-  )
-
-  server.post(
-    '/dsc/requests/id/:id/reveal',
-    { schema: { params: idParams }, config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
-    async (request, reply) => {
-      const row = service.getById(request.params.id)
-      if (!row) return reply.code(404).send({ error: 'request_not_found' })
-      const access = accessRow(deps, request, row)
-      if (!access.ok) return reply.code(access.status ?? 403).send({ error: 'forbidden' })
-      const actor = request.principal!.account.id
-      const scope = scopeOf(deps, request)
-      const result =
-        row.deliveryMode === 'applicant'
-          ? service.revealOwned(row, actor)
-          : scope?.kind === 'nia'
-            ? service.revealById(row.id, actor)
-            : null
-      if (!result) return reply.code(403).send({ error: 'reveal_not_allowed' })
-      writeAudit(db, {
-        actorAccountId: actor,
-        realm: 'dsc',
-        action: 'dsc.request.reveal',
-        targetType: 'sign_request',
-        targetId: row.id,
-        ip: request.ip,
-        detail: { channel: row.deliveryMode },
-      })
-      reply.header('cache-control', 'no-store')
-      return reply.type('text/plain').send(result.perso)
     },
   )
 
@@ -155,7 +93,7 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
               limit: request.query.limit,
               offset: request.query.offset,
             })
-      return { items: items.map((row) => ({ id: row.id, ...service.metadata(row) })) }
+      return { items: items.map((row) => service.metadata(row)) }
     },
   )
 

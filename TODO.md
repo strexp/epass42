@@ -70,24 +70,25 @@ epass42/
 
 ## 1. 里程碑总表
 
-| 里程碑 | 内容                                                                                     | 状态   |
-| ------ | ---------------------------------------------------------------------------------------- | ------ |
-| M0     | 仓库脚手架（pnpm workspace、ESLint/Prettier、CI、`packages/shared`）                     | 完成   |
-| M1     | `packages/pki` 内核（X.509/CRL/CMS/SOD/CardSecurity/MasterList/DG1–DG16/MRZ/perso/验证） | 完成   |
-| M2     | `scripts/gen-csca` + `scripts/verify`                                                    | 完成   |
-| M3     | 后端骨架（Fastify + zod/OpenAPI + SQLite/Drizzle + 配置/日志/健康检查）                  | 完成   |
-| M4     | 双 realm OAuth + 会话 + MNT 授权（含委派 MNT 评审）                                      | 完成   |
-| M5     | CSCA 角色（DSC 申请/审核/签发/吊销/轮换）                                                | 完成   |
-| M6     | CRL 生成与调度                                                                           | 完成   |
-| M7     | DSC Signing Service（结构化请求 → DG/AA/CA/SOD/perso）                                   | 完成   |
-| M8     | 交付（masked 预览 / 一次性领取 / 邮件 / 历史 / 交付模式）                                | 完成   |
-| M9     | PKD 角色（REST + LDIF + 只读 LDAP）                                                      | 完成   |
-| M10    | CSCA Master List                                                                         | 完成   |
-| M11    | 前端（Nuxt 4 + Naive UI）                                                                | 完成   |
-| M12    | 单角色模式（各 AS 自建 DSC）                                                             | 待办   |
-| M13    | 安全加固、审计、限流、加密落盘                                                           | 部分   |
-| M14    | 测试与交叉验证                                                                           | 进行中 |
-| M15    | 部署、文档、发布                                                                         | 待办   |
+| 里程碑 | 内容                                                                                       | 状态   |
+| ------ | ------------------------------------------------------------------------------------------ | ------ |
+| M0     | 仓库脚手架（pnpm workspace、ESLint/Prettier、CI、`packages/shared`）                       | 完成   |
+| M1     | `packages/pki` 内核（X.509/CRL/CMS/SOD/CardSecurity/MasterList/DG1–DG16/MRZ/perso/验证）   | 完成   |
+| M2     | `scripts/gen-csca` + `scripts/verify`                                                      | 完成   |
+| M3     | 后端骨架（Fastify + zod/OpenAPI + SQLite/Drizzle + 配置/日志/健康检查）                    | 完成   |
+| M4     | 双 realm OAuth + 会话 + MNT 授权（含委派 MNT 评审）                                        | 完成   |
+| M5     | CSCA 角色（DSC 申请/审核/签发/吊销/轮换）                                                  | 完成   |
+| M6     | CRL 生成与调度                                                                             | 完成   |
+| M7     | DSC Signing Service（结构化请求 → DG/AA/CA/SOD/perso）                                     | 完成   |
+| M8     | 交付（masked 预览 / 一次性领取 / 邮件 / 历史 / 交付模式）                                  | 完成   |
+| M9     | PKD 角色（REST + LDIF + 只读 LDAP）                                                        | 完成   |
+| M10    | CSCA Master List                                                                           | 完成   |
+| M11    | 前端（Nuxt 4 + Naive UI）                                                                  | 完成   |
+| M12    | 单角色模式（各 AS 自建 DSC）                                                               | 待办   |
+| M13    | 安全加固、审计、限流、加密落盘                                                             | 部分   |
+| M14    | 测试与交叉验证                                                                             | 进行中 |
+| M15    | 部署、文档、发布                                                                           | 待办   |
+| M16    | UX 与标识重构（公众提示/降技术细节、路由化、审核详情页、DSC 去数字 ID、隐藏 review queue） | 完成   |
 
 ---
 
@@ -223,6 +224,20 @@ epass42/
 
 ---
 
+## 18. M16 — UX 与标识重构
+
+> 面向 DSC 申请人与一般民众的体验改进；DSC 申请标识统一为 reference。
+
+- [x] T16.1 DSC 申请以外键化**文本 `reference` 作主键**，删除自增数字 `id` 与 `reference_hash`；`artifact.id` 改为不透明文本 id；`reveal_token`/`mail_token` 外键改 `sign_request_reference`。
+- [x] T16.2 所有 DSC 路由（approve/reject/regenerate/admin-queue/admin-reveal）改用 `:reference`；删除 `/dsc/requests/id/:id*`；登录与匿名用户行为一致。
+- [x] T16.3 新增审核详情页（CSCA `csca/applications/[id]`、DSC `dsc/requests/[reference]`），approve/reject 仅在详情页；DSC 审核者可见**未脱敏**提交数据（`GET /dsc/requests/:reference/review`，写审计）；CSCA 申请详情访问写审计。
+- [x] T16.4 review queue 对未登录/普通用户隐藏（`/auth/{realm}/me` 增加 `reviewScope`；`dsc/index.vue` 按 scope 渲染；`dsc/admin.vue` 非审核者重定向）。
+- [x] T16.5 站内跳转改路由（表格操作按钮化）；修正证书/CRL/ML/LDIF 的跨源下载链接。
+- [x] T16.6 面向民众文案白话化与提示（申请/状态/详情页；i18n key）。
+- [ ] T16.7 后续：reference 若需在 DB 泄露时保持不可冒领，可改为「哈希校验 + KEK 加密回显」。
+
+---
+
 ## 附录 A — OID 常量表
 
 | 名称                                              | OID                          |
@@ -329,23 +344,23 @@ CREATE TABLE master_list (
 
 -- DSC 签名
 CREATE TABLE sign_request (
-  id INTEGER PRIMARY KEY, reference_hash TEXT NOT NULL UNIQUE,
+  reference TEXT PRIMARY KEY,        -- 不透明公开标识（同时是匿名领取凭证）
   requester_account_id INTEGER REFERENCES account(id), mnt TEXT, ip TEXT,
   dsc_selection TEXT NOT NULL, dsc_cert_id INTEGER REFERENCES dsc_cert(id),
   payload_json TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'submitted',
   delivery_mode TEXT NOT NULL DEFAULT 'applicant'
     CHECK(delivery_mode IN ('applicant','reviewer')),
   profile_overrides TEXT,
-  result_artifact_id INTEGER, email TEXT,
-  reviewed_by INTEGER, reviewed_at TEXT,
+  result_artifact_id TEXT REFERENCES artifact(id), email TEXT,
+  reviewed_by INTEGER, reviewed_at TEXT, reject_reason TEXT,
   consumed_at TEXT, consumed_by INTEGER, consumed_channel TEXT,
-  regenerated_from INTEGER,
+  regenerated_from TEXT,
   created_at TEXT NOT NULL, expires_at TEXT);
 -- 同一签发 MNT 内证件号唯一（BAC 口令唯一性）
 CREATE UNIQUE INDEX ux_sign_request_mrz
   ON sign_request(mnt, json_extract(payload_json, '$.mrz.documentNumber'));
 CREATE TABLE artifact (
-  id INTEGER PRIMARY KEY, kind TEXT NOT NULL, path TEXT NOT NULL, sha256 TEXT NOT NULL,
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL, path TEXT NOT NULL, sha256 TEXT NOT NULL,
   size INTEGER, enc INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
 
 -- MNT 管辖配置
@@ -372,13 +387,13 @@ CREATE TABLE audit_log (
   created_at TEXT NOT NULL);
 CREATE TABLE mail_token (
   id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL, purpose TEXT NOT NULL,
-  sign_request_id INTEGER, expires_at TEXT NOT NULL, used_at TEXT);
+  sign_request_reference TEXT, expires_at TEXT NOT NULL, used_at TEXT);
 
 -- 两步领取：确认页 token 与消费 token 分离，防邮件预取
 CREATE TABLE reveal_token (
   id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL,
   kind TEXT NOT NULL CHECK(kind IN ('confirm','consume')),
-  sign_request_id INTEGER REFERENCES sign_request(id),
+  sign_request_reference TEXT REFERENCES sign_request(reference),
   expires_at TEXT NOT NULL, used_at TEXT);
 ```
 
@@ -405,14 +420,15 @@ CREATE TABLE reveal_token (
 ### DSC Signing
 
 - `POST /dsc/requests`
-- `GET  /dsc/requests/:reference`（元数据，非破坏）
+- `GET  /dsc/requests/:reference`（元数据，非破坏；公开，reference 即凭证）
 - `GET  /dsc/requests/:reference/preview`（masked 预览，非破坏）
+- `GET  /dsc/requests/:reference/review`（审核者未脱敏视图；仅本 MNT 委派 / NIA）
 - `POST /dsc/requests/:reference/reveal`（一次性领取；模式 B 下申请人 403）
 - `POST /dsc/reveal/:token`（两步领取：confirm / consume）
-- `GET  /dsc/requests`（登录用户 / 管理员）
-- `POST /dsc/requests/:id/approve`、`POST /dsc/requests/:id/reject`（可带 delivery_mode 与签发字段覆盖）
-- `POST /dsc/requests/:id/regenerate`（管理员，消费后重发）
-- `POST /dsc/admin/requests/:id/reveal`（模式 B 管理员领取）
+- `GET  /dsc/requests`（登录用户 / 审核者）
+- `POST /dsc/requests/:reference/approve`、`POST /dsc/requests/:reference/reject`（可带 delivery_mode 与签发字段覆盖）
+- `POST /dsc/requests/:reference/regenerate`（管理员，消费后重发）
+- `POST /dsc/admin/requests/:reference/reveal`（模式 B 管理员领取）
 - `POST /dsc/requests/:reference/email`
 - `GET/PUT /dsc/settings/delivery-mode`（DSC 管理员）
 - `GET/PUT /dsc/settings/issuing-profile`（DSC 管理员）

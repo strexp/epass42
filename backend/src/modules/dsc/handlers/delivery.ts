@@ -45,7 +45,7 @@ export function registerDeliveryRoutes(app: FastifyInstance, deps: DscRouteDeps)
         realm: 'dsc',
         action: 'dsc.request.reveal',
         targetType: 'sign_request',
-        targetId: result.row.id,
+        targetId: result.row.reference,
         ip: request.ip,
         detail: { channel: 'applicant' },
       })

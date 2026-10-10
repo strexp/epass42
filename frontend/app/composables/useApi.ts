@@ -15,6 +15,12 @@ export function useApi() {
   })
 }
 
+/** The API origin (empty when the SPA is served same-origin as the backend). */
+export function useApiBase(): string {
+  const config = useRuntimeConfig()
+  return (config.public.apiBase as string) || ''
+}
+
 /** Maps a backend error code to an i18n key, falling back to generic. */
 export function errorMessageKey(error: unknown): string {
   const code = (error as { data?: { error?: string } })?.data?.error

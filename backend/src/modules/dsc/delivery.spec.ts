@@ -103,10 +103,10 @@ describe('M8 delivery', () => {
   })
 
   it('allows exactly one applicant reveal (410 afterwards)', async () => {
-    const { app, oidc, dsc } = await harness()
+    const { app, oidc } = await harness()
     const reference = await submit(app)
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,
@@ -128,7 +128,7 @@ describe('M8 delivery', () => {
     const { app, oidc, db, dsc } = await harness()
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
     const reference = await submit(app, 'X7654321')
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,
@@ -140,7 +140,7 @@ describe('M8 delivery', () => {
     const art = db
       .select()
       .from(artifact)
-      .where(eq(artifact.id, dsc.getById(id)!.resultArtifactId!))
+      .where(eq(artifact.id, dsc.getByReference(id)!.resultArtifactId!))
       .get()!
     expect(art.enc).toBe(true)
     const onDisk = readFileSync(art.path, 'utf8')
@@ -152,12 +152,12 @@ describe('M8 delivery', () => {
     expect(reveal.statusCode).toBe(200)
     expect(reveal.body).toContain('@dg 1')
     expect(db.select().from(artifact).where(eq(artifact.id, art.id)).get()).toBeUndefined()
-    expect(dsc.getById(id)!.resultArtifactId).toBeNull()
+    expect(dsc.getByReference(id)!.resultArtifactId).toBeNull()
     expect(existsSync(art.path)).toBe(false)
   })
 
   it('restricts delivery mode B to reviewers', async () => {
-    const { app, oidc, dsc } = await harness()
+    const { app, oidc } = await harness()
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
     await app.inject({
       method: 'PUT',
@@ -167,7 +167,7 @@ describe('M8 delivery', () => {
     })
 
     const reference = await submit(app)
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,
@@ -187,7 +187,9 @@ describe('M8 delivery', () => {
       headers: { cookie: admin },
     })
     expect(queue.statusCode).toBe(200)
-    expect((queue.json().items as { id: number }[]).some((entry) => entry.id === id)).toBe(true)
+    expect(
+      (queue.json().items as { reference: string }[]).some((entry) => entry.reference === id),
+    ).toBe(true)
 
     const reveal = await app.inject({
       method: 'POST',
@@ -204,10 +206,10 @@ describe('M8 delivery', () => {
   })
 
   it('regenerates a consumed artifact', async () => {
-    const { app, oidc, dsc } = await harness()
+    const { app, oidc } = await harness()
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
     const reference = await submit(app)
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,
@@ -259,7 +261,7 @@ describe('M8 delivery', () => {
     const { app, oidc, db, dsc } = await harness()
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
     const reference = await submit(app, 'X1234567', { email: 'user@example.net' })
-    const id = dsc.getByReference(reference)!.id
+    const id = reference
     await app.inject({
       method: 'POST',
       url: `/dsc/requests/${id}/approve`,

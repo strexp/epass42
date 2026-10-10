@@ -32,7 +32,7 @@ export class DscDeliveryService {
     const result = this.db
       .update(signRequest)
       .set({ consumedAt: nowIso(), consumedBy: actorAccountId, consumedChannel: channel })
-      .where(and(eq(signRequest.id, row.id), isNull(signRequest.consumedAt)))
+      .where(and(eq(signRequest.reference, row.reference), isNull(signRequest.consumedAt)))
       .run()
     if (result.changes === 0) {
       throw new AppError('request_already_consumed', 'request already consumed', 410)
@@ -58,14 +58,14 @@ export class DscDeliveryService {
     return this.revealApplicant(row, actorAccountId)
   }
 
-  /** One-time reveal by id for the owner (delivery mode A). */
+  /** One-time reveal for the owner (delivery mode A), by resolved row. */
   revealOwned(row: SignRequestRow, actorAccountId: number | null): RevealResult {
     return this.revealApplicant(row, actorAccountId)
   }
 
-  /** One-time reveal by id (admin / delivery mode B). */
-  revealById(id: number, actorAccountId: number | null): RevealResult {
-    const row = this.requests.getById(id)
+  /** One-time reveal by reference for a reviewer / NIA admin (delivery mode B). */
+  revealForReviewer(reference: string, actorAccountId: number | null): RevealResult {
+    const row = this.requests.getByReference(reference)
     if (!row) throw new AppError('request_not_found', 'request not found', 404)
     if (row.status !== 'approved')
       throw new AppError('request_not_approved', 'request not approved', 409)
@@ -80,7 +80,7 @@ export class DscDeliveryService {
     return this.db
       .select()
       .from(signRequest)
-      .orderBy(desc(signRequest.id))
+      .orderBy(desc(signRequest.createdAt))
       .all()
       .filter(
         (row) =>
@@ -90,7 +90,7 @@ export class DscDeliveryService {
 
   /** Creates a reveal token (kind `confirm`) and returns the raw token. */
   createRevealToken(
-    signRequestId: number,
+    signRequestReference: string,
     kind: 'confirm' | 'consume',
     ttlSeconds: number,
   ): string {
@@ -100,7 +100,7 @@ export class DscDeliveryService {
       .values({
         tokenHash: hashToken(token),
         kind,
-        signRequestId,
+        signRequestReference,
         expiresAt: isoInSeconds(ttlSeconds),
       })
       .run()
@@ -118,18 +118,18 @@ export class DscDeliveryService {
     if (isExpired(row.expiresAt)) {
       throw new AppError('token_expired', 'token expired', 410)
     }
-    return this.requests.getById(row.signRequestId as number) as SignRequestRow
+    return this.requests.getByReference(row.signRequestReference as string) as SignRequestRow
   }
 
   /** Creates a mail token record. */
-  createMailToken(signRequestId: number, purpose: string, ttlSeconds: number): string {
+  createMailToken(signRequestReference: string, purpose: string, ttlSeconds: number): string {
     const token = randomToken(24)
     this.db
       .insert(mailToken)
       .values({
         tokenHash: hashToken(token),
         purpose,
-        signRequestId,
+        signRequestReference,
         expiresAt: isoInSeconds(ttlSeconds),
       })
       .run()

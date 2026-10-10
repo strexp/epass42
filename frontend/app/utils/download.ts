@@ -14,3 +14,17 @@ export function downloadText(filename: string, text: string, type = 'text/plain'
   link.remove()
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Triggers a browser download from a URL (used for certificate/CRL/ML/LDIF
+ * exports served by the API, which may live on another origin).
+ */
+export function downloadUrl(url: string, filename?: string): void {
+  const link = document.createElement('a')
+  link.href = url
+  link.rel = 'noopener'
+  if (filename) link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+}

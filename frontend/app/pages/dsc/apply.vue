@@ -62,11 +62,11 @@ const notes = ref('')
 const submitting = ref(false)
 const reference = ref<string | null>(null)
 
-const sexOptions = [
-  { label: 'Female', value: 'F' },
-  { label: 'Male', value: 'M' },
-  { label: 'Unspecified', value: '<' },
-]
+const sexOptions = computed(() => [
+  { label: t('dsc.sexFemale'), value: 'F' },
+  { label: t('dsc.sexMale'), value: 'M' },
+  { label: t('dsc.sexUnspecified'), value: '<' },
+])
 const documentTypeOptions = [
   { label: 'Passport', value: 'P' },
   { label: 'Identity card', value: 'ID' },
@@ -174,14 +174,15 @@ onMounted(async () => {
       <NCard v-if="reference" size="small" :title="$t('dsc.statusTitle')">
         <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
         <template #action>
-          <NuxtLink :to="`/dsc/status?reference=${reference}`">
-            <NButton size="small">{{ $t('dsc.query') }}</NButton>
+          <NuxtLink :to="`/dsc/requests/${reference}`">
+            <NButton size="small">{{ $t('dsc.viewDetails') }}</NButton>
           </NuxtLink>
         </template>
       </NCard>
 
       <template v-else>
         <NText depth="3">{{ $t('dsc.submitHint') }}</NText>
+        <NAlert type="info" style="margin-top: 8px">{{ $t('dsc.applyIntro') }}</NAlert>
 
         <NAlert
           v-if="jurisdiction?.notice && !noticeDismissed"
@@ -210,19 +211,20 @@ onMounted(async () => {
             <NFormItem :label="$t('dsc.documentation')">
               <NSelect v-model:value="mrz.documentCode" :options="documentTypeOptions" />
             </NFormItem>
-            <NFormItem label="Document number">
+            <NFormItem :label="$t('dsc.documentNumber')">
               <NInput v-model:value="mrz.documentNumber" maxlength="9" />
             </NFormItem>
-            <NFormItem label="Surname">
+            <NFormItem :label="$t('dsc.surname')">
               <NInput v-model:value="mrz.surname" maxlength="39" />
             </NFormItem>
-            <NFormItem label="Given names">
+            <NFormItem :label="$t('dsc.givenNames')">
               <NInput v-model:value="mrz.givenNames" maxlength="39" />
             </NFormItem>
-            <NFormItem label="Date of birth (YYMMDD)">
+            <NFormItem :label="$t('dsc.dateOfBirth')">
               <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
+              <NText depth="3" style="font-size: 12px">{{ $t('dsc.dateOfBirthHint') }}</NText>
             </NFormItem>
-            <NFormItem label="Sex">
+            <NFormItem :label="$t('dsc.sex')">
               <NSelect v-model:value="mrz.sex" :options="sexOptions" />
             </NFormItem>
           </div>
@@ -263,16 +265,16 @@ onMounted(async () => {
           </NCollapseItem>
           <NCollapseItem :title="$t('dsc.contactSection')" name="contact">
             <NForm label-placement="top">
-              <NFormItem label="Full name"
+              <NFormItem :label="$t('dsc.fullName')"
                 ><NInput v-model:value="fullName" maxlength="70"
               /></NFormItem>
-              <NFormItem label="Place of birth"
+              <NFormItem :label="$t('dsc.placeOfBirth')"
                 ><NInput v-model:value="placeOfBirth" maxlength="35"
               /></NFormItem>
-              <NFormItem label="Address"
+              <NFormItem :label="$t('dsc.address')"
                 ><NInput v-model:value="address" maxlength="70"
               /></NFormItem>
-              <NFormItem label="Telephone"
+              <NFormItem :label="$t('dsc.telephone')"
                 ><NInput v-model:value="telephone" maxlength="35"
               /></NFormItem>
             </NForm>
