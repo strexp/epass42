@@ -4,7 +4,6 @@ import { NText } from 'naive-ui'
 const config = useRuntimeConfig()
 const year = new Date().getFullYear()
 const version = config.public.appVersion as string
-const builtAt = config.public.builtAt as string
 </script>
 
 <template>
@@ -15,8 +14,7 @@ const builtAt = config.public.builtAt as string
         <NText depth="3"> · {{ $t('footer.authority') }}</NText>
       </div>
       <NText depth="3">
-        {{ $t('common.official') }} · {{ $t('footer.identifier') }} ·
-        {{ $t('footer.version', { version }) }} · {{ $t('footer.updated', { date: builtAt }) }}
+        {{ $t('footer.identifier') }} · {{ $t('footer.version', { version }) }}
       </NText>
       <NText depth="3">{{ $t('footer.copyright', { year }) }}</NText>
     </div>

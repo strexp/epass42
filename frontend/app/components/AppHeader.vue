@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NIcon, NMenu, NSpace, NText } from 'naive-ui'
+import { NIcon, NMenu, NSpace } from 'naive-ui'
 import { BookUser, FileBadge, FolderTree, ShieldCheck } from '@lucide/vue'
 import { computed, h } from 'vue'
 
@@ -51,7 +51,6 @@ function onSelect(key: string): void {
       @update:value="onSelect"
     />
     <NSpace class="epass42-header-actions" align="center">
-      <NText depth="3" class="epass42-header-identifier">{{ $t('app.authorityShort') }}</NText>
       <ThemeToggle />
     </NSpace>
   </div>
@@ -92,10 +91,5 @@ function onSelect(key: string): void {
 }
 .epass42-header-actions {
   margin-left: auto;
-}
-@media (max-width: 720px) {
-  .epass42-header-identifier {
-    display: none;
-  }
 }
 </style>

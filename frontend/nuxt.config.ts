@@ -58,13 +58,13 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'ePass 42 — National Internet Agency',
+      title: 'ePass 42 — National Immigration Agency',
       htmlAttrs: { lang: 'en' },
       meta: [
         {
           name: 'description',
           content:
-            'Official document-signing service of the National Internet Agency: Document Signer certificates, personalization files and the public PKD directory.',
+            'Official document-signing service of the National Immigration Agency: Document Signer certificates, personalization files and the public PKD directory.',
         },
       ],
     },

@@ -6,8 +6,7 @@ export default {
   app: {
     name: 'ePass 42',
     tagline: 'Document signing service',
-    authority: 'National Internet Agency',
-    authorityShort: "NIA{'@'}gov.dn42",
+    authority: 'National Immigration Agency',
   },
   nav: {
     home: 'Home',
@@ -52,10 +51,9 @@ export default {
     search: 'Search',
     reset: 'Reset',
     optional: 'optional',
-    official: 'Official service',
   },
   home: {
-    intro: 'Official document-signing service of the National Internet Agency.',
+    intro: 'Official document-signing service of the National Immigration Agency.',
     publicHint:
       'Issue Document Signer certificates, request personalization files, and verify published certificates.',
     cscaCard: 'Apply for a Document Signer certificate for your organisation.',
@@ -74,12 +72,10 @@ export default {
     sessionExpired: 'Your session has expired.',
   },
   footer: {
-    authority: 'National Internet Agency',
+    authority: 'National Immigration Agency',
     identifier: "NIA{'@'}gov.dn42",
-    official: 'Official service',
-    copyright: '© {year} National Internet Agency',
+    copyright: '© {year} National Immigration Agency',
     version: 'Version {version}',
-    updated: 'Updated {date}',
   },
   status: {
     submitted: { label: 'Submitted', description: 'Received and awaiting review.' },
