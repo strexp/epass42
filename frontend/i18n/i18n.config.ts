@@ -3,11 +3,13 @@
 import enCsca from './locales/en/csca'
 import enCommon from './locales/en/common'
 import enDsc from './locales/en/dsc'
+import enHelp from './locales/en/help'
 import enMisc from './locales/en/misc'
 import enPkd from './locales/en/pkd'
 import zhCsca from './locales/zh/csca'
 import zhCommon from './locales/zh/common'
 import zhDsc from './locales/zh/dsc'
+import zhHelp from './locales/zh/help'
 import zhMisc from './locales/zh/misc'
 import zhPkd from './locales/zh/pkd'
 
@@ -21,6 +23,7 @@ export default defineI18nConfig(() => ({
       csca: enCsca,
       dsc: enDsc,
       pkd: enPkd,
+      help: enHelp,
       ...enMisc,
     },
     zh: {
@@ -28,6 +31,7 @@ export default defineI18nConfig(() => ({
       csca: zhCsca,
       dsc: zhDsc,
       pkd: zhPkd,
+      help: zhHelp,
       ...zhMisc,
     },
   },

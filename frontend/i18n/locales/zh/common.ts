@@ -12,6 +12,7 @@ export default {
     csca: '签发证书',
     dsc: '证件个性化',
     pkd: '目录查询',
+    help: '使用指南',
     certificates: '证书登记',
     admin: '管理后台',
     status: '状态',

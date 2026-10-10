@@ -13,6 +13,7 @@ export default {
     csca: 'Signing certificates',
     dsc: 'Personalization',
     pkd: 'Directory',
+    help: 'Help',
     certificates: 'Certificate registry',
     admin: 'Administration',
     status: 'Status',

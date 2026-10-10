@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NDropdown, NIcon, NMenu, NSpace } from 'naive-ui'
-import { BookUser, FileBadge, FolderTree, Languages, ShieldCheck } from '@lucide/vue'
+import { BookUser, CircleHelp, FileBadge, FolderTree, Languages, ShieldCheck } from '@lucide/vue'
 import { computed, h } from 'vue'
 
 const { t, locales, setLocale } = useI18n()
@@ -21,6 +21,11 @@ const options = computed(() => [
     label: t('nav.pkd'),
     key: '/pkd',
     icon: () => h(NIcon, null, { default: () => h(FolderTree) }),
+  },
+  {
+    label: t('nav.help'),
+    key: '/help',
+    icon: () => h(NIcon, null, { default: () => h(CircleHelp) }),
   },
 ])
 
