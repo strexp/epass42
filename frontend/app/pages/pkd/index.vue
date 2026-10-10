@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import {
-  NAlert,
   NButton,
   NCard,
   NDataTable,
   NFormItem,
   NInput,
+  NResult,
   NSelect,
   NSpace,
   NTabPane,
@@ -157,6 +157,8 @@ const revokedColumns = [
   { title: t('pkd.revokedAt'), key: 'revokedAt' },
 ]
 
+const pagination = { pageSize: 10 }
+
 onMounted(async () => {
   certificates.value = (await api<{ items: PkdCertificate[] }>('/pkd/certificates')).items
   crls.value = (await api<{ items: PkdCrl[] }>('/pkd/crls')).items
@@ -168,68 +170,84 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <PageHeader :title="$t('pkd.title')" />
+    <PageHeader :title="$t('pkd.title')" :subtitle="$t('pkd.subtitle')" />
     <NTabs>
       <NTabPane name="certs" :tab="$t('pkd.certificates')">
-        <NDataTable :columns="certColumns" :data="certificates" size="small" />
+        <NCard size="small">
+          <p>{{ $t('pkd.certificatesHint') }}</p>
+          <NDataTable
+            :columns="certColumns"
+            :data="certificates"
+            :pagination="pagination"
+            size="small"
+          />
+        </NCard>
       </NTabPane>
       <NTabPane name="crls" :tab="$t('pkd.crls')">
-        <NDataTable :columns="crlColumns" :data="crls" size="small" />
+        <NDataTable :columns="crlColumns" :data="crls" :pagination="pagination" size="small" />
       </NTabPane>
       <NTabPane name="mls" :tab="$t('pkd.masterlists')">
-        <NDataTable :columns="mlColumns" :data="masterlists" size="small" />
+        <NDataTable
+          :columns="mlColumns"
+          :data="masterlists"
+          :pagination="pagination"
+          size="small"
+        />
       </NTabPane>
       <NTabPane name="dscs" :tab="$t('pkd.dscs')">
-        <NDataTable :columns="dscColumns" :data="dscs" size="small" />
+        <NCard size="small">
+          <p>{{ $t('pkd.dscsHint') }}</p>
+          <NDataTable :columns="dscColumns" :data="dscs" :pagination="pagination" size="small" />
+        </NCard>
       </NTabPane>
       <NTabPane name="revoked" :tab="$t('pkd.revoked')">
         <NCard size="small">
           <p>{{ $t('pkd.revokedHint') }}</p>
-          <NFormItem :label="$t('pkd.documentCode')">
-            <NSelect
-              v-model:value="lookup.documentCode"
-              :options="documentTypeOptions"
-              style="max-width: 200px"
-            />
-          </NFormItem>
-          <NSpace>
-            <NFormItem :label="$t('pkd.issuingState')">
-              <NInput v-model:value="lookup.issuingState" maxlength="3" style="max-width: 120px" />
-            </NFormItem>
-            <NFormItem :label="$t('pkd.documentNumber')">
-              <NInput
-                v-model:value="lookup.documentNumber"
-                maxlength="9"
-                style="max-width: 180px"
+          <NSpace align="end" style="margin-bottom: 12px">
+            <NFormItem :label="$t('pkd.documentCode')" style="margin-bottom: 0">
+              <NSelect
+                v-model:value="lookup.documentCode"
+                :options="documentTypeOptions"
+                style="width: 160px"
               />
             </NFormItem>
-            <NFormItem :label="$t('pkd.dateOfBirth')">
+            <NFormItem :label="$t('pkd.issuingState')" style="margin-bottom: 0">
+              <NInput v-model:value="lookup.issuingState" maxlength="3" style="width: 110px" />
+            </NFormItem>
+            <NFormItem :label="$t('pkd.documentNumber')" style="margin-bottom: 0">
+              <NInput v-model:value="lookup.documentNumber" maxlength="9" style="width: 160px" />
+            </NFormItem>
+            <NFormItem :label="$t('pkd.dateOfBirth')" style="margin-bottom: 0">
               <NInput
                 v-model:value="lookup.dateOfBirth"
                 maxlength="8"
                 placeholder="900101"
-                style="max-width: 140px"
+                style="width: 130px"
               />
             </NFormItem>
-            <NFormItem label=" ">
-              <NButton
-                type="primary"
-                :loading="checking"
-                :disabled="!lookup.documentNumber || !lookup.dateOfBirth"
-                @click="checkRevoked"
-              >
-                {{ $t('pkd.check') }}
-              </NButton>
-            </NFormItem>
+            <NButton
+              type="primary"
+              :loading="checking"
+              :disabled="!lookup.documentNumber || !lookup.dateOfBirth"
+              @click="checkRevoked"
+            >
+              {{ $t('pkd.check') }}
+            </NButton>
           </NSpace>
-          <NAlert
+          <NResult
             v-if="checkResult"
-            :type="checkResult.revoked ? 'error' : 'success'"
+            :status="checkResult.revoked ? 'error' : 'success'"
+            :title="checkResult.revoked ? $t('pkd.revokedYes') : $t('pkd.revokedNo')"
+            :description="checkResult.hash"
+            size="small"
             style="margin-bottom: 12px"
-          >
-            {{ checkResult.revoked ? $t('pkd.revokedYes') : $t('pkd.revokedNo') }}
-          </NAlert>
-          <NDataTable :columns="revokedColumns" :data="revoked" size="small" />
+          />
+          <NDataTable
+            :columns="revokedColumns"
+            :data="revoked"
+            :pagination="pagination"
+            size="small"
+          />
         </NCard>
       </NTabPane>
       <NTabPane name="ldif" :tab="$t('pkd.ldif')">

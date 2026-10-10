@@ -59,6 +59,10 @@ export default {
     cscaCard: 'Apply for a Document Signer certificate for your organisation.',
     dscCard: 'Request the personalization file for a passport or identity card.',
     pkdCard: 'Verify published certificates, revocation lists and revoked documents.',
+    public: 'Public',
+    requiresSignIn: 'Sign-in required',
+    ctaApply: 'Apply',
+    ctaBrowse: 'Browse',
   },
   auth: {
     realmCsca: 'Certificate realm',

@@ -3,10 +3,14 @@
  */
 export default {
   title: 'PKD directory',
+  subtitle: 'Published certificates, revocation lists and revoked documents.',
   certificates: 'Certificates',
+  certificatesHint: 'Download a certificate as DER or PEM and verify it with standard PKI tooling.',
   crls: 'Revocation lists',
   masterlists: 'Master lists',
   dscs: 'Document signers',
+  dscsHint:
+    'Active and revoked Document Signer certificates, with policy, type, validity and application URL.',
   name: 'Name',
   type: 'Type',
   policy: 'Policy',
