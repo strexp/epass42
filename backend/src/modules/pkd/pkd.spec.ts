@@ -2,7 +2,7 @@ import ldapjs from 'ldapjs'
 import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, it } from 'vitest'
 
-import { dscCert } from '../../db/schema'
+import { dscCert, signRequest } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { buildEntries, matchesFilter, startLdapServer, type LdapServerHandle } from './ldap'
 import { baseDn } from './directory'
@@ -73,6 +73,71 @@ describe('M9 PKD REST and LDIF', () => {
     expect(item.notBefore).toBeTruthy()
     expect(item.notAfter).toBeTruthy()
     expect(item.name).toContain('CN=')
+  })
+
+  it('publishes revoked-document hashes and answers lookups', async () => {
+    const { app, db } = await setup()
+    const document = {
+      documentCode: 'P',
+      issuingState: 'UDN',
+      documentNumber: 'R1234567',
+      dateOfBirth: '900101',
+    }
+
+    // A revoked request carries the MRZ lookup fields in its payload.
+    db.insert(signRequest)
+      .values({
+        reference: 'revoked-0001',
+        dscSelection: 'nia',
+        payloadJson: JSON.stringify({
+          mrz: { ...document, nationality: 'UDN', surname: 'Doe', sex: '<' },
+          dg2: { jpeg: '', width: 1, height: 1 },
+        }),
+        status: 'revoked',
+        revokedAt: '2026-01-02T00:00:00.000Z',
+        revokeReason: 'lost',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      })
+      .run()
+
+    const list = await app.inject({ method: 'GET', url: '/pkd/revoked' })
+    expect(list.statusCode).toBe(200)
+    expect(list.json().total).toBe(1)
+    const item = list.json().items[0]
+    expect(item.hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(item.documentCode).toBe('P')
+    expect(item.revokedAt).toBe('2026-01-02T00:00:00.000Z')
+
+    // The very same fields hash to the published value.
+    const check = await app.inject({
+      method: 'POST',
+      url: '/pkd/revoked/check',
+      payload: document,
+    })
+    expect(check.statusCode).toBe(200)
+    expect(check.json().revoked).toBe(true)
+    expect(check.json().hash).toBe(item.hash)
+
+    // Filler padding is normalised away, so a read MRZ field still matches.
+    const padded = await app.inject({
+      method: 'POST',
+      url: '/pkd/revoked/check',
+      payload: { ...document, documentNumber: 'R1234567<' },
+    })
+    expect(padded.json().revoked).toBe(true)
+
+    // An unrelated document is not on the list.
+    const other = await app.inject({
+      method: 'POST',
+      url: '/pkd/revoked/check',
+      payload: { ...document, documentNumber: 'R7654321' },
+    })
+    expect(other.json().revoked).toBe(false)
+
+    // And the hash can be looked up directly.
+    const byHash = await app.inject({ method: 'GET', url: `/pkd/revoked/${item.hash}` })
+    expect(byHash.statusCode).toBe(200)
+    expect(byHash.json().revoked).toBe(true)
   })
 
   it('renders LDIF with the ICAO object classes and binary attributes', async () => {

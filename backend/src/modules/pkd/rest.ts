@@ -5,6 +5,9 @@
  *   GET /pkd/crls                CRLs
  *   GET /pkd/masterlists         Master Lists
  *   GET /pkd/dscs                Document Signer certificates (active + revoked)
+ *   GET /pkd/revoked             Revoked document hashes (SLTD-like)
+ *   GET /pkd/revoked/:hash       one revoked hash
+ *   POST /pkd/revoked/check      look up a document by its MRZ fields
  *   GET /pkd/objects/:id.:format one object (der|pem)
  *   GET /pkd/ldif                full LDIF dump
  */
@@ -24,6 +27,15 @@ import { certMetadata } from '../csca/routeContext'
 import type { CscaService } from '../csca/service'
 import { listObjects } from './directory'
 import { buildLdif } from './ldif'
+import {
+  REVOKE_HASH_ALGORITHM,
+  REVOKE_HASH_CANONICAL,
+  REVOKE_HASH_FIELDS,
+  isRevokedHash,
+  listRevokedDocuments,
+  revokedDocumentHash,
+  type DocumentLookup,
+} from './revoked'
 
 /** Dependencies for the PKD routes. */
 export interface PkdRouteDeps {
@@ -32,6 +44,14 @@ export interface PkdRouteDeps {
   sessions: SessionStore
   csca: CscaService
 }
+
+/** The MRZ lookup fields a relying party supplies to check revocation. */
+const documentLookup = z.object({
+  documentCode: z.string().min(1).max(2).default('P'),
+  issuingState: z.string().length(3),
+  documentNumber: z.string().min(1).max(9),
+  dateOfBirth: z.string().regex(/^\d{6}(\d{2})?$/),
+})
 
 /** Registers the PKD routes. */
 export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): void {
@@ -99,6 +119,44 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
       })
     return { total: items.length, items }
   })
+
+  // Public revoked-document directory (SLTD-like): the SHA-256 of each revoked
+  // passport's canonical MRZ lookup fields, so a relying party hashes the
+  // document it holds and compares without exposing personal data.
+  server.get('/pkd/revoked', async () => {
+    const items = listRevokedDocuments(db)
+    return {
+      total: items.length,
+      algorithm: REVOKE_HASH_ALGORITHM,
+      encoding: 'hex',
+      fields: REVOKE_HASH_FIELDS,
+      canonicalisation: REVOKE_HASH_CANONICAL,
+      items,
+    }
+  })
+
+  server.get(
+    '/pkd/revoked/:hash',
+    { schema: { params: z.object({ hash: z.string().regex(/^[0-9a-f]{64}$/i) }) } },
+    async (request) => {
+      const hash = request.params.hash.toLowerCase()
+      return { hash, revoked: isRevokedHash(db, hash) }
+    },
+  )
+
+  // Look up a document by the MRZ fields a relying party reads from it.
+  server.post(
+    '/pkd/revoked/check',
+    {
+      schema: { body: documentLookup },
+      config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      const document = request.body as DocumentLookup
+      const hash = revokedDocumentHash(document)
+      return { hash, revoked: isRevokedHash(db, hash) }
+    },
+  )
 
   server.get(
     '/pkd/objects/:id.:format',
