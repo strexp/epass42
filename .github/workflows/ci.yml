@@ -71,28 +71,17 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Publish the default-branch images as `latest`, but only once checks and the
-  # build below have passed *and* this commit is still the branch head.
-  docker:
+  # Confirm this commit is still the head of the default branch: a newer push may
+  # have landed while the checks and build ran.
+  head:
     needs: [check, build]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write # push images to ghcr.io
-    env:
-      REGISTRY: ghcr.io
-    strategy:
-      matrix:
-        include:
-          - name: frontend
-            dockerfile: frontend/Dockerfile
-          - name: backend
-            dockerfile: backend/Dockerfile
+    outputs:
+      is_latest: ${{ steps.check.outputs.is_latest }}
     steps:
-      - uses: actions/checkout@v7
-      - name: Check this is the latest commit on the branch
-        id: head
+      - name: Check the branch head
+        id: check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -104,34 +93,16 @@ jobs:
             echo "is_latest=false" >> "$GITHUB_OUTPUT"
             echo "::notice::${GITHUB_SHA} is no longer the head of ${GITHUB_REF_NAME}; skipping image publish."
           fi
-      - uses: docker/setup-buildx-action@v4
-        if: steps.head.outputs.is_latest == 'true'
-      - name: Lowercase the owner for the image name
-        if: steps.head.outputs.is_latest == 'true'
-        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
-      - uses: docker/login-action@v4
-        if: steps.head.outputs.is_latest == 'true'
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        if: steps.head.outputs.is_latest == 'true'
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/epass42-${{ matrix.name }}
-          tags: |
-            type=raw,value=latest
-      - uses: docker/build-push-action@v7
-        if: steps.head.outputs.is_latest == 'true'
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            NUXT_PUBLIC_API_BASE=__EPASS42_API_BASE__
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
-          provenance: false
+
+  # Publish both images (linux/amd64 + linux/arm64) as `latest`, but only once
+  # checks and the build have passed and this is still the branch head.
+  docker:
+    needs: [check, build, head]
+    if: needs.head.outputs.is_latest == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      tags: |
+        type=raw,value=latest

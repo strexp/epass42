@@ -7,8 +7,9 @@ ePass 42 ships as **two Docker images**:
 | `ghcr.io/strexp/epass42-frontend` | Nuxt SPA (static), served by nginx  | `nginx:alpine-slim` |
 | `ghcr.io/strexp/epass42-backend`  | Fastify API + SQLite (run with tsx) | `node:26-slim`      |
 
-Both are designed to run **behind a reverse proxy** that terminates TLS; the
-containers themselves serve plain HTTP.
+Both are **multi-arch** (`linux/amd64` and `linux/arm64`) and designed to run
+**behind a reverse proxy** that terminates TLS; the containers themselves serve
+plain HTTP.
 
 ## Frontend
 
@@ -105,6 +106,9 @@ docker build -f backend/Dockerfile  -t epass42-backend  .
   static frontend bundle and uploads them as workflow artifacts. Once the checks
   and build pass on a default branch _and_ the commit is still the branch head,
   it publishes both images to GHCR as `latest`.
+- `.github/workflows/docker-build.yml` – reusable workflow that builds each
+  architecture on a native runner (`ubuntu-24.04` for `linux/amd64`,
+  `ubuntu-24.04-arm` for `linux/arm64`) and assembles the multi-arch manifest.
 - `.github/workflows/release.yml` – on a `v*` tag, pushes both images to GHCR and
   creates a **draft** GitHub release with the bundles attached.
 

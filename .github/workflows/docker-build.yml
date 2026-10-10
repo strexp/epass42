@@ -1,0 +1,113 @@
+name: Docker Build
+
+# Reusable workflow: build the frontend and backend images for linux/amd64 and
+# linux/arm64 — each architecture on a *native* runner (no QEMU) — and assemble
+# a multi-arch manifest for the given tags.
+#
+# Callers must grant `packages: write` on the calling job (a reusable workflow
+# can only receive permissions the caller already holds).
+
+on:
+  workflow_call:
+    inputs:
+      tags:
+        description: 'docker/metadata-action tag rules for the published images'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+          - name: backend
+            dockerfile: backend/Dockerfile
+        platform:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Compute the image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/epass42-${{ matrix.image.name }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      # Push only by digest; the manifest is created in the merge job below.
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          platforms: linux/${{ matrix.platform.arch }}
+          outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            NUXT_PUBLIC_API_BASE=__EPASS42_API_BASE__
+          cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          provenance: false
+      - name: Export the digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [frontend, backend]
+    steps:
+      - name: Download the digests
+        uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-${{ matrix.image }}-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v4
+      - name: Compute the image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/epass42-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: ${{ inputs.tags }}
+      - name: Create the manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ steps.image.outputs.name }}@sha256:%s ' *)
+      - name: Inspect the image
+        run: docker buildx imagetools inspect ${{ steps.image.outputs.name }}:${{ steps.meta.outputs.version }}
