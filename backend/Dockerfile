@@ -23,7 +23,7 @@
 # Build from the repository root (the build context must be the repo root):
 #   docker build -f backend/Dockerfile -t epass42-backend .
 
-FROM node:22-bookworm-slim AS build
+FROM node:26-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
@@ -43,7 +43,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile --filter @epass42/backend...
 
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:26-slim AS runtime
 ENV NODE_ENV=production
 
 # The pnpm virtual store keeps workspace packages linked by relative symlinks,

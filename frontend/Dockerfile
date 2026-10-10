@@ -3,8 +3,8 @@
 # ePass 42 frontend image.
 #
 # Builds the Nuxt SPA as a fully static bundle (`nuxt generate`) and serves it
-# with nginx:alpine.  The container is designed to run *behind a reverse proxy*
-# and does not terminate TLS itself.
+# with nginx:alpine-slim.  The container is designed to run *behind a reverse
+# proxy* and does not terminate TLS itself.
 #
 # Two things are configurable at runtime, so a single image works for every
 # deployment:
@@ -27,7 +27,7 @@
 #     -e EPASS42_API_BASE=https://api.example.net \
 #     epass42-frontend
 
-FROM node:22-bookworm-slim AS build
+FROM node:26-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN npm install -g pnpm@11.26.0
@@ -46,7 +46,7 @@ ENV NUXT_PUBLIC_API_BASE=$NUXT_PUBLIC_API_BASE
 RUN pnpm --filter @epass42/frontend generate
 
 
-FROM nginx:alpine AS runtime
+FROM nginx:alpine-slim AS runtime
 
 # nginx renders this template to /etc/nginx/conf.d/default.conf at startup,
 # substituting the defined EPASS42_FRONTEND_HOST / EPASS42_FRONTEND_PORT

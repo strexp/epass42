@@ -2,10 +2,10 @@
 
 ePass 42 ships as **two Docker images**:
 
-| Image                             | Contents                            | Base                    |
-| --------------------------------- | ----------------------------------- | ----------------------- |
-| `ghcr.io/strexp/epass42-frontend` | Nuxt SPA (static), served by nginx  | `nginx:alpine`          |
-| `ghcr.io/strexp/epass42-backend`  | Fastify API + SQLite (run with tsx) | `node:22-bookworm-slim` |
+| Image                             | Contents                            | Base                |
+| --------------------------------- | ----------------------------------- | ------------------- |
+| `ghcr.io/strexp/epass42-frontend` | Nuxt SPA (static), served by nginx  | `nginx:alpine-slim` |
+| `ghcr.io/strexp/epass42-backend`  | Fastify API + SQLite (run with tsx) | `node:26-slim`      |
 
 Both are designed to run **behind a reverse proxy** that terminates TLS; the
 containers themselves serve plain HTTP.
