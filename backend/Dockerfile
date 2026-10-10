@@ -44,11 +44,16 @@ RUN pnpm install --frozen-lockfile --filter @epass42/backend...
 
 
 FROM node:26-slim AS runtime
-# Trust the internal dn42 CA for outbound TLS (OIDC discovery, JWKS, …) and make
-# Node load the system trust store in addition to its bundled Mozilla CAs.
-# See https://wiki.dn42/services/ca/Certificate-Authority/
+# Node's slim image does not ship ca-certificates, so install it, add the internal
+# dn42 CA to the system trust store (see
+# https://wiki.dn42/services/ca/Certificate-Authority/) and make Node load that
+# store in addition to its bundled Mozilla CAs for outbound TLS (OIDC discovery,
+# JWKS, …).
 ENV NODE_ENV=production \
     NODE_USE_SYSTEM_CA=1
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 COPY deploy/certs/dn42-root-ca.crt /usr/local/share/ca-certificates/dn42-root-ca.crt
 RUN update-ca-certificates
 
