@@ -18,6 +18,10 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Never emit absolute redirects: behind the reverse proxy nginx only knows the
+    # internal scheme/port, so a relative Location header is the correct one.
+    absolute_redirect off;
+
     # Log to the container's stdout/stderr (set in the base image).
     access_log /dev/stdout;
     error_log  /dev/stderr warn;
@@ -39,9 +43,12 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # Everything else is the client-rendered SPA: fall back to index.html so
-    # deep links (/csca/…, /dsc/…) resolve.
+    # Everything else is the client-rendered SPA.  Prerendered route shells are
+    # served directly via `$uri/index.html` so that a deep link such as /pkd is
+    # *not* turned into a trailing-slash redirect (which nginx would build from
+    # its own internal scheme/port behind a reverse proxy).  Anything else falls
+    # back to the SPA shell.
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/index.html /index.html;
     }
 }

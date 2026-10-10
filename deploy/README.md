@@ -95,6 +95,11 @@ docker compose -f deploy/docker-compose.yml up -d
 - A same-origin setup is possible with a path prefix (e.g. proxy `/api` → backend
   and strip the prefix) and `EPASS42_API_BASE=` — remember to also set the
   backend's `publicUrl` to the prefixed public URL so OAuth redirects resolve.
+- Forward the client `Host` and the public scheme (`X-Forwarded-Proto`) to the
+  containers. The frontend vhost sets `absolute_redirect off` and serves
+  prerendered routes without a trailing-slash redirect, so it never advertises
+  its internal scheme/port; the backend should run with `trustProxy = true` so
+  it honours `X-Forwarded-*`.
 
 ## Building locally
 
