@@ -51,14 +51,18 @@ const cards = [
         <NGi v-for="card in cards" :key="card.key" span="3 s:3 m:1">
           <NuxtLink :to="card.to" class="epass42-card-link">
             <NCard hoverable class="epass42-card">
-              <NSpace vertical size="small" align="start">
-                <NIcon size="28"><component :is="card.icon" /></NIcon>
-                <NText strong style="font-size: 16px">{{ $t(card.title) }}</NText>
+              <template #header>
+                <NSpace align="center" :size="8">
+                  <NIcon size="22"><component :is="card.icon" /></NIcon>
+                  {{ $t(card.title) }}
+                </NSpace>
+              </template>
+              <template #header-extra>
                 <NTag size="small" :type="card.public ? 'success' : 'info'">
                   {{ card.public ? $t('home.public') : $t('home.requiresSignIn') }}
                 </NTag>
-                <NText depth="2">{{ $t(card.body) }}</NText>
-              </NSpace>
+              </template>
+              <NText depth="2">{{ $t(card.body) }}</NText>
               <template #action>
                 <NButton text type="primary">{{ $t(card.cta) }}</NButton>
               </template>

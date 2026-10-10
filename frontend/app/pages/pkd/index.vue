@@ -225,14 +225,16 @@ onMounted(async () => {
                 style="width: 130px"
               />
             </NFormItem>
-            <NButton
-              type="primary"
-              :loading="checking"
-              :disabled="!lookup.documentNumber || !lookup.dateOfBirth"
-              @click="checkRevoked"
-            >
-              {{ $t('pkd.check') }}
-            </NButton>
+            <NFormItem label=" " style="margin-bottom: 0">
+              <NButton
+                type="primary"
+                :loading="checking"
+                :disabled="!lookup.documentNumber || !lookup.dateOfBirth"
+                @click="checkRevoked"
+              >
+                {{ $t('pkd.check') }}
+              </NButton>
+            </NFormItem>
           </NSpace>
           <NResult
             v-if="checkResult"
