@@ -7,7 +7,7 @@ export default {
     name: 'ePass 42',
     tagline: 'Document signing service',
     authority: 'National Internet Agency',
-    authorityShort: 'NIA@gov.dn42',
+    authorityShort: "NIA{'@'}gov.dn42",
   },
   nav: {
     home: 'Home',
@@ -75,7 +75,7 @@ export default {
   },
   footer: {
     authority: 'National Internet Agency',
-    identifier: 'NIA@gov.dn42',
+    identifier: "NIA{'@'}gov.dn42",
     official: 'Official service',
     copyright: '© {year} National Internet Agency',
     version: 'Version {version}',
