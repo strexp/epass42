@@ -104,10 +104,7 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <div>
-        <h1 style="margin: 0">{{ $t('nav.dsc') }}</h1>
-        <NText depth="2">{{ $t('home.dscCard') }}</NText>
-      </div>
+      <PageHeader :title="$t('nav.dsc')" :subtitle="$t('home.dscCard')" />
 
       <NSpace v-if="signedIn">
         <NuxtLink to="/dsc/apply">

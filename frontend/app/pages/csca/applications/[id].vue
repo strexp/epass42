@@ -104,10 +104,11 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <div>
-        <h1 style="margin: 0">{{ $t('csca.applicationTitle') }}</h1>
-        <NText depth="2">#{{ id }}</NText>
-      </div>
+      <PageHeader
+        :title="$t('csca.applicationTitle')"
+        :subtitle="`#${id}`"
+        :breadcrumbs="[{ label: $t('nav.csca'), to: '/csca' }, { label: `#${id}` }]"
+      />
 
       <NCard v-if="application" size="small" :title="$t('csca.applicationTitle')">
         <template #header-extra>

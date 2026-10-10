@@ -168,7 +168,7 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <h1>{{ $t('pkd.title') }}</h1>
+    <PageHeader :title="$t('pkd.title')" />
     <NTabs>
       <NTabPane name="certs" :tab="$t('pkd.certificates')">
         <NDataTable :columns="certColumns" :data="certificates" size="small" />

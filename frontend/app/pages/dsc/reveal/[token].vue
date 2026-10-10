@@ -32,7 +32,8 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <NCard :title="$t('dsc.statusTitle')">
+    <PageHeader :title="$t('dsc.statusTitle')" />
+    <NCard>
       <NAlert
         v-if="!consumed && metadata?.deliveryMode === 'applicant'"
         type="warning"

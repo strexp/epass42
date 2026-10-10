@@ -9,10 +9,11 @@ import type { Realm } from '@epass42/shared'
 const props = defineProps<{ realm: Realm }>()
 const auth = useAuthStore()
 const route = useRoute()
+const { t } = useI18n()
 const { config, load } = usePkdConfig()
 
 const me = computed(() => auth.realms[props.realm].me)
-const label = computed(() => (props.realm === 'csca' ? 'CSCA' : 'DSC'))
+const label = computed(() => (props.realm === 'csca' ? t('nav.csca') : t('nav.dsc')))
 const providers = computed(() => config.value?.oauthProviders[props.realm] ?? [])
 /** Login-method options when more than one provider is configured. */
 const options = computed(() =>

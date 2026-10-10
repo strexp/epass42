@@ -12,11 +12,9 @@ const cards = [
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <div>
-        <h1 style="margin: 0">{{ $t('app.name') }}</h1>
-        <NText depth="2">{{ $t('home.intro') }}</NText>
-        <NText depth="3" style="display: block; margin-top: 4px">{{ $t('home.publicHint') }}</NText>
-      </div>
+      <PageHeader :title="$t('app.name')" :subtitle="$t('home.intro')">
+        <NText depth="3">{{ $t('home.publicHint') }}</NText>
+      </PageHeader>
       <NGrid
         :cols="3"
         :x-gap="16"

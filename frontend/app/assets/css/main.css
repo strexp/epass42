@@ -20,6 +20,16 @@ body {
     sans-serif;
 }
 
+.epass42-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.epass42-main {
+  flex: 1;
+}
+
 .epass42-page {
   max-width: var(--epass42-max-width);
   margin: 0 auto;

@@ -4,6 +4,7 @@ import {
   NDialogProvider,
   NGlobalStyle,
   NMessageProvider,
+  NNotificationProvider,
   darkTheme,
   dateEnUS,
   enUS,
@@ -18,11 +19,13 @@ const theme = computed(() => (colorMode.value === 'dark' ? darkTheme : lightThem
   <NConfigProvider :theme="theme" :locale="enUS" :date-locale="dateEnUS">
     <NGlobalStyle />
     <NMessageProvider>
-      <NDialogProvider>
-        <NuxtLayout>
-          <NuxtPage />
-        </NuxtLayout>
-      </NDialogProvider>
+      <NNotificationProvider placement="bottom-right" :max="3">
+        <NDialogProvider>
+          <NuxtLayout>
+            <NuxtPage />
+          </NuxtLayout>
+        </NDialogProvider>
+      </NNotificationProvider>
     </NMessageProvider>
   </NConfigProvider>
 </template>

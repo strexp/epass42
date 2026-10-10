@@ -126,7 +126,11 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <NCard :title="$t('csca.certificatesTitle')">
+    <PageHeader
+      :title="$t('csca.certificatesTitle')"
+      :breadcrumbs="[{ label: $t('nav.csca'), to: '/csca' }, { label: $t('nav.certificates') }]"
+    />
+    <NCard>
       <template #header-extra>
         <NButton size="small" @click="downloadUrl(`${apiBase}/csca/crl.pem`, 'crl.pem')">
           {{ $t('csca.crl') }} (PEM)

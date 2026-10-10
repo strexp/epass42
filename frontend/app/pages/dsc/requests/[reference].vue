@@ -49,6 +49,7 @@ const route = useRoute()
 const api = useApi()
 const { t, te } = useI18n()
 const message = useMessage()
+const notify = useNotify()
 const { auth, state, ensureLoaded } = useRealm('dsc')
 
 const reference = computed(() => String(route.params.reference ?? ''))
@@ -210,7 +211,7 @@ async function reveal(): Promise<void> {
   try {
     const perso = await api<string>(`${url}/${reference.value}/reveal`, { method: 'POST' })
     downloadText(`perso-${reference.value}.txt`, perso)
-    message.success(t('common.success'))
+    notify.success(t('common.success'), `perso-${reference.value}.txt`)
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -229,11 +230,15 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace v-if="signedIn" vertical size="large">
-      <div>
-        <h1 style="margin: 0">{{ $t('dsc.detailTitle') }}</h1>
-        <NText depth="2">{{ $t('dsc.requestReference') }}: </NText>
-        <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
-      </div>
+      <PageHeader
+        :title="$t('dsc.detailTitle')"
+        :breadcrumbs="[{ label: $t('nav.dsc'), to: '/dsc' }, { label: $t('dsc.detailTitle') }]"
+      >
+        <template #subtitle>
+          <NText depth="2">{{ $t('dsc.requestReference') }}: </NText>
+          <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
+        </template>
+      </PageHeader>
 
       <NCard v-if="meta" size="small" :title="$t('dsc.statusTitle')">
         <template #header-extra>
@@ -264,7 +269,7 @@ onMounted(async () => {
         <NAlert
           v-if="meta.status === 'revoked'"
           type="warning"
-          :title="$t('dsc.statuses.revoked')"
+          :title="$t('status.revoked.label')"
           style="margin-top: 12px"
         >
           {{ meta.revokeReason ?? '' }}

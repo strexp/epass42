@@ -98,10 +98,7 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <div>
-        <h1 style="margin: 0">{{ $t('dsc.settingsTitle') }}</h1>
-        <NText depth="2">{{ $t('dsc.settingsHint') }}</NText>
-      </div>
+      <PageHeader :title="$t('dsc.settingsTitle')" :subtitle="$t('dsc.settingsHint')" />
 
       <NCard v-if="!signedIn" :title="$t('dsc.settingsTitle')" size="small">
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'DSC' }) }}</NText>

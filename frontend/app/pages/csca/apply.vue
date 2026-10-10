@@ -24,6 +24,7 @@ const api = useApi()
 const { auth, state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
 const message = useMessage()
+const notify = useNotify()
 
 const signedIn = computed(() => state.value.me !== null)
 
@@ -78,7 +79,7 @@ async function submit(): Promise<void> {
         notes: form.notes || undefined,
       },
     })
-    message.success(t('common.success'))
+    notify.success(t('common.success'))
     await navigateTo('/csca')
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -94,7 +95,11 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <NCard v-if="signedIn" :title="$t('csca.applyTitle')">
+    <PageHeader
+      :title="$t('csca.applyTitle')"
+      :breadcrumbs="[{ label: $t('nav.csca'), to: '/csca' }, { label: $t('nav.apply') }]"
+    />
+    <NCard v-if="signedIn">
       <NText depth="3">{{ $t('auth.signedInTo', { realm: 'CSCA' }) }}</NText>
       <NForm label-placement="top" style="margin-top: 12px">
         <NFormItem :label="$t('csca.keyMode')">
@@ -140,7 +145,7 @@ onMounted(async () => {
       </template>
     </NCard>
 
-    <NCard v-else :title="$t('csca.applyTitle')">
+    <NCard v-else>
       <NResult status="info" :title="$t('auth.signInTo', { realm: 'CSCA' })">
         <template #footer>
           <NButton type="primary" @click="login">

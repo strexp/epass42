@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
+import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, useMessage } from 'naive-ui'
 import { Download, RefreshCw } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
@@ -127,10 +127,7 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <div>
-        <h1 style="margin: 0">{{ $t('dsc.adminTitle') }}</h1>
-        <NText depth="3">{{ $t('dsc.reviewHint') }}</NText>
-      </div>
+      <PageHeader :title="$t('dsc.adminTitle')" :subtitle="$t('dsc.reviewHint')" />
 
       <NCard :title="$t('dsc.reviewQueue')" size="small">
         <template #action>

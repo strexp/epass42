@@ -114,10 +114,7 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <div>
-        <h1 style="margin: 0">{{ $t('nav.csca') }}</h1>
-        <NText depth="2">{{ $t('home.cscaCard') }}</NText>
-      </div>
+      <PageHeader :title="$t('nav.csca')" :subtitle="$t('home.cscaCard')" />
 
       <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
         <NText depth="3">{{ $t('csca.publicHint') }}</NText>

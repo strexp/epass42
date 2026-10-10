@@ -71,7 +71,7 @@ onMounted(load)
 </script>
 
 <template>
-  <NCard :title="$t('audit.title')" size="small">
+  <NCard size="small">
     <template #action>
       <NButton size="small" :loading="loading" @click="load">
         <template #icon

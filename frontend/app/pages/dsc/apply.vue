@@ -34,6 +34,7 @@ definePageMeta({ layout: 'realm' })
 const api = useApi()
 const { t } = useI18n()
 const message = useMessage()
+const notify = useNotify()
 const { auth, state, ensureLoaded } = useRealm('dsc')
 
 const signedIn = computed(() => state.value.me !== null)
@@ -212,7 +213,7 @@ async function submit(): Promise<void> {
 
     const result = await api<{ reference: string }>('/dsc/requests', { method: 'POST', body })
     reference.value = result.reference
-    message.success(t('common.success'))
+    notify.success(t('common.success'), result.reference)
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   } finally {
@@ -234,7 +235,11 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <NCard :title="$t('dsc.applyTitle')">
+    <PageHeader
+      :title="$t('dsc.applyTitle')"
+      :breadcrumbs="[{ label: $t('nav.dsc'), to: '/dsc' }, { label: $t('nav.apply') }]"
+    />
+    <NCard>
       <NCard v-if="reference" size="small" :title="$t('dsc.statusTitle')">
         <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
         <template #action>

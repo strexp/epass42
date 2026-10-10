@@ -1,8 +1,9 @@
 <template>
-  <div>
+  <div class="epass42-shell">
     <AppHeader />
-    <main>
+    <main class="epass42-main">
       <slot />
     </main>
+    <AppFooter />
   </div>
 </template>
