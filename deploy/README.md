@@ -63,6 +63,11 @@ trustProxy = true            # if the reverse proxy forwards X-Forwarded-For
 The service starts with `node --import tsx src/index.ts` (the workspace packages
 are consumed as TypeScript source). Exposes `3000` by default.
 
+The image trusts the internal **dn42 CA** (`deploy/certs/dn42-root-ca.crt`,
+installed into `/usr/local/share/ca-certificates/`) and sets `NODE_USE_SYSTEM_CA=1`,
+so Node validates `*.dn42` endpoints (OIDC issuer discovery, JWKS, …) in addition
+to its bundled Mozilla CAs. See the [dn42 CA page](https://wiki.dn42/services/ca/Certificate-Authority/).
+
 ```sh
 docker run --rm -p 127.0.0.1:3000:3000 \
   -v "$PWD/backend/config.toml:/app/backend/config.toml:ro" \

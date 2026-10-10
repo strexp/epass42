@@ -44,7 +44,13 @@ RUN pnpm install --frozen-lockfile --filter @epass42/backend...
 
 
 FROM node:26-slim AS runtime
-ENV NODE_ENV=production
+# Trust the internal dn42 CA for outbound TLS (OIDC discovery, JWKS, …) and make
+# Node load the system trust store in addition to its bundled Mozilla CAs.
+# See https://wiki.dn42/services/ca/Certificate-Authority/
+ENV NODE_ENV=production \
+    NODE_USE_SYSTEM_CA=1
+COPY deploy/certs/dn42-root-ca.crt /usr/local/share/ca-certificates/dn42-root-ca.crt
+RUN update-ca-certificates
 
 # The pnpm virtual store keeps workspace packages linked by relative symlinks,
 # so the directory layout must be preserved exactly as installed.
