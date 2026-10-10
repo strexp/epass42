@@ -109,7 +109,11 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CscaRouteD
       preHandler: requireAdmin(deps, 'csca'),
     },
     async (request, reply) => {
-      const cert = service.revoke(request.params.id, request.body.reason ?? null)
+      const row = db.select().from(dscCert).where(eq(dscCert.id, request.params.id)).get()
+      if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
+      // System-managed signers (NIA, Master List) are never revoked from here.
+      if (row.source !== 'owned') return reply.code(403).send({ error: 'forbidden' })
+      const cert = service.revoke(row.id, request.body.reason ?? null)
       if (!cert) return reply.code(404).send({ error: 'certificate_not_found' })
       writeAudit(db, {
         actorAccountId: request.principal!.account.id,

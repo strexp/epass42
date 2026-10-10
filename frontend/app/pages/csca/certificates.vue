@@ -111,7 +111,7 @@ const columns = computed(() => [
               t('csca.privateKey'),
             )
           : null,
-        isCscaAdmin.value && row.status === 'active'
+        isCscaAdmin.value && row.status === 'active' && row.source === 'owned'
           ? h(NButton, { size: 'tiny', onClick: () => revoke(row.id) }, () => t('common.revoke'))
           : null,
       ]),

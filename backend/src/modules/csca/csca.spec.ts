@@ -448,4 +448,33 @@ describe('M5 CSCA role', () => {
     const row = db.select().from(dscCert).where(eq(dscCert.id, nia!.id)).get()!
     expect(row.keyRef).not.toBeNull()
   })
+
+  it('refuses to revoke the system NIA DSC', async () => {
+    const { app, cscaCookie } = await harness()
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/csca/certificates?includeRevoked=true',
+      headers: { cookie: cscaCookie },
+    })
+    const nia = (listed.json().items as { id: number; source: string; status: string }[]).find(
+      (row) => row.source === 'nia',
+    )!
+    expect(nia).toBeTruthy()
+
+    const revoke = await app.inject({
+      method: 'POST',
+      url: `/csca/certificates/${nia.id}/revoke`,
+      headers: { cookie: cscaCookie },
+      payload: { reason: 'nope' },
+    })
+    expect(revoke.statusCode).toBe(403)
+
+    // It stays active.
+    const active = await app.inject({
+      method: 'GET',
+      url: '/csca/certificates',
+      headers: { cookie: cscaCookie },
+    })
+    expect((active.json().items as { id: number }[]).some((row) => row.id === nia.id)).toBe(true)
+  })
 })

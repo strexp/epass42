@@ -390,15 +390,17 @@ onMounted(async () => {
               </NFormItem>
               <NFormItem>
                 <template #label>
-                  <span>{{ $t('dsc.dateOfBirth') }}</span>
-                  <NTooltip>
-                    <template #trigger>
-                      <NIcon :size="14" style="margin-left: 4px; opacity: 0.6; cursor: help">
-                        <Info />
-                      </NIcon>
-                    </template>
-                    {{ $t('dsc.dateOfBirthHint') }}
-                  </NTooltip>
+                  <NSpace align="center" :size="4">
+                    <span>{{ $t('dsc.dateOfBirth') }}</span>
+                    <NTooltip>
+                      <template #trigger>
+                        <NIcon :size="14" style="opacity: 0.6; cursor: help">
+                          <Info />
+                        </NIcon>
+                      </template>
+                      {{ $t('dsc.dateOfBirthHint') }}
+                    </NTooltip>
+                  </NSpace>
                 </template>
                 <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
               </NFormItem>
