@@ -37,7 +37,7 @@ const cards = [
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <PageHeader :title="$t('app.name')" :subtitle="$t('home.intro')" />
+      <PageHeader :title="$t('home.intro')" />
       <NGrid
         :cols="3"
         :x-gap="16"
