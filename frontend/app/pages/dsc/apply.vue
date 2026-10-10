@@ -345,18 +345,6 @@ onMounted(async () => {
           </div>
         </NAlert>
 
-        <NAlert type="info" style="margin-bottom: 16px">{{ $t('dsc.applyIntro') }}</NAlert>
-
-        <!-- When the applicant uses the NIA certificate: who will review it. -->
-        <NAlert
-          v-if="jurisdiction && !jurisdiction.notice && jurisdiction.reviewers.length"
-          type="info"
-          :title="$t('dsc.reviewersTitle')"
-          style="margin-bottom: 16px"
-        >
-          {{ $t('dsc.reviewersBody', { mnts: jurisdiction.reviewers.join(', ') }) }}
-        </NAlert>
-
         <NSteps :current="step + 1" size="small" style="margin-bottom: 16px">
           <NStep :title="$t('dsc.stepDetails')" />
           <NStep :title="$t('dsc.stepPhoto')" />
@@ -366,6 +354,7 @@ onMounted(async () => {
 
         <!-- Step 1: document details. -->
         <template v-if="step === 0">
+          <NAlert type="info" style="margin-bottom: 12px">{{ $t('dsc.applyIntro') }}</NAlert>
           <NAlert
             v-if="jurisdiction?.notice && !noticeDismissed"
             type="warning"
@@ -391,16 +380,16 @@ onMounted(async () => {
               <NFormItem :label="$t('dsc.documentation')">
                 <NSelect v-model:value="mrz.documentCode" :options="documentTypeOptions" />
               </NFormItem>
-              <NFormItem :label="$t('dsc.documentNumber')">
+              <NFormItem :label="$t('dsc.documentNumber')" required>
                 <NInput v-model:value="mrz.documentNumber" maxlength="9" />
               </NFormItem>
-              <NFormItem :label="$t('dsc.surname')">
+              <NFormItem :label="$t('dsc.surname')" required>
                 <NInput v-model:value="mrz.surname" maxlength="39" />
               </NFormItem>
               <NFormItem :label="$t('dsc.givenNames')">
                 <NInput v-model:value="mrz.givenNames" maxlength="39" />
               </NFormItem>
-              <NFormItem>
+              <NFormItem required>
                 <template #label>
                   <NSpace align="center" :size="4">
                     <span>{{ $t('dsc.dateOfBirth') }}</span>
@@ -426,9 +415,9 @@ onMounted(async () => {
         <!-- Step 2: photo. -->
         <template v-else-if="step === 1">
           <NText depth="3">{{ $t('dsc.photoHint') }}</NText>
-          <div style="margin-top: 12px">
+          <NFormItem :label="$t('dsc.photoSection')" required style="margin-top: 12px">
             <PortraitEditor v-model="portrait" />
-          </div>
+          </NFormItem>
           <EmrtdPreview
             :mrz="previewMrz"
             :portrait-data-url="portrait?.previewDataUrl ?? null"
@@ -519,6 +508,14 @@ onMounted(async () => {
 
         <!-- Step 4: review and submit. -->
         <template v-else>
+          <NAlert
+            v-if="jurisdiction && !jurisdiction.notice && jurisdiction.reviewers.length"
+            type="info"
+            :title="$t('dsc.reviewersTitle')"
+            style="margin-bottom: 12px"
+          >
+            {{ $t('dsc.reviewersBody', { mnts: jurisdiction.reviewers.join(', ') }) }}
+          </NAlert>
           <NText depth="3">{{ $t('dsc.reviewSummary') }}</NText>
           <NDescriptions :column="2" size="small" style="margin-top: 12px">
             <NDescriptionsItem :label="$t('dsc.documentation')">

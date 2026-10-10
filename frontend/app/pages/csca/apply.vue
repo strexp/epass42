@@ -159,7 +159,7 @@ onMounted(async () => {
           <NFormItem :label="$t('csca.keyMode')">
             <NSelect v-model:value="form.keyMode" :options="keyModeOptions" />
           </NFormItem>
-          <NFormItem :label="$t('csca.subjectCn')">
+          <NFormItem :label="$t('csca.subjectCn')" required>
             <NInput v-model:value="form.subjectCn" maxlength="64" />
           </NFormItem>
           <NFormItem :label="$t('csca.subjectO')">
@@ -174,6 +174,13 @@ onMounted(async () => {
           <NFormItem v-if="form.keyMode === 'user_uploaded'" :label="$t('csca.publicKey')">
             <NInput v-model:value="form.publicKeyPem" type="textarea" :rows="4" />
           </NFormItem>
+          <NText
+            v-if="form.keyMode === 'user_uploaded'"
+            depth="3"
+            style="display: block; font-size: 12px; margin-bottom: 12px"
+          >
+            {{ $t('csca.uploadHint') }}
+          </NText>
           <NFormItem :label="$t('csca.documentType')">
             <NSelect v-model:value="form.documentType" :options="documentTypeOptions" />
           </NFormItem>

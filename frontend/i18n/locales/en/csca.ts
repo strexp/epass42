@@ -14,6 +14,7 @@ export default {
   keyModeUpload: 'Upload CSR / public key',
   csr: 'CSR (PEM)',
   publicKey: 'Public key (SPKI PEM)',
+  uploadHint: 'Provide a CSR or a public key — one is enough.',
   documentType: 'Document type',
   validityDays: 'Validity (days)',
   issuancePolicy: 'Issuance policy',

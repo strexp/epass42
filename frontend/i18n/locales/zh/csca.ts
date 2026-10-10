@@ -14,6 +14,7 @@ export default {
   keyModeUpload: '上传 CSR / 公钥',
   csr: 'CSR（PEM）',
   publicKey: '公钥（SPKI PEM）',
+  uploadHint: '请提供 CSR 或公钥，二者之一即可。',
   documentType: '证件类型',
   validityDays: '有效期（天）',
   issuancePolicy: '签发策略',
