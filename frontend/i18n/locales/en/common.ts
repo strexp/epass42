@@ -51,6 +51,7 @@ export default {
     search: 'Search',
     reset: 'Reset',
     optional: 'optional',
+    language: 'Language',
   },
   home: {
     intro: 'Official document-signing service of the National Immigration Agency.',

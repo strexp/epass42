@@ -37,7 +37,13 @@ export default defineNuxtConfig({
   i18n: {
     strategy: 'no_prefix',
     defaultLocale: 'en',
-    locales: [{ code: 'en', language: 'en', name: 'English' }],
+    locales: [
+      { code: 'en', language: 'en', name: 'English' },
+      { code: 'zh', language: 'zh-CN', name: '中文' },
+    ],
+    // Detection and persistence are handled in plugins/i18n-locale.client.ts
+    // (localStorage), so the module's cookie-based detection stays off.
+    detectBrowserLanguage: false,
     vueI18n: './i18n.config.ts',
   },
 

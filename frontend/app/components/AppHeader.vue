@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { NIcon, NMenu, NSpace } from 'naive-ui'
-import { BookUser, FileBadge, FolderTree, ShieldCheck } from '@lucide/vue'
+import { NButton, NDropdown, NIcon, NMenu, NSpace } from 'naive-ui'
+import { BookUser, FileBadge, FolderTree, Languages, ShieldCheck } from '@lucide/vue'
 import { computed, h } from 'vue'
 
-const { t } = useI18n()
+const { t, locales, setLocale } = useI18n()
 const route = useRoute()
 
 const options = computed(() => [
@@ -23,6 +23,18 @@ const options = computed(() => [
     icon: () => h(NIcon, null, { default: () => h(FolderTree) }),
   },
 ])
+
+/** The configured locales, for the language switcher. */
+const localeOptions = computed(() =>
+  (locales.value as { code: string; name?: string }[]).map((item) => ({
+    label: item.name ?? item.code,
+    key: item.code,
+  })),
+)
+
+function onLocaleSelect(key: string): void {
+  void setLocale(key as 'en' | 'zh')
+}
 
 const active = computed(() => {
   const segment = route.path.split('/')[1]
@@ -51,6 +63,13 @@ function onSelect(key: string): void {
       @update:value="onSelect"
     />
     <NSpace class="epass42-header-actions" align="center">
+      <NDropdown :options="localeOptions" @select="(key) => onLocaleSelect(String(key))">
+        <NButton quaternary circle :aria-label="$t('common.language')">
+          <template #icon
+            ><NIcon><Languages /></NIcon
+          ></template>
+        </NButton>
+      </NDropdown>
       <ThemeToggle />
     </NSpace>
   </div>

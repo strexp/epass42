@@ -1,0 +1,35 @@
+/**
+ * 公开 PKD 目录中文文案。
+ */
+export default {
+  title: 'PKD 目录',
+  subtitle: '已发布的证书、吊销列表与吊销证件。',
+  certificates: '证书',
+  certificatesHint: '以 DER 或 PEM 下载证书，并使用标准 PKI 工具进行验证。',
+  crls: '吊销列表',
+  masterlists: '主列表',
+  dscs: '文档签名证书',
+  dscsHint: '有效与已吊销的文档签名证书，含策略、类型、有效期与申请地址。',
+  name: '名称',
+  type: '类型',
+  policy: '策略',
+  validity: '有效期',
+  url: '网址',
+  status: '状态',
+  revoked: '吊销证件',
+  revokedHint:
+    '已吊销护照以其规范 MRZ 字段（证件类型、签发国、证件号码、出生日期）的 SHA-256 哈希发布。您可自行对持有证件计算哈希，或在下方查询 — 不会发布任何个人数据。',
+  hash: '哈希',
+  documentCode: '证件类型',
+  issuingState: '签发国',
+  documentNumber: '证件号码',
+  dateOfBirth: '出生日期',
+  revokedAt: '吊销时间',
+  check: '查询',
+  revokedYes: '已吊销：该证件在吊销名单中。',
+  revokedNo: '未吊销：未找到匹配的哈希。',
+  ldif: 'LDIF 导出',
+  ldifHint: '使用 slapadd 导入到 OpenLDAP。',
+  objectId: '对象',
+  crlNumber: 'CRL 编号',
+} as const
