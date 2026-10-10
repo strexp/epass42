@@ -102,9 +102,9 @@ docker build -f backend/Dockerfile  -t epass42-backend  .
 ## CI / release
 
 - `.github/workflows/ci.yml` – checks, then builds the backend `dist` and the
-  static frontend bundle and uploads them as workflow artifacts.
-- `.github/workflows/ci-release.yml` – on every push to the default branch,
-  builds both images from that commit and publishes them to GHCR as `latest`.
+  static frontend bundle and uploads them as workflow artifacts. Once the checks
+  and build pass on a default branch _and_ the commit is still the branch head,
+  it publishes both images to GHCR as `latest`.
 - `.github/workflows/release.yml` – on a `v*` tag, pushes both images to GHCR and
   creates a **draft** GitHub release with the bundles attached.
 
