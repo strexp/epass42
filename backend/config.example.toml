@@ -47,7 +47,7 @@ commonName = "ePass 42 CSCA"
 # both, matching common ICAO PKD practice).  Set the NIA/issuing authority.
 organization = "ePass 42"
 # Optional organisational unit (OU) in the subject names; leave unset to omit.
-# organizationalUnit = "ePass 42 PKI"
+organizationalUnit = "ePass 42 PKI"
 validityYears = 13
 privateKeyUsageYears = 4
 keyBits = 4096
