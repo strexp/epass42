@@ -5,6 +5,8 @@ import {
   NAlert,
   NButton,
   NCard,
+  NCollapse,
+  NCollapseItem,
   NDescriptions,
   NDescriptionsItem,
   NFormItem,
@@ -378,15 +380,17 @@ onMounted(async () => {
         </NDescriptions>
       </NCard>
 
-      <!-- Included information: what each data group carries. -->
-      <NCard v-if="meta" size="small" :title="$t('dsc.includedData')">
-        <div class="epass42-dg-list">
-          <div v-for="dg in dataGroups" :key="dg" class="epass42-dg-item">
-            <NTag size="small" type="info">DG{{ dg }}</NTag>
-            <NText depth="2">{{ dataGroupLabel(dg) }}</NText>
+      <!-- Included information: what each data group carries (collapsed). -->
+      <NCollapse v-if="meta">
+        <NCollapseItem :title="$t('dsc.includedData')" name="dgs">
+          <div class="epass42-dg-list">
+            <div v-for="dg in dataGroups" :key="dg" class="epass42-dg-item">
+              <NTag size="small" type="info">DG{{ dg }}</NTag>
+              <NText depth="2">{{ dataGroupLabel(dg) }}</NText>
+            </div>
           </div>
-        </div>
-      </NCard>
+        </NCollapseItem>
+      </NCollapse>
 
       <NuxtLink to="/dsc">
         <NButton quaternary size="small">{{ $t('common.back') }}</NButton>
