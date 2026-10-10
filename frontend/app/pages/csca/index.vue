@@ -114,6 +114,11 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
+      <div>
+        <h1 style="margin: 0">{{ $t('nav.csca') }}</h1>
+        <NText depth="2">{{ $t('home.cscaCard') }}</NText>
+      </div>
+
       <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
         <NText depth="3">{{ $t('csca.publicHint') }}</NText>
         <template #action>
@@ -128,7 +133,7 @@ onMounted(async () => {
         </template>
       </NCard>
 
-      <NCard v-else :title="$t('csca.applyTitle')" size="small">
+      <NCard v-else size="small">
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'CSCA' }) }}</NText>
       </NCard>
 

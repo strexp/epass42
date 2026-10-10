@@ -1,6 +1,16 @@
 <script setup lang="ts">
-import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText } from 'naive-ui'
-import { FilePlus2, ListChecks, Search, Settings } from '@lucide/vue'
+import {
+  NButton,
+  NCard,
+  NDataTable,
+  NDescriptions,
+  NDescriptionsItem,
+  NEmpty,
+  NIcon,
+  NSpace,
+  NText,
+} from 'naive-ui'
+import { FilePlus2, ListChecks, ScrollText, Settings } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useRealm } from '~/composables/useRealm'
 import StatusTag from '~/components/common/StatusTag.vue'
@@ -24,6 +34,26 @@ const requests = ref<RequestRow[]>([])
 
 const signedIn = computed(() => state.value.me !== null)
 const isReviewer = computed(() => (state.value.me?.reviewScope ?? 'none') !== 'none')
+
+interface ActivePassport {
+  reference: string
+  status: string
+  documentNumber: string
+  createdAt: string
+  expiresAt: string | null
+}
+const activePassport = ref<ActivePassport | null>(null)
+
+async function loadActivePassport(): Promise<void> {
+  if (!signedIn.value) return
+  try {
+    activePassport.value = (
+      await api<{ passport: ActivePassport | null }>('/dsc/passports/active')
+    ).passport
+  } catch {
+    activePassport.value = null
+  }
+}
 
 function openDetails(row: RequestRow): void {
   void navigateTo(`/dsc/requests/${row.reference}`)
@@ -62,8 +92,9 @@ const columns = computed(() => {
 onMounted(async () => {
   await ensureLoaded()
   if (!signedIn.value) return
+  await loadActivePassport()
   try {
-    requests.value = (await api<{ items: RequestRow[] }>('/dsc/requests')).items ?? []
+    requests.value = (await api<{ items: RequestRow[] }>('/dsc/requests?mine=1')).items ?? []
   } catch {
     requests.value = []
   }
@@ -78,21 +109,13 @@ onMounted(async () => {
         <NText depth="2">{{ $t('home.dscCard') }}</NText>
       </div>
 
-      <NSpace>
+      <NSpace v-if="signedIn">
         <NuxtLink to="/dsc/apply">
           <NButton type="primary">
             <template #icon
               ><NIcon><FilePlus2 /></NIcon
             ></template>
             {{ $t('dsc.applyTitle') }}
-          </NButton>
-        </NuxtLink>
-        <NuxtLink to="/dsc/status">
-          <NButton>
-            <template #icon
-              ><NIcon><Search /></NIcon
-            ></template>
-            {{ $t('dsc.statusTitle') }}
           </NButton>
         </NuxtLink>
         <NuxtLink v-if="isReviewer" to="/dsc/admin">
@@ -111,14 +134,39 @@ onMounted(async () => {
             {{ $t('dsc.settingsTitle') }}
           </NButton>
         </NuxtLink>
+        <NuxtLink v-if="state.me?.isAdmin" to="/dsc/audit">
+          <NButton>
+            <template #icon
+              ><NIcon><ScrollText /></NIcon
+            ></template>
+            {{ $t('audit.title') }}
+          </NButton>
+        </NuxtLink>
       </NSpace>
+
+      <NCard v-if="signedIn && activePassport" size="small" :title="$t('dsc.activePassportTitle')">
+        <NText depth="3">{{ $t('dsc.activePassportHint') }}</NText>
+        <NDescriptions :column="2" size="small" style="margin-top: 8px">
+          <NDescriptionsItem :label="$t('dsc.passportDocumentNumber')">
+            {{ activePassport.documentNumber }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('dsc.requestReference')">
+            <span class="epass42-mono">{{ activePassport.reference }}</span>
+          </NDescriptionsItem>
+        </NDescriptions>
+        <template #action>
+          <NuxtLink :to="`/dsc/requests/${activePassport.reference}`">
+            <NButton size="small">{{ $t('dsc.viewDetails') }}</NButton>
+          </NuxtLink>
+        </template>
+      </NCard>
 
       <NCard v-if="signedIn" :title="$t('dsc.myRequests')" size="small">
         <NDataTable v-if="requests.length" :columns="columns" :data="requests" size="small" />
         <NEmpty v-else :description="$t('common.empty')" />
       </NCard>
       <NCard v-else size="small">
-        <NText depth="3">{{ $t('dsc.statusIntro') }}</NText>
+        <NText depth="3">{{ $t('auth.signInTo', { realm: 'DSC' }) }}</NText>
       </NCard>
     </NSpace>
   </div>

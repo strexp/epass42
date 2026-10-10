@@ -5,12 +5,13 @@ import {
   NAlert,
   NButton,
   NCard,
-  NCollapse,
-  NCollapseItem,
   NDescriptions,
   NDescriptionsItem,
+  NFormItem,
+  NIcon,
   NInput,
   NModal,
+  NResult,
   NSelect,
   NSpace,
   NTag,
@@ -18,6 +19,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
+import { LogIn } from '@lucide/vue'
 import type { SignRequest } from '@epass42/shared'
 import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey } from '~/composables/useApi'
@@ -30,6 +32,9 @@ interface RequestMeta {
   createdAt: string
   reviewedAt: string | null
   rejectReason: string | null
+  revokedAt: string | null
+  revokeReason: string | null
+  requesterAccountId: number | null
   deliveryMode: string
   consumedAt: string | null
   dscSelection: string
@@ -42,9 +47,9 @@ interface RequestMeta {
 
 const route = useRoute()
 const api = useApi()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const message = useMessage()
-const { state, ensureLoaded } = useRealm('dsc')
+const { auth, state, ensureLoaded } = useRealm('dsc')
 
 const reference = computed(() => String(route.params.reference ?? ''))
 const meta = ref<RequestMeta | null>(null)
@@ -61,6 +66,35 @@ const me = computed(() => state.value.me)
 const isReviewer = computed(() => (me.value?.reviewScope ?? 'none') !== 'none')
 const isAdmin = computed(() => me.value?.isAdmin ?? false)
 
+/** Whether the signed-in user owns this request (and may revoke it). */
+const isOwner = computed(
+  () =>
+    meta.value?.requesterAccountId != null &&
+    meta.value.requesterAccountId === me.value?.account.id,
+)
+
+const revokeOpen = ref(false)
+const revokeReason = ref('')
+const canRevoke = computed(() => isOwner.value && meta.value?.status === 'approved')
+
+async function revokePassport(): Promise<void> {
+  busy.value = true
+  try {
+    await api(`/dsc/passports/${reference.value}/revoke`, {
+      method: 'POST',
+      body: { reason: revokeReason.value || undefined },
+    })
+    revokeOpen.value = false
+    revokeReason.value = ''
+    message.success(t('common.success'))
+    await load()
+  } catch (error) {
+    message.error(t(errorMessageKey(error)))
+  } finally {
+    busy.value = false
+  }
+}
+
 /** Whether the current user may claim the produced file right now. */
 const canRevealApplicant = computed(
   () => meta.value?.status === 'approved' && !meta.value.consumedAt,
@@ -69,10 +103,24 @@ const canRevealApplicant = computed(
 /** Whether a reviewer may show/preview the unmasked submission. */
 const signedIn = computed(() => me.value !== null)
 
+/** Sends a signed-out visitor to the realm login, returning to this request. */
+function login(): void {
+  auth.login('dsc', `/dsc/requests/${reference.value}`)
+}
+
 const deliveryOptions = computed(() => [
   { label: t('dsc.deliveryApplicant'), value: 'applicant' },
   { label: t('dsc.deliveryReviewer'), value: 'reviewer' },
 ])
+
+/** The data groups present in the request, in ascending order. */
+const dataGroups = computed(() => meta.value?.dataGroups ?? [])
+
+/** A human-readable explanation of a data group (ICAO Doc 9303-10). */
+function dataGroupLabel(dataGroup: number): string {
+  const key = `dsc.dataGroups.dg${dataGroup}`
+  return te(key) ? t(key) : t('dsc.dataGroups.unknown', { number: dataGroup })
+}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -108,10 +156,9 @@ async function loadReview(): Promise<void> {
 async function approve(): Promise<void> {
   busy.value = true
   try {
-    await api(`/dsc/requests/${reference.value}/approve`, {
-      method: 'POST',
-      body: isAdmin.value ? { deliveryMode: deliveryMode.value } : {},
-    })
+    // The delivery mode is a service-wide setting; a reviewer does not
+    // override it per request.
+    await api(`/dsc/requests/${reference.value}/approve`, { method: 'POST', body: {} })
     message.success(t('common.success'))
     await load()
     await loadReview()
@@ -155,6 +202,7 @@ async function reveal(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  if (!signedIn.value) return
   await load()
   await loadMasked()
   await loadReview()
@@ -163,7 +211,7 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <NSpace vertical size="large">
+    <NSpace v-if="signedIn" vertical size="large">
       <div>
         <h1 style="margin: 0">{{ $t('dsc.detailTitle') }}</h1>
         <NText depth="2">{{ $t('dsc.requestReference') }}: </NText>
@@ -183,7 +231,9 @@ onMounted(async () => {
             {{ meta.deliveryMode === 'reviewer' ? $t('dsc.receiveStaff') : $t('dsc.receiveSelf') }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dsc.includedData')">
-            {{ meta.dataGroups.join(', ') }}
+            <NSpace :size="4">
+              <NTag v-for="dg in meta.dataGroups" :key="dg" size="small">DG{{ dg }}</NTag>
+            </NSpace>
           </NDescriptionsItem>
         </NDescriptions>
         <NAlert
@@ -193,6 +243,14 @@ onMounted(async () => {
           style="margin-top: 12px"
         >
           {{ meta.rejectReason }}
+        </NAlert>
+        <NAlert
+          v-if="meta.status === 'revoked'"
+          type="warning"
+          :title="$t('dsc.statuses.revoked')"
+          style="margin-top: 12px"
+        >
+          {{ meta.revokeReason ?? '' }}
         </NAlert>
         <NAlert
           v-if="canRevealApplicant"
@@ -216,6 +274,9 @@ onMounted(async () => {
             @click="reveal"
           >
             {{ $t('dsc.reveal') }}
+          </NButton>
+          <NButton v-if="canRevoke" type="error" @click="revokeOpen = true">
+            {{ $t('dsc.revokePassport') }}
           </NButton>
         </div>
       </NCard>
@@ -249,13 +310,16 @@ onMounted(async () => {
             </NDescriptionsItem>
           </NDescriptions>
 
-          <NSelect
-            v-if="isAdmin"
-            v-model:value="deliveryMode"
-            :options="deliveryOptions"
-            size="small"
-            style="max-width: 320px; margin-top: 12px"
-          />
+          <div v-if="isAdmin" style="margin-top: 12px">
+            <NText depth="3" style="font-size: 12px">{{ $t('dsc.deliveryModeLocked') }}</NText>
+            <NSelect
+              v-model:value="deliveryMode"
+              :options="deliveryOptions"
+              size="small"
+              disabled
+              style="max-width: 320px; margin-top: 4px"
+            />
+          </div>
 
           <div class="epass42-actions" style="margin-top: 12px">
             <NButton
@@ -294,18 +358,33 @@ onMounted(async () => {
         </NDescriptions>
       </NCard>
 
-      <NCollapse>
-        <NCollapseItem :title="$t('dsc.includedData')" name="dgs">
-          <NText>{{ (meta?.dataGroups ?? []).join(', ') }}</NText>
-        </NCollapseItem>
-      </NCollapse>
+      <!-- Included information: what each data group carries. -->
+      <NCard v-if="meta" size="small" :title="$t('dsc.includedData')">
+        <div class="epass42-dg-list">
+          <div v-for="dg in dataGroups" :key="dg" class="epass42-dg-item">
+            <NTag size="small" type="info">DG{{ dg }}</NTag>
+            <NText depth="2">{{ dataGroupLabel(dg) }}</NText>
+          </div>
+        </div>
+      </NCard>
 
-      <NText v-if="!signedIn" depth="3">{{ $t('dsc.ownerOnly') }}</NText>
-
-      <NuxtLink to="/dsc/status">
+      <NuxtLink to="/dsc">
         <NButton quaternary size="small">{{ $t('common.back') }}</NButton>
       </NuxtLink>
     </NSpace>
+
+    <NCard v-else :title="$t('dsc.detailTitle')">
+      <NResult status="info" :title="$t('auth.signInTo', { realm: 'DSC' })">
+        <template #footer>
+          <NButton type="primary" @click="login">
+            <template #icon
+              ><NIcon><LogIn /></NIcon
+            ></template>
+            {{ $t('common.login') }}
+          </NButton>
+        </template>
+      </NResult>
+    </NCard>
 
     <NModal
       v-model:show="rejectOpen"
@@ -321,5 +400,37 @@ onMounted(async () => {
         </NSpace>
       </template>
     </NModal>
+
+    <NModal
+      v-model:show="revokeOpen"
+      preset="card"
+      :title="$t('dsc.revokePassport')"
+      style="max-width: 480px"
+    >
+      <NText depth="3">{{ $t('dsc.revokePassportConfirm') }}</NText>
+      <NFormItem :label="$t('dsc.revokeReason')" style="margin-top: 12px">
+        <NInput v-model:value="revokeReason" type="textarea" :rows="3" />
+      </NFormItem>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton quaternary @click="revokeOpen = false">{{ $t('common.cancel') }}</NButton>
+          <NButton type="error" :loading="busy" @click="revokePassport">
+            {{ $t('common.confirm') }}
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>
+
+<style scoped>
+.epass42-dg-list {
+  display: grid;
+  gap: 8px;
+}
+.epass42-dg-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+</style>

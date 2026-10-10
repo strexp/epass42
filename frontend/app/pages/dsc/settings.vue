@@ -40,6 +40,7 @@ const profile = ref({
 })
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
+const signedIn = computed(() => state.value.me !== null)
 
 const deliveryOptions = computed(() => [
   { label: t('dsc.deliveryApplicant'), value: 'applicant' },
@@ -102,7 +103,11 @@ onMounted(async () => {
         <NText depth="2">{{ $t('dsc.settingsHint') }}</NText>
       </div>
 
-      <NCard v-if="!isAdmin" :title="$t('dsc.settingsTitle')" size="small">
+      <NCard v-if="!signedIn" :title="$t('dsc.settingsTitle')" size="small">
+        <NText depth="3">{{ $t('auth.signInTo', { realm: 'DSC' }) }}</NText>
+      </NCard>
+
+      <NCard v-else-if="!isAdmin" :title="$t('dsc.settingsTitle')" size="small">
         <NText depth="3">{{ $t('errors.forbidden') }}</NText>
       </NCard>
 

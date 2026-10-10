@@ -208,6 +208,9 @@ export const signRequest = sqliteTable('sign_request', {
   consumedBy: integer('consumed_by'),
   consumedChannel: text('consumed_channel'),
   regeneratedFrom: text('regenerated_from'),
+  /** Set when the applicant revokes the produced (active) passport. */
+  revokedAt: text('revoked_at'),
+  revokeReason: text('revoke_reason'),
   createdAt: text('created_at').notNull(),
   expiresAt: text('expires_at'),
 })

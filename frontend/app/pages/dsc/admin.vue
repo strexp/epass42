@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
-import { Download, RefreshCw, ScrollText, Settings } from '@lucide/vue'
+import { Download, RefreshCw } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -134,30 +134,12 @@ onMounted(async () => {
 
       <NCard :title="$t('dsc.reviewQueue')" size="small">
         <template #action>
-          <NSpace>
-            <NuxtLink v-if="isAdmin" to="/dsc/settings">
-              <NButton size="small">
-                <template #icon
-                  ><NIcon><Settings /></NIcon
-                ></template>
-                {{ $t('dsc.settingsTitle') }}
-              </NButton>
-            </NuxtLink>
-            <NuxtLink v-if="isAdmin" to="/dsc/audit">
-              <NButton size="small">
-                <template #icon
-                  ><NIcon><ScrollText /></NIcon
-                ></template>
-                {{ $t('audit.title') }}
-              </NButton>
-            </NuxtLink>
-            <NButton size="small" @click="load">
-              <template #icon
-                ><NIcon><RefreshCw /></NIcon
-              ></template>
-              {{ $t('common.reload') }}
-            </NButton>
-          </NSpace>
+          <NButton size="small" @click="load">
+            <template #icon
+              ><NIcon><RefreshCw /></NIcon
+            ></template>
+            {{ $t('common.reload') }}
+          </NButton>
         </template>
         <NDataTable v-if="requests.length" :columns="columns" :data="requests" size="small" />
         <NEmpty v-else :description="$t('common.empty')" />

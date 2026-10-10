@@ -6,7 +6,11 @@ import { computed } from 'vue'
 const props = defineProps<{ status: string }>()
 
 const type = computed(() =>
-  props.status === 'approved' ? 'success' : props.status === 'rejected' ? 'error' : 'default',
+  props.status === 'approved'
+    ? 'success'
+    : props.status === 'rejected' || props.status === 'revoked'
+      ? 'error'
+      : 'default',
 )
 </script>
 

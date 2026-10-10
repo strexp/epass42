@@ -5,23 +5,28 @@ import {
   NCard,
   NCollapse,
   NCollapseItem,
+  NDescriptions,
+  NDescriptionsItem,
   NDivider,
   NForm,
   NFormItem,
   NIcon,
   NInput,
+  NModal,
+  NResult,
   NSelect,
   NSpace,
   NText,
   useMessage,
 } from 'naive-ui'
-import { Send, Dices } from '@lucide/vue'
+import { Send, Dices, LogIn } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@epass42/shared'
 import { COUNTRY_ALPHA3 } from '@epass42/shared'
 import type { EncodedFile } from '~/components/common/FileField.vue'
 import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
+import { useRealm } from '~/composables/useRealm'
 import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
 
 definePageMeta({ layout: 'realm' })
@@ -29,6 +34,9 @@ definePageMeta({ layout: 'realm' })
 const api = useApi()
 const { t } = useI18n()
 const message = useMessage()
+const { auth, state, ensureLoaded } = useRealm('dsc')
+
+const signedIn = computed(() => state.value.me !== null)
 
 const mrz = reactive<MrzFields>({
   documentCode: 'P',
@@ -80,6 +88,59 @@ interface Jurisdiction {
 }
 const jurisdiction = ref<Jurisdiction | null>(null)
 const noticeDismissed = ref(false)
+
+interface ActivePassport {
+  reference: string
+  status: string
+  documentNumber: string
+  createdAt: string
+  expiresAt: string | null
+  deliveryMode: string
+  consumedAt: string | null
+  dataGroups: number[]
+}
+const activePassport = ref<ActivePassport | null>(null)
+const revokeOpen = ref(false)
+const revokeReason = ref('')
+const revoking = ref(false)
+
+/** Loads the applicant's current active passport, if any. */
+async function loadActivePassport(): Promise<void> {
+  if (!signedIn.value) {
+    activePassport.value = null
+    return
+  }
+  try {
+    const result = await api<{ passport: ActivePassport | null }>('/dsc/passports/active')
+    activePassport.value = result.passport
+  } catch {
+    activePassport.value = null
+  }
+}
+
+function loginToApply(): void {
+  auth.login('dsc', '/dsc/apply')
+}
+
+/** Revokes the active passport so a new request may be submitted. */
+async function revokePassport(): Promise<void> {
+  if (!activePassport.value) return
+  revoking.value = true
+  try {
+    await api(`/dsc/passports/${activePassport.value.reference}/revoke`, {
+      method: 'POST',
+      body: { reason: revokeReason.value || undefined },
+    })
+    revokeOpen.value = false
+    revokeReason.value = ''
+    message.success(t('common.success'))
+    await loadActivePassport()
+  } catch (error) {
+    message.error(t(errorMessageKey(error)))
+  } finally {
+    revoking.value = false
+  }
+}
 
 /** Preview-only expiry (the service computes the real one from settings). */
 const previewExpiry = computed(() => {
@@ -160,6 +221,9 @@ async function submit(): Promise<void> {
 }
 
 onMounted(async () => {
+  await ensureLoaded()
+  await loadActivePassport()
+  if (!signedIn.value) return
   try {
     jurisdiction.value = await api<Jurisdiction>('/dsc/jurisdiction')
   } catch {
@@ -179,6 +243,49 @@ onMounted(async () => {
           </NuxtLink>
         </template>
       </NCard>
+
+      <!-- Submitting requires a signed-in applicant. -->
+      <template v-else-if="!signedIn">
+        <NResult status="info" :title="$t('auth.signInTo', { realm: 'DSC' })">
+          <template #footer>
+            <NButton type="primary" @click="loginToApply">
+              <template #icon
+                ><NIcon><LogIn /></NIcon
+              ></template>
+              {{ $t('common.login') }}
+            </NButton>
+          </template>
+        </NResult>
+      </template>
+
+      <!-- Single active passport: revoke before applying again. -->
+      <template v-else-if="activePassport">
+        <NAlert type="warning" :title="$t('dsc.activePassportTitle')" style="margin-bottom: 12px">
+          {{ $t('dsc.activePassportHint') }}
+        </NAlert>
+        <NDescriptions :column="2" size="small">
+          <NDescriptionsItem :label="$t('dsc.passportDocumentNumber')">
+            {{ activePassport.documentNumber }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('dsc.requestReference')">
+            <NText class="epass42-mono">{{ activePassport.reference }}</NText>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('dsc.passportIssuedAt')">
+            {{ activePassport.createdAt }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('dsc.statusTitle')">
+            <StatusTag :status="activePassport.status" />
+          </NDescriptionsItem>
+        </NDescriptions>
+        <div class="epass42-actions" style="margin-top: 12px">
+          <NButton size="small" @click="revokeOpen = true">
+            {{ $t('dsc.revokePassport') }}
+          </NButton>
+          <NuxtLink :to="`/dsc/requests/${activePassport.reference}`">
+            <NButton size="small">{{ $t('dsc.viewDetails') }}</NButton>
+          </NuxtLink>
+        </div>
+      </template>
 
       <template v-else>
         <NText depth="3">{{ $t('dsc.submitHint') }}</NText>
@@ -316,7 +423,7 @@ onMounted(async () => {
 
       <template #action>
         <NButton
-          v-if="!reference"
+          v-if="signedIn && !activePassport && !reference"
           type="primary"
           :loading="submitting"
           :disabled="!canSubmit"
@@ -329,5 +436,25 @@ onMounted(async () => {
         </NButton>
       </template>
     </NCard>
+
+    <NModal
+      v-model:show="revokeOpen"
+      preset="card"
+      :title="$t('dsc.revokePassport')"
+      style="max-width: 480px"
+    >
+      <NText depth="3">{{ $t('dsc.revokePassportConfirm') }}</NText>
+      <NFormItem :label="$t('dsc.revokeReason')" style="margin-top: 12px">
+        <NInput v-model:value="revokeReason" type="textarea" :rows="3" />
+      </NFormItem>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton quaternary @click="revokeOpen = false">{{ $t('common.cancel') }}</NButton>
+          <NButton type="error" :loading="revoking" @click="revokePassport">
+            {{ $t('common.confirm') }}
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>

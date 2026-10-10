@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NButton, NCard, NDataTable, NTabPane, NTabs } from 'naive-ui'
+import { NButton, NCard, NDataTable, NTabPane, NTabs, NTag } from 'naive-ui'
 import { h, onMounted, ref } from 'vue'
 import { useApiBase } from '~/composables/useApi'
 import { downloadUrl } from '~/utils/download'
@@ -14,6 +14,18 @@ interface PkdCrl {
   id: string
   crlNumber: number
 }
+interface PkdDsc {
+  id: number
+  serial: string
+  name: string
+  mnt: string | null
+  status: string
+  documentTypes: string[]
+  issuancePolicy: string | null
+  applicationUrl: string | null
+  notBefore: string | null
+  notAfter: string | null
+}
 
 const api = useApi()
 const apiBase = useApiBase()
@@ -21,6 +33,7 @@ const apiBase = useApiBase()
 const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
 const masterlists = ref<{ id: string }[]>([])
+const dscs = ref<PkdDsc[]>([])
 
 function downloadLinks(id: string) {
   return h('div', { class: 'epass42-actions' }, [
@@ -52,10 +65,50 @@ const mlColumns = [
   { title: '', key: 'download', render: (row: { id: string }) => downloadLinks(row.id) },
 ]
 
+const { t } = useI18n()
+
+const dscColumns = [
+  { title: t('pkd.name'), key: 'name', ellipsis: { tooltip: true } },
+  { title: 'MNT', key: 'mnt' },
+  {
+    title: t('pkd.type'),
+    key: 'documentTypes',
+    render: (row: PkdDsc) => row.documentTypes.join(', ') || '—',
+  },
+  {
+    title: t('pkd.policy'),
+    key: 'issuancePolicy',
+    render: (row: PkdDsc) => row.issuancePolicy ?? '—',
+  },
+  {
+    title: t('pkd.validity'),
+    key: 'validity',
+    render: (row: PkdDsc) => `${row.notBefore ?? '—'} → ${row.notAfter ?? '—'}`,
+  },
+  {
+    title: t('pkd.url'),
+    key: 'applicationUrl',
+    render: (row: PkdDsc) =>
+      row.applicationUrl
+        ? h(
+            'a',
+            { href: row.applicationUrl, target: '_blank', rel: 'noopener' },
+            row.applicationUrl,
+          )
+        : '—',
+  },
+  {
+    title: t('pkd.status'),
+    key: 'status',
+    render: (row: PkdDsc) => h(NTag, { size: 'small' }, () => row.status),
+  },
+]
+
 onMounted(async () => {
   certificates.value = (await api<{ items: PkdCertificate[] }>('/pkd/certificates')).items
   crls.value = (await api<{ items: PkdCrl[] }>('/pkd/crls')).items
   masterlists.value = (await api<{ items: { id: string }[] }>('/pkd/masterlists')).items
+  dscs.value = (await api<{ items: PkdDsc[] }>('/pkd/dscs')).items
 })
 </script>
 
@@ -71,6 +124,9 @@ onMounted(async () => {
       </NTabPane>
       <NTabPane name="mls" :tab="$t('pkd.masterlists')">
         <NDataTable :columns="mlColumns" :data="masterlists" size="small" />
+      </NTabPane>
+      <NTabPane name="dscs" :tab="$t('pkd.dscs')">
+        <NDataTable :columns="dscColumns" :data="dscs" size="small" />
       </NTabPane>
       <NTabPane name="ldif" :tab="$t('pkd.ldif')">
         <NCard size="small">

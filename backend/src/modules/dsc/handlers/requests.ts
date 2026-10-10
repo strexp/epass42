@@ -13,7 +13,7 @@ import { mntDelegatesToNia } from '../../auth/authorization'
 import { activeOwnDsc } from '../../mnt/delegation'
 import { canonicalMnts } from '../../jurisdiction/whois'
 import { resolvePrincipal, type AuthContext } from '../../auth/middleware'
-import { scopeOf, referenceParams, type DscRouteDeps } from '../routeContext'
+import { scopeOf, accessRow, referenceParams, type DscRouteDeps } from '../routeContext'
 
 /** Registers the request submission and status routes. */
 export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps): void {
@@ -31,10 +31,13 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
       if (!mrzValidation.valid) {
         return reply.code(400).send({ error: 'mrz_invalid', details: mrzValidation.errors })
       }
+      // Submitting a signing request requires an authenticated applicant.
       const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
-      const mnt = principal?.account.activeMnt ?? (await resolveIpMnt(deps, request.ip))
+      if (!principal) return reply.code(401).send({ error: 'unauthorized' })
+      request.principal = principal
+      const mnt = principal.account.activeMnt ?? (await resolveIpMnt(deps, request.ip))
       const requester = {
-        accountId: principal?.account.id ?? null,
+        accountId: principal.account.id,
         mnt,
         ip: request.ip,
       }
@@ -60,6 +63,14 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
     async (request, reply) => {
       const row = service.getByReference(request.params.reference)
       if (!row) return reply.code(404).send({ error: 'request_not_found' })
+      // Reference lookup is restricted to the owner, NIA administrators and
+      // delegated reviewers acting within their own jurisdiction.
+      const access = accessRow(deps, request, row)
+      if (!access.ok) {
+        return reply
+          .code(access.status ?? 403)
+          .send({ error: access.status === 401 ? 'unauthorized' : 'forbidden' })
+      }
       return reply.send(service.metadata(row))
     },
   )
@@ -70,6 +81,11 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
       schema: {
         querystring: z.object({
           status: z.string().optional(),
+          /** Force the caller's own requests, ignoring any review scope. */
+          mine: z
+            .string()
+            .optional()
+            .transform((value) => value === '1' || value === 'true'),
           limit: z.coerce.number().int().min(1).max(200).default(50),
           offset: z.coerce.number().int().min(0).default(0),
         }),
@@ -79,20 +95,23 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
       const scope = scopeOf(deps, request)
       const principal = request.principal
       if (!principal) return reply.code(401).send({ error: 'unauthorized' })
-      const items =
-        scope && scope.kind !== 'none'
-          ? service.list({
-              scope,
-              status: request.query.status,
-              limit: request.query.limit,
-              offset: request.query.offset,
-            })
-          : service.list({
-              accountId: principal.account.id,
-              status: request.query.status,
-              limit: request.query.limit,
-              offset: request.query.offset,
-            })
+      // "My requests" is keyed by the internal account id, so it works for any
+      // login method — including identities without a dn42 claim.  Without
+      // `mine`, reviewers additionally see the requests in their review scope.
+      const ownOnly = request.query.mine || !scope || scope.kind === 'none'
+      const items = ownOnly
+        ? service.list({
+            accountId: principal.account.id,
+            status: request.query.status,
+            limit: request.query.limit,
+            offset: request.query.offset,
+          })
+        : service.list({
+            scope: scope!,
+            status: request.query.status,
+            limit: request.query.limit,
+            offset: request.query.offset,
+          })
       return { items: items.map((row) => service.metadata(row)) }
     },
   )

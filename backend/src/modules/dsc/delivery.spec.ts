@@ -73,26 +73,33 @@ async function login(
   return `${cookie.name}=${cookie.value}`
 }
 
-/** Submits a request and returns its reference. */
+/** Submits a request as the signed-in applicant and returns its reference + cookie. */
 async function submit(
   app: FastifyInstance,
+  oidc: FakeOidc,
   documentNumber = 'X1234567',
   overrides = {},
-): Promise<string> {
+): Promise<{ reference: string; cookie: string }> {
+  const cookie = await login(app, oidc, USER)
   const response = await app.inject({
     method: 'POST',
     url: '/dsc/requests',
+    headers: { cookie },
     payload: payload(documentNumber, overrides),
   })
   expect(response.statusCode).toBe(201)
-  return response.json().reference as string
+  return { reference: response.json().reference as string, cookie }
 }
 
 describe('M8 delivery', () => {
   it('returns a masked, non-destructive preview', async () => {
-    const { app } = await harness()
-    const reference = await submit(app)
-    const preview = await app.inject({ method: 'GET', url: `/dsc/requests/${reference}/preview` })
+    const { app, oidc } = await harness()
+    const { reference, cookie } = await submit(app, oidc)
+    const preview = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/${reference}/preview`,
+      headers: { cookie },
+    })
     expect(preview.statusCode).toBe(200)
     const body = preview.json()
     expect(body.documentNumber.present).toBe(true)
@@ -104,7 +111,7 @@ describe('M8 delivery', () => {
 
   it('allows exactly one applicant reveal (410 afterwards)', async () => {
     const { app, oidc } = await harness()
-    const reference = await submit(app)
+    const { reference, cookie } = await submit(app, oidc)
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
     const id = reference
     await app.inject({
@@ -114,12 +121,20 @@ describe('M8 delivery', () => {
       payload: {},
     })
 
-    const first = await app.inject({ method: 'POST', url: `/dsc/requests/${reference}/reveal` })
+    const first = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/reveal`,
+      headers: { cookie },
+    })
     expect(first.statusCode).toBe(200)
     expect(first.headers['cache-control']).toBe('no-store')
     expect(first.body).toContain('@dg 1')
 
-    const second = await app.inject({ method: 'POST', url: `/dsc/requests/${reference}/reveal` })
+    const second = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/reveal`,
+      headers: { cookie },
+    })
     expect(second.statusCode).toBe(410)
     expect(second.json().error).toBe('request_already_consumed')
   })
@@ -127,7 +142,7 @@ describe('M8 delivery', () => {
   it('seals the perso at rest and deletes it after the one-time reveal', async () => {
     const { app, oidc, db, dsc } = await harness()
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
-    const reference = await submit(app, 'X7654321')
+    const { reference, cookie } = await submit(app, oidc, 'X7654321')
     const id = reference
     await app.inject({
       method: 'POST',
@@ -148,7 +163,11 @@ describe('M8 delivery', () => {
     expect(onDisk).not.toContain('@dg')
 
     // The one-time reveal decrypts, then removes the file and database row.
-    const reveal = await app.inject({ method: 'POST', url: `/dsc/requests/${reference}/reveal` })
+    const reveal = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/reveal`,
+      headers: { cookie },
+    })
     expect(reveal.statusCode).toBe(200)
     expect(reveal.body).toContain('@dg 1')
     expect(db.select().from(artifact).where(eq(artifact.id, art.id)).get()).toBeUndefined()
@@ -166,17 +185,20 @@ describe('M8 delivery', () => {
       payload: { deliveryMode: 'reviewer' },
     })
 
-    const reference = await submit(app)
-    const id = reference
+    const { reference, cookie } = await submit(app, oidc)
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${id}/approve`,
+      url: `/dsc/requests/${reference}/approve`,
       headers: { cookie: admin },
       payload: { deliveryMode: 'reviewer' },
     })
 
     // The applicant cannot reveal.
-    const applicant = await app.inject({ method: 'POST', url: `/dsc/requests/${reference}/reveal` })
+    const applicant = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/reveal`,
+      headers: { cookie },
+    })
     expect(applicant.statusCode).toBe(403)
     expect(applicant.json().error).toBe('reveal_not_allowed')
 
@@ -188,18 +210,20 @@ describe('M8 delivery', () => {
     })
     expect(queue.statusCode).toBe(200)
     expect(
-      (queue.json().items as { reference: string }[]).some((entry) => entry.reference === id),
+      (queue.json().items as { reference: string }[]).some(
+        (entry) => entry.reference === reference,
+      ),
     ).toBe(true)
 
     const reveal = await app.inject({
       method: 'POST',
-      url: `/dsc/admin/requests/${id}/reveal`,
+      url: `/dsc/admin/requests/${reference}/reveal`,
       headers: { cookie: admin },
     })
     expect(reveal.statusCode).toBe(200)
     const again = await app.inject({
       method: 'POST',
-      url: `/dsc/admin/requests/${id}/reveal`,
+      url: `/dsc/admin/requests/${reference}/reveal`,
       headers: { cookie: admin },
     })
     expect(again.statusCode).toBe(410)
@@ -208,19 +232,22 @@ describe('M8 delivery', () => {
   it('regenerates a consumed artifact', async () => {
     const { app, oidc } = await harness()
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
-    const reference = await submit(app)
-    const id = reference
+    const { reference, cookie } = await submit(app, oidc)
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${id}/approve`,
+      url: `/dsc/requests/${reference}/approve`,
       headers: { cookie: admin },
       payload: {},
     })
-    await app.inject({ method: 'POST', url: `/dsc/requests/${reference}/reveal` })
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/reveal`,
+      headers: { cookie },
+    })
 
     const regenerate = await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${id}/regenerate`,
+      url: `/dsc/requests/${reference}/regenerate`,
       headers: { cookie: admin },
       payload: {},
     })
@@ -230,6 +257,7 @@ describe('M8 delivery', () => {
     const revealAgain = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${reference}/reveal`,
+      headers: { cookie },
     })
     expect(revealAgain.statusCode).toBe(200)
   })
@@ -260,11 +288,10 @@ describe('M8 delivery', () => {
   it('issues email tokens on approval and exposes a non-consuming landing', async () => {
     const { app, oidc, db, dsc } = await harness()
     const admin = await login(app, oidc, NIA_DSC_ADMIN)
-    const reference = await submit(app, 'X1234567', { email: 'user@example.net' })
-    const id = reference
+    const { reference } = await submit(app, oidc, 'X1234567', { email: 'user@example.net' })
     await app.inject({
       method: 'POST',
-      url: `/dsc/requests/${id}/approve`,
+      url: `/dsc/requests/${reference}/approve`,
       headers: { cookie: admin },
       payload: {},
     })
@@ -273,7 +300,7 @@ describe('M8 delivery', () => {
     expect(db.select().from(revealToken).all().length).toBeGreaterThan(0)
 
     // A confirm token returns metadata without consuming.
-    const token = dsc.createRevealToken(id, 'confirm', 3600)
+    const token = dsc.createRevealToken(reference, 'confirm', 3600)
     const landing = await app.inject({ method: 'POST', url: `/dsc/reveal/${token}` })
     expect(landing.statusCode).toBe(200)
     expect(landing.json().status).toBe('approved')

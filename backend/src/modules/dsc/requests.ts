@@ -21,7 +21,7 @@ import { isLds2Enabled } from './securityOptions'
 
 export type SignRequestRow = typeof signRequest.$inferSelect
 
-/** Who is submitting the request (may be anonymous). */
+/** Who is submitting the request.  The route requires a signed-in applicant. */
 export interface Requester {
   accountId: number | null
   /** Canonical (sorted, comma-joined) maintainers of the requesting IP. */
@@ -77,8 +77,40 @@ export class DscRequestService {
     return { mode: 'nia', certId: null }
   }
 
+  /**
+   * The account's currently active passport: the most recent approved request
+   * (produced and/or claimed).  A revoked or rejected request is not active.
+   */
+  activePassport(accountId: number): SignRequestRow | undefined {
+    return this.db
+      .select()
+      .from(signRequest)
+      .where(and(eq(signRequest.requesterAccountId, accountId), eq(signRequest.status, 'approved')))
+      .orderBy(desc(signRequest.createdAt))
+      .get()
+  }
+
+  /** Revokes the account's active passport, freeing it for a new application. */
+  revoke(row: SignRequestRow, reason: string | null): SignRequestRow {
+    this.db
+      .update(signRequest)
+      .set({ status: 'revoked', revokedAt: nowIso(), revokeReason: reason })
+      .where(eq(signRequest.reference, row.reference))
+      .run()
+    return this.getByReference(row.reference) as SignRequestRow
+  }
+
   /** Creates a signing request and returns its one-time reference. */
   submit(payload: SignRequest, requester: Requester): SubmitResult {
+    // A logged-in applicant may only hold one usable passport at a time; the
+    // active passport must be revoked before a new request can be submitted.
+    if (requester.accountId !== null && this.activePassport(requester.accountId)) {
+      throw new AppError(
+        'active_passport_exists',
+        'an active passport already exists; revoke it before applying again',
+        409,
+      )
+    }
     const reference = randomToken(24)
     const createdAt = nowIso()
     const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString()
@@ -173,10 +205,13 @@ export class DscRequestService {
       status: row.status,
       createdAt: row.createdAt,
       expiresAt: row.expiresAt,
+      requesterAccountId: row.requesterAccountId,
       deliveryMode: row.deliveryMode,
       consumedAt: row.consumedAt,
       reviewedAt: row.reviewedAt,
       rejectReason: row.rejectReason,
+      revokedAt: row.revokedAt,
+      revokeReason: row.revokeReason,
       dscSelection: row.dscSelection,
       mnt: row.mnt,
       ip: row.ip,

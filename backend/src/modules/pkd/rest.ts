@@ -4,19 +4,23 @@
  *   GET /pkd/certificates        CSCA certificates
  *   GET /pkd/crls                CRLs
  *   GET /pkd/masterlists         Master Lists
+ *   GET /pkd/dscs                Document Signer certificates (active + revoked)
  *   GET /pkd/objects/:id.:format one object (der|pem)
  *   GET /pkd/ldif                full LDIF dump
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+import { desc } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { derToPem } from '@epass42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
+import { dscCert } from '../../db/schema'
 import { writeAudit } from '../../audit/audit'
 import { requireAdmin, type AuthContext } from '../auth/middleware'
 import type { SessionStore } from '../auth/session'
+import { certMetadata } from '../csca/routeContext'
 import type { CscaService } from '../csca/service'
 import { listObjects } from './directory'
 import { buildLdif } from './ldif'
@@ -57,6 +61,42 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
     const items = listObjects(db, config)
       .filter((object) => object.kind === 'ml')
       .map((object) => ({ id: object.id }))
+    return { total: items.length, items }
+  })
+
+  // Every active or revoked Document Signer certificate, with the policy,
+  // name, validity, document type and application URL published for relying
+  // parties (the certificate bytes stay under /csca/certificates).
+  server.get('/pkd/dscs', async () => {
+    const items = db
+      .select()
+      .from(dscCert)
+      .orderBy(desc(dscCert.id))
+      .all()
+      .filter(
+        (row) =>
+          (row.source === 'nia' || row.source === 'owned') &&
+          (row.status === 'active' || row.status === 'revoked'),
+      )
+      .map((row) => {
+        const meta = certMetadata(row)
+        return {
+          id: row.id,
+          serial: row.serial,
+          name: row.subjectDn,
+          mnt: row.mnt,
+          status: row.status,
+          source: row.source,
+          keyMode: row.keyMode,
+          documentTypes: meta.documentTypes,
+          issuancePolicy: row.issuancePolicy,
+          applicationUrl: row.applicationUrl,
+          notBefore: row.notBefore,
+          notAfter: row.notAfter,
+          revokedAt: row.revokedAt,
+          fingerprintSha256: meta.fingerprintSha256,
+        }
+      })
     return { total: items.length, items }
   })
 

@@ -1,6 +1,8 @@
 import ldapjs from 'ldapjs'
+import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, it } from 'vitest'
 
+import { dscCert } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { buildEntries, matchesFilter, startLdapServer, type LdapServerHandle } from './ldap'
 import { baseDn } from './directory'
@@ -43,6 +45,34 @@ describe('M9 PKD REST and LDIF', () => {
 
     const missing = await app.inject({ method: 'GET', url: '/pkd/objects/csca-999.der' })
     expect(missing.statusCode).toBe(404)
+  })
+
+  it('publishes active and revoked DSCs with policy, type, validity and URL', async () => {
+    const { app, db, csca } = await setup()
+
+    // Create the NIA DSC, give it a policy and URL, then revoke it so both
+    // lifecycle states are exercised.  The ML signer is not a DSC and must be
+    // excluded from the list.
+    await csca.ensureNiaDsc()
+    const row = db.select().from(dscCert).where(eq(dscCert.source, 'nia')).get()!
+    db.update(dscCert)
+      .set({ issuancePolicy: 'open', applicationUrl: 'https://example.net/dsc' })
+      .where(eq(dscCert.id, row.id))
+      .run()
+    csca.revoke(row.id, 'superseded')
+
+    const list = await app.inject({ method: 'GET', url: '/pkd/dscs' })
+    expect(list.statusCode).toBe(200)
+    expect(list.json().total).toBe(1)
+    const item = list.json().items[0]
+    expect(item.id).toBe(row.id)
+    expect(item.status).toBe('revoked')
+    expect(item.documentTypes).toContain('P')
+    expect(item.issuancePolicy).toBe('open')
+    expect(item.applicationUrl).toBe('https://example.net/dsc')
+    expect(item.notBefore).toBeTruthy()
+    expect(item.notAfter).toBeTruthy()
+    expect(item.name).toContain('CN=')
   })
 
   it('renders LDIF with the ICAO object classes and binary attributes', async () => {

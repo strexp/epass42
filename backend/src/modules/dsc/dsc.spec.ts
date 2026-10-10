@@ -125,30 +125,77 @@ function artifactText(dsc: DscService, reference: string): string {
   return dsc.readArtifact(row)
 }
 
-/** Submits a minimal request anonymously and returns its reference. */
-async function submit(app: FastifyInstance, documentNumber: string): Promise<string> {
+/** A fresh applicant identity (unique subject/ASN/MNT) so each submit has its own slot. */
+let applicantSeq = 0
+function applicantClaims(): Record<string, unknown> {
+  applicantSeq += 1
+  const mnt = `APP-${applicantSeq}-MNT`
+  return {
+    sub: `applicant-${applicantSeq}`,
+    dn42: { asn: 4242421000 + applicantSeq, active_mnt: mnt, mnt_by: [mnt] },
+  }
+}
+
+/** Logs in a fresh applicant, returning its session cookie. */
+async function applicant(app: FastifyInstance, oidc: FakeOidc): Promise<string> {
+  return login(app, oidc, 'dsc', 'dsc-client', applicantClaims())
+}
+
+/** Submits a minimal request as a fresh applicant and returns its reference. */
+async function submit(
+  app: FastifyInstance,
+  oidc: FakeOidc,
+  documentNumber: string,
+  overrides: Record<string, unknown> = {},
+): Promise<string> {
+  const cookie = await applicant(app, oidc)
   const response = await app.inject({
     method: 'POST',
     url: '/dsc/requests',
-    payload: payload(documentNumber),
+    headers: { cookie },
+    payload: payload(documentNumber, overrides),
   })
+  expect(response.statusCode).toBe(201)
   return response.json().reference as string
 }
 
 describe('M7 DSC signing service', () => {
-  it('accepts an anonymous structured request and returns metadata', async () => {
-    const { app } = await harness()
-    const submit = await app.inject({ method: 'POST', url: '/dsc/requests', payload: payload() })
-    expect(submit.statusCode).toBe(201)
-    const reference = submit.json().reference as string
+  it('requires an authenticated applicant to submit and read a request', async () => {
+    const { app, oidc } = await harness()
+
+    // Anonymous submission is rejected.
+    const anon = await app.inject({ method: 'POST', url: '/dsc/requests', payload: payload() })
+    expect(anon.statusCode).toBe(401)
+
+    const cookie = await applicant(app, oidc)
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie },
+      payload: payload(),
+    })
+    expect(created.statusCode).toBe(201)
+    const reference = created.json().reference as string
     expect(reference.length).toBeGreaterThan(20)
 
-    const meta = await app.inject({ method: 'GET', url: `/dsc/requests/${reference}` })
+    // The owner may read the metadata by reference.
+    const meta = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/${reference}`,
+      headers: { cookie },
+    })
     expect(meta.statusCode).toBe(200)
     expect(meta.json().status).toBe('submitted')
     expect(meta.json().dataGroups).toContain(1)
 
-    const missing = await app.inject({ method: 'GET', url: '/dsc/requests/does-not-exist' })
+    // Anonymous lookups are rejected; a missing reference is not found.
+    const anonMeta = await app.inject({ method: 'GET', url: `/dsc/requests/${reference}` })
+    expect(anonMeta.statusCode).toBe(401)
+    const missing = await app.inject({
+      method: 'GET',
+      url: '/dsc/requests/does-not-exist',
+      headers: { cookie },
+    })
     expect(missing.statusCode).toBe(404)
   })
 
@@ -184,9 +231,11 @@ describe('M7 DSC signing service', () => {
 
   it('builds a verifiable perso on NIA approval', async () => {
     const { app, oidc, dsc, cscaPem } = await harness()
+    const cookie = await applicant(app, oidc)
     const submit = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
+      headers: { cookie },
       payload: payload('X1234567', { security: { aa: { enabled: true } } }),
     })
     const reference = submit.json().reference as string
@@ -232,7 +281,7 @@ describe('M7 DSC signing service', () => {
     expect(update.statusCode).toBe(200)
 
     // Without a CAN there is no @can directive.
-    const plain = await submit(app, 'C1111111')
+    const plain = await submit(app, oidc, 'C1111111')
     const plainId = plain
     await app.inject({
       method: 'POST',
@@ -243,9 +292,11 @@ describe('M7 DSC signing service', () => {
     expect(artifactText(dsc, plainId)).not.toMatch(/^@can /m)
 
     // With a CAN it is written once, in the LDS1 (master file) section.
+    const canCookie = await applicant(app, oidc)
     const withCan = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
+      headers: { cookie: canCookie },
       payload: payload('C2222222', { can: '123456' }),
     })
     expect(withCan.statusCode).toBe(201)
@@ -331,6 +382,25 @@ describe('M7 DSC signing service', () => {
     })
     expect(forbidden.statusCode).toBe(403)
 
+    // The single-active-passport rule blocks a second submission until the
+    // current passport is revoked.
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: reviewerCookie },
+      payload: payload('Q1111111', { dscSelection: { mode: 'nia' } }),
+    })
+    expect(blocked.statusCode).toBe(409)
+    expect(blocked.json().error).toBe('active_passport_exists')
+    const revoke = await app.inject({
+      method: 'POST',
+      url: `/dsc/passports/${ownId}/revoke`,
+      headers: { cookie: reviewerCookie },
+      payload: {},
+    })
+    expect(revoke.statusCode).toBe(200)
+    expect(revoke.json().status).toBe('revoked')
+
     // A second own request may not be approved with global settings.
     const another = await app.inject({
       method: 'POST',
@@ -401,6 +471,15 @@ describe('M7 DSC signing service', () => {
     })
     expect(approve.statusCode).toBe(200)
 
+    // Free the single active-passport slot before applying again.
+    const revoke = await app.inject({
+      method: 'POST',
+      url: `/dsc/passports/${beforeId}/revoke`,
+      headers: { cookie: userCookie },
+      payload: {},
+    })
+    expect(revoke.statusCode).toBe(200)
+
     // Disabling delegation removes the reviewer scope.
     await app.inject({
       method: 'PUT',
@@ -428,7 +507,7 @@ describe('M7 DSC signing service', () => {
     const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
-    const first = await submit(app, 'D1111111')
+    const first = await submit(app, oidc, 'D1111111')
     const firstRow = dsc.getByReference(first)!
     expect(firstRow.dscSelection).toBe('nia')
     await app.inject({
@@ -451,7 +530,7 @@ describe('M7 DSC signing service', () => {
     expect(update.statusCode).toBe(200)
     expect(update.json().security.aa.enabled).toBe(true)
 
-    const second = await submit(app, 'D2222222')
+    const second = await submit(app, oidc, 'D2222222')
     const secondRow = dsc.getByReference(second)!
     await app.inject({
       method: 'POST',
@@ -475,7 +554,7 @@ describe('M7 DSC signing service', () => {
     })
     expect(update.statusCode).toBe(200)
 
-    const reference = await submit(app, 'C1111111')
+    const reference = await submit(app, oidc, 'C1111111')
     const row = dsc.getByReference(reference)!
     await app.inject({
       method: 'POST',
@@ -514,7 +593,7 @@ describe('M7 DSC signing service', () => {
       payload: { validityYears: 5 },
     })
 
-    const reference = await submit(app, 'E1111111')
+    const reference = await submit(app, oidc, 'E1111111')
     const row = dsc.getByReference(reference)!
     const payload = JSON.parse(row.payloadJson) as { mrz: { dateOfExpiry?: string } }
     expect(payload.mrz.dateOfExpiry).toBe(mrzExpiry(5))
@@ -530,11 +609,13 @@ describe('M7 DSC signing service', () => {
   })
 
   it('rejects an oversized DG2 face', async () => {
-    const { app } = await harness()
+    const { app, oidc } = await harness()
+    const cookie = await applicant(app, oidc)
     const big = Buffer.alloc(20000, 1).toString('base64')
     const response = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
+      headers: { cookie },
       payload: { ...payload('G1111111'), dg2: { jpeg: big, width: 100, height: 125 } },
     })
     expect(response.statusCode).toBe(413)
@@ -546,7 +627,7 @@ describe('M7 DSC signing service', () => {
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
     // Default: LDS1 only, no LDS2 section.
-    const first = await submit(app, 'H1111111')
+    const first = await submit(app, oidc, 'H1111111')
     const firstId = first
     await app.inject({
       method: 'POST',
@@ -566,7 +647,7 @@ describe('M7 DSC signing service', () => {
     expect(update.statusCode).toBe(200)
     expect(update.json().lds2).toEqual({ enabled: true, roles: ['travel'] })
 
-    const second = await submit(app, 'H2222222')
+    const second = await submit(app, oidc, 'H2222222')
     const secondId = second
     await app.inject({
       method: 'POST',
@@ -587,7 +668,7 @@ describe('M7 DSC signing service', () => {
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
 
     // Default: LDS1 is PACE + AA only, with no CA key or EF.CardSecurity.
-    const first = await submit(app, 'H3333333')
+    const first = await submit(app, oidc, 'H3333333')
     const firstId = first
     await app.inject({
       method: 'POST',
@@ -609,7 +690,7 @@ describe('M7 DSC signing service', () => {
     expect(update.statusCode).toBe(200)
     expect(update.json().security.ca.enabled).toBe(true)
 
-    const second = await submit(app, 'H4444444')
+    const second = await submit(app, oidc, 'H4444444')
     const secondId = second
     await app.inject({
       method: 'POST',
@@ -636,7 +717,7 @@ describe('M7 DSC signing service', () => {
     })
     expect(update.statusCode).toBe(200)
 
-    const reference = await submit(app, 'H5555555')
+    const reference = await submit(app, oidc, 'H5555555')
     const id = reference
     await app.inject({
       method: 'POST',
@@ -674,7 +755,7 @@ describe('M7 DSC signing service', () => {
     })
     expect(update.statusCode).toBe(200)
 
-    const reference = await submit(app, 'H6666666')
+    const reference = await submit(app, oidc, 'H6666666')
     const id = reference
     const approve = await app.inject({
       method: 'POST',
@@ -704,7 +785,7 @@ describe('M7 DSC signing service', () => {
     })
     expect(update.statusCode).toBe(200)
 
-    const reference = await submit(app, 'H7777777')
+    const reference = await submit(app, oidc, 'H7777777')
     const id = reference
     const approve = await app.inject({
       method: 'POST',
@@ -717,10 +798,12 @@ describe('M7 DSC signing service', () => {
   })
 
   it('server-sets the MRZ nationality', async () => {
-    const { app, dsc } = await harness()
+    const { app, oidc, dsc } = await harness()
+    const cookie = await applicant(app, oidc)
     const response = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
+      headers: { cookie },
       payload: { ...payload('N1111111'), mrz: { ...mrz('N1111111'), nationality: 'AAA' } },
     })
     expect(response.statusCode).toBe(201)
@@ -839,8 +922,15 @@ describe('M7 DSC signing service', () => {
     expect(adminView.statusCode).toBe(200)
     expect(adminView.json().payload.mrz.documentNumber).toBe('R1000001')
 
-    // The public status route stays masked (no unmasked payload field).
-    const status = await app.inject({ method: 'GET', url: `/dsc/requests/${reference}` })
+    // The status route stays masked (no unmasked payload field) but now
+    // requires the owner to be signed in.
+    const anonStatus = await app.inject({ method: 'GET', url: `/dsc/requests/${reference}` })
+    expect(anonStatus.statusCode).toBe(401)
+    const status = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/${reference}`,
+      headers: { cookie: user },
+    })
     expect(status.statusCode).toBe(200)
     expect(status.json().payload).toBeUndefined()
   })
@@ -858,5 +948,148 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: admin },
     })
     expect(adminMe.json().reviewScope).toBe('nia')
+  })
+
+  it('enforces a single active passport and exposes it to its owner', async () => {
+    const { app, oidc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const cookie = await applicant(app, oidc)
+
+    // No active passport initially, and a pending application is not one yet.
+    const initial = await app.inject({
+      method: 'GET',
+      url: '/dsc/passports/active',
+      headers: { cookie },
+    })
+    expect(initial.statusCode).toBe(200)
+    expect(initial.json().passport).toBeNull()
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie },
+      payload: payload('P1000001'),
+    })
+    const reference = created.json().reference as string
+    const pending = await app.inject({
+      method: 'GET',
+      url: '/dsc/passports/active',
+      headers: { cookie },
+    })
+    expect(pending.json().passport).toBeNull()
+
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+
+    // The produced passport is now active and visible to its owner.
+    const active = await app.inject({
+      method: 'GET',
+      url: '/dsc/passports/active',
+      headers: { cookie },
+    })
+    expect(active.statusCode).toBe(200)
+    expect(active.json().passport.reference).toBe(reference)
+    expect(active.json().passport.documentNumber).toBe('P1000001')
+
+    // An unrelated signed-in user may not look up the reference.
+    const stranger = await applicant(app, oidc)
+    const foreignLookup = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/${reference}`,
+      headers: { cookie: stranger },
+    })
+    expect(foreignLookup.statusCode).toBe(403)
+
+    // A second submission is rejected until the passport is revoked.
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie },
+      payload: payload('P2000002'),
+    })
+    expect(blocked.statusCode).toBe(409)
+    expect(blocked.json().error).toBe('active_passport_exists')
+
+    // Only the owner may revoke it.
+    const forbidden = await app.inject({
+      method: 'POST',
+      url: `/dsc/passports/${reference}/revoke`,
+      headers: { cookie: stranger },
+      payload: {},
+    })
+    expect(forbidden.statusCode).toBe(403)
+
+    const revoke = await app.inject({
+      method: 'POST',
+      url: `/dsc/passports/${reference}/revoke`,
+      headers: { cookie },
+      payload: { reason: 'reissued' },
+    })
+    expect(revoke.statusCode).toBe(200)
+    expect(revoke.json().status).toBe('revoked')
+
+    // The slot is free again.
+    const after = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie },
+      payload: payload('P2000002'),
+    })
+    expect(after.statusCode).toBe(201)
+  })
+
+  it('scopes "my requests" by account regardless of dn42 claims', async () => {
+    const { app, oidc, db } = await harness()
+    db.insert(mntConfig)
+      .values({ mnt: 'AS1-REV-MNT', useNiaDsc: true, updatedAt: new Date().toISOString() })
+      .run()
+    recordAsAdmin(db, 'AS1-REV-MNT')
+
+    const reviewerCookie = await login(app, oidc, 'dsc', 'dsc-client', AS_REVIEWER)
+    const colleagueCookie = await login(app, oidc, 'dsc', 'dsc-client', {
+      sub: 'as1-colleague',
+      dn42: { asn: 4242420002, active_mnt: 'AS1-REV-MNT', mnt_by: ['AS1-REV-MNT'] },
+    })
+
+    const own = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: reviewerCookie },
+      payload: payload('M1111111', { dscSelection: { mode: 'nia' } }),
+    })
+    const ownId = own.json().reference as string
+    const shared = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: colleagueCookie },
+      payload: payload('M2222222', { dscSelection: { mode: 'nia' } }),
+    })
+    const sharedId = shared.json().reference as string
+
+    // The review scope covers the whole maintainer...
+    const scoped = await app.inject({
+      method: 'GET',
+      url: '/dsc/requests',
+      headers: { cookie: reviewerCookie },
+    })
+    const scopedIds = (scoped.json().items as { reference: string }[]).map(
+      (entry) => entry.reference,
+    )
+    expect(scopedIds).toContain(ownId)
+    expect(scopedIds).toContain(sharedId)
+
+    // ...but "my requests" is keyed by the account, independent of mnt/dn42.
+    const mine = await app.inject({
+      method: 'GET',
+      url: '/dsc/requests?mine=1',
+      headers: { cookie: reviewerCookie },
+    })
+    const mineIds = (mine.json().items as { reference: string }[]).map((entry) => entry.reference)
+    expect(mineIds).toContain(ownId)
+    expect(mineIds).not.toContain(sharedId)
   })
 })

@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { parseCertificatePem, sha256 } from '@epass42/pki'
 import type { dscCert } from '../../db/schema'
+import { documentTypesOf } from '../../util/cert'
 import type { AuthContext } from '../auth/middleware'
 import type { CscaService } from './service'
 
@@ -35,6 +36,7 @@ export const applicationBody = z.object({
 export function certMetadata(row: typeof dscCert.$inferSelect) {
   const der = new Uint8Array(parseCertificatePem(row.certPem).rawData)
   const fingerprint = Buffer.from(sha256(der)).toString('hex')
+  const documentTypes = documentTypesOf(row.certPem)
   return {
     id: row.id,
     serial: row.serial,
@@ -42,8 +44,14 @@ export function certMetadata(row: typeof dscCert.$inferSelect) {
     status: row.status,
     source: row.source,
     mnt: row.mnt,
+    keyMode: row.keyMode,
+    documentType: documentTypes[0] ?? null,
+    documentTypes,
+    issuancePolicy: row.issuancePolicy,
+    applicationUrl: row.applicationUrl,
     notBefore: row.notBefore,
     notAfter: row.notAfter,
+    revokedAt: row.revokedAt,
     fingerprintSha256: fingerprint,
     hasPrivateKey: row.keyRef !== null,
     certPem: row.certPem,

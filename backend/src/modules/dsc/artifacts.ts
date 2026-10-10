@@ -147,6 +147,19 @@ export class DscArtifactService {
       profileOverrides?: Partial<IssuingDefaults>
     } = {},
   ): Promise<SignRequestRow> {
+    // Safety net for the single-active-passport rule: a request may not become
+    // the applicant's second active passport even if several were submitted
+    // before the reviewer got to them.
+    if (row.requesterAccountId !== null) {
+      const active = this.requests.activePassport(row.requesterAccountId)
+      if (active && active.reference !== row.reference) {
+        throw new AppError(
+          'active_passport_exists',
+          'the applicant already has an active passport',
+          409,
+        )
+      }
+    }
     await this.buildArtifact(row, options.profileOverrides ?? {})
     this.db
       .update(signRequest)

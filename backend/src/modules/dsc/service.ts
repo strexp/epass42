@@ -72,6 +72,18 @@ export class DscService {
     return this.requests.getByReference(reference)
   }
 
+  /** The account's currently active passport, if any. */
+  activePassport(accountId: number): SignRequestRow | undefined {
+    return this.requests.activePassport(accountId)
+  }
+
+  /** Revokes an approved passport so the applicant may apply again. */
+  revokePassport(row: SignRequestRow, reason: string | null): SignRequestRow {
+    // Drop any unclaimed perso artifact before marking the passport revoked.
+    this.artifacts.destroyArtifact(row)
+    return this.requests.revoke(row, reason)
+  }
+
   list(options: Parameters<DscRequestService['list']>[0]): SignRequestRow[] {
     return this.requests.list(options)
   }

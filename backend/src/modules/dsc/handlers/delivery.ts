@@ -7,8 +7,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import { writeAudit } from '../../../audit/audit'
-import { resolvePrincipal, type AuthContext } from '../../auth/middleware'
-import { referenceParams, type DscRouteDeps } from '../routeContext'
+import { accessRow, referenceParams, type DscRouteDeps } from '../routeContext'
 
 /** Registers the delivery routes. */
 export function registerDeliveryRoutes(app: FastifyInstance, deps: DscRouteDeps): void {
@@ -22,6 +21,14 @@ export function registerDeliveryRoutes(app: FastifyInstance, deps: DscRouteDeps)
       config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     },
     async (request, reply) => {
+      const row = service.getByReference(request.params.reference)
+      if (!row) return reply.code(404).send({ error: 'request_not_found' })
+      const access = accessRow(deps, request, row)
+      if (!access.ok) {
+        return reply
+          .code(access.status ?? 403)
+          .send({ error: access.status === 401 ? 'unauthorized' : 'forbidden' })
+      }
       const preview = service.preview(request.params.reference)
       if (!preview) return reply.code(404).send({ error: 'request_not_found' })
       return reply.send(preview)
@@ -35,13 +42,20 @@ export function registerDeliveryRoutes(app: FastifyInstance, deps: DscRouteDeps)
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     },
     async (request, reply) => {
-      const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
+      const row = service.getByReference(request.params.reference)
+      if (!row) return reply.code(404).send({ error: 'request_not_found' })
+      const access = accessRow(deps, request, row)
+      if (!access.ok) {
+        return reply
+          .code(access.status ?? 403)
+          .send({ error: access.status === 401 ? 'unauthorized' : 'forbidden' })
+      }
       const result = service.revealByReference(
         request.params.reference,
-        principal?.account.id ?? null,
+        request.principal?.account.id ?? null,
       )
       writeAudit(db, {
-        actorAccountId: principal?.account.id ?? null,
+        actorAccountId: request.principal?.account.id ?? null,
         realm: 'dsc',
         action: 'dsc.request.reveal',
         targetType: 'sign_request',
