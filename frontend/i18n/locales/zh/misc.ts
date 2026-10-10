@@ -28,6 +28,8 @@ export default {
     forbidden: '您没有执行该操作的权限。',
     not_found: '未找到相应记录。',
     validation_failed: '请修正标出的字段。',
+    required: '此项为必填。',
+    invalid_url: '请输入有效的 URL。',
     no_security_mechanism: '请至少选择一种安全机制。',
     pace_required: '芯片认证需要 PACE。',
     request_already_consumed: '该文件已被领取，无法再次获取。',

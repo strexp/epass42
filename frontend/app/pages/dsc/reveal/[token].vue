@@ -20,6 +20,7 @@ const message = useMessage()
 const metadata = ref<Record<string, unknown> | null>(null)
 const consumed = computed(() => Boolean(metadata.value?.consumedAt))
 const reference = computed(() => (metadata.value?.reference as string | undefined) ?? '')
+const submittedAt = computed(() => (metadata.value?.createdAt as string | undefined) ?? null)
 
 onMounted(async () => {
   try {
@@ -47,7 +48,7 @@ onMounted(async () => {
           <NTag size="small">{{ metadata.status }}</NTag>
         </NDescriptionsItem>
         <NDescriptionsItem :label="$t('dsc.submittedAt')">
-          {{ metadata.createdAt }}
+          <DateTimeText :value="submittedAt" />
         </NDescriptionsItem>
       </NDescriptions>
       <NuxtLink v-if="reference" :to="`/dsc/requests/${reference}`" style="margin-top: 12px">

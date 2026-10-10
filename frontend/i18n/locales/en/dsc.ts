@@ -51,7 +51,7 @@ export default {
   placeOfBirth: 'Place of birth',
   address: 'Address',
   telephone: 'Telephone',
-  dateOfBirthHint: 'Six digits, e.g. 900101 for 1 January 1990.',
+  dateOfBirthHint: 'Choose your date of birth; it is stored in the MRZ as YYMMDD.',
   mrz: 'Document (passport)',
   documentation: 'Document type',
   portrait: 'Your photo (DG2)',
@@ -89,6 +89,7 @@ export default {
   statusTitle: 'Request status',
   reveal: 'Claim (one-time)',
   produce: 'Produce file',
+  produceConfirm: 'Produce the personalization file now?',
   revealWarningTitle: 'One-time, irreversible claim',
   revealWarning:
     'This file personalizes your document and can be claimed only once. It is deleted from the server right after you claim it. Save it somewhere safe before leaving this page.',

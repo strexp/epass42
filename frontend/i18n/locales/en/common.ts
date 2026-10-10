@@ -41,6 +41,7 @@ export default {
     open: 'Open',
     view: 'View',
     details: 'Details',
+    actions: 'Actions',
     filter: 'Filter',
     all: 'All',
     yes: 'Yes',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'realm' })
 
-import { NButton, NCard, NDataTable, useDialog, useMessage } from 'naive-ui'
+import { NButton, NCard, NDataTable, NDropdown, useDialog, useMessage } from 'naive-ui'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -26,6 +26,7 @@ const { t } = useI18n()
 const message = useMessage()
 const dialog = useDialog()
 const certificates = ref<Certificate[]>([])
+const loading = ref(false)
 
 const isCscaAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const myMnt = computed(() => state.value.me?.account.activeMnt ?? null)
@@ -56,8 +57,13 @@ function downloadKey(row: Certificate): void {
 }
 
 async function load(): Promise<void> {
-  const result = await api<{ items: Certificate[] }>('/csca/certificates?includeRevoked=true')
-  certificates.value = result.items ?? []
+  loading.value = true
+  try {
+    const result = await api<{ items: Certificate[] }>('/csca/certificates?includeRevoked=true')
+    certificates.value = result.items ?? []
+  } finally {
+    loading.value = false
+  }
 }
 
 async function revoke(id: number): Promise<void> {
@@ -73,6 +79,48 @@ async function revoke(id: number): Promise<void> {
   }
 }
 
+/** The per-certificate menu: format downloads and, for admins, revoke. */
+function actionMenu(row: Certificate) {
+  const options = [
+    { label: 'PEM', key: 'pem' },
+    { label: 'DER', key: 'der' },
+    ...(canDownloadKey(row) ? [{ label: t('csca.privateKey'), key: 'key' }] : []),
+    ...(isCscaAdmin.value && row.status === 'active' && row.source === 'owned'
+      ? [{ label: t('common.revoke'), key: 'revoke' }]
+      : []),
+  ]
+  return h(
+    NDropdown,
+    { options, onSelect: (key: string | number) => onAction(row, String(key)) },
+    { default: () => h(NButton, { size: 'tiny' }, { default: () => t('common.actions') }) },
+  )
+}
+
+/** Confirms before revoking (the menu item is easy to hit by mistake). */
+function confirmRevoke(row: Certificate): void {
+  dialog.warning({
+    title: t('common.revoke'),
+    content: t('csca.revokeConfirm'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => {
+      void revoke(row.id)
+    },
+  })
+}
+
+function onAction(row: Certificate, key: string): void {
+  if (key === 'pem') {
+    downloadUrl(`${apiBase}/csca/certificates/${row.id}.pem`, `dsc-${row.id}.pem`)
+  } else if (key === 'der') {
+    downloadUrl(`${apiBase}/csca/certificates/${row.id}.der`, `dsc-${row.id}.der`)
+  } else if (key === 'key') {
+    downloadKey(row)
+  } else if (key === 'revoke') {
+    confirmRevoke(row)
+  }
+}
+
 const columns = computed(() => [
   { title: '#', key: 'id' },
   { title: 'Subject', key: 'subjectDn' },
@@ -85,36 +133,8 @@ const columns = computed(() => [
   { title: 'SHA-256', key: 'fingerprintSha256', ellipsis: { tooltip: true } },
   {
     title: '',
-    key: 'download',
-    render: (row: Certificate) =>
-      h('div', { class: 'epass42-actions' }, [
-        h(
-          NButton,
-          {
-            size: 'tiny',
-            onClick: () =>
-              downloadUrl(`${apiBase}/csca/certificates/${row.id}.pem`, `dsc-${row.id}.pem`),
-          },
-          { default: () => 'PEM' },
-        ),
-        h(
-          NButton,
-          {
-            size: 'tiny',
-            onClick: () =>
-              downloadUrl(`${apiBase}/csca/certificates/${row.id}.der`, `dsc-${row.id}.der`),
-          },
-          { default: () => 'DER' },
-        ),
-        canDownloadKey(row)
-          ? h(NButton, { size: 'tiny', onClick: () => downloadKey(row) }, () =>
-              t('csca.privateKey'),
-            )
-          : null,
-        isCscaAdmin.value && row.status === 'active' && row.source === 'owned'
-          ? h(NButton, { size: 'tiny', onClick: () => revoke(row.id) }, () => t('common.revoke'))
-          : null,
-      ]),
+    key: 'actions',
+    render: (row: Certificate) => actionMenu(row),
   },
 ])
 
@@ -136,7 +156,13 @@ onMounted(async () => {
           {{ $t('csca.crl') }} (PEM)
         </NButton>
       </template>
-      <NDataTable :columns="columns" :data="certificates" size="small" />
+      <NDataTable
+        :columns="columns"
+        :data="certificates"
+        :loading="loading"
+        :pagination="{ pageSize: 10 }"
+        size="small"
+      />
       <template #footer>
         <NuxtLink to="/csca"
           ><NButton size="small">{{ $t('common.back') }}</NButton></NuxtLink

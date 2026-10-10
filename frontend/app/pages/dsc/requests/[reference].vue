@@ -27,6 +27,8 @@ import type { SignRequest } from '@epass42/shared'
 import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { formatMrzDate } from '~/utils/mrzDate'
+import { formatDateTime } from '~/utils/datetime'
 import { downloadText } from '~/utils/download'
 
 interface RequestMeta {
@@ -140,26 +142,39 @@ const timeline = computed(() => {
   const row = meta.value
   if (!row) return []
   const events: {
-    time: string | null
+    time: string
     label: string
     type: 'default' | 'info' | 'success' | 'warning' | 'error'
-  }[] = [{ time: row.createdAt, label: t('status.submitted.label'), type: 'info' }]
+  }[] = [{ time: formatDateTime(row.createdAt), label: t('status.submitted.label'), type: 'info' }]
   if (row.reviewedAt) {
     const approved = row.status === 'approved' || row.status === 'revoked'
     events.push({
-      time: row.reviewedAt,
+      time: formatDateTime(row.reviewedAt),
       label: approved ? t('status.approved.label') : t('status.rejected.label'),
       type: approved ? 'success' : 'error',
     })
   }
   if (row.consumedAt) {
-    events.push({ time: row.consumedAt, label: t('status.consumed.label'), type: 'success' })
+    events.push({
+      time: formatDateTime(row.consumedAt),
+      label: t('status.consumed.label'),
+      type: 'success',
+    })
   }
   if (row.revokedAt) {
-    events.push({ time: row.revokedAt, label: t('status.revoked.label'), type: 'warning' })
+    events.push({
+      time: formatDateTime(row.revokedAt),
+      label: t('status.revoked.label'),
+      type: 'warning',
+    })
   }
   return events
 })
+
+/** Reads a masked preview field, falling back to the "hidden" label. */
+function maskedValue(field: unknown): string {
+  return (field as { value?: string } | null | undefined)?.value ?? t('mask.hidden')
+}
 
 /** A human-readable explanation of a data group (ICAO Doc 9303-10). */
 function dataGroupLabel(dataGroup: number): string {
@@ -290,9 +305,11 @@ onMounted(async () => {
           <StatusTag :status="meta.status" />
         </template>
         <NDescriptions :column="2" size="small">
-          <NDescriptionsItem :label="$t('dsc.submittedAt')">{{ meta.createdAt }}</NDescriptionsItem>
+          <NDescriptionsItem :label="$t('dsc.submittedAt')">
+            <DateTimeText :value="meta.createdAt" />
+          </NDescriptionsItem>
           <NDescriptionsItem v-if="meta.reviewedAt" :label="$t('dsc.reviewedAt')">
-            {{ meta.reviewedAt }}
+            <DateTimeText :value="meta.reviewedAt" />
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dsc.receiveHow')">
             {{ meta.deliveryMode === 'reviewer' ? $t('dsc.receiveStaff') : $t('dsc.receiveSelf') }}
@@ -308,7 +325,7 @@ onMounted(async () => {
             v-for="(event, index) in timeline"
             :key="index"
             :type="event.type"
-            :time="event.time ?? undefined"
+            :time="event.time"
           >
             {{ event.label }}
           </NTimelineItem>
@@ -369,7 +386,7 @@ onMounted(async () => {
               {{ reviewed.payload.mrz.givenNames }}
             </NDescriptionsItem>
             <NDescriptionsItem :label="$t('dsc.dateOfBirth')">
-              {{ reviewed.payload.mrz.dateOfBirth }}
+              {{ formatMrzDate(reviewed.payload.mrz.dateOfBirth) || '—' }}
             </NDescriptionsItem>
             <NDescriptionsItem :label="$t('dsc.sex')">
               {{ reviewed.payload.mrz.sex }}
@@ -419,16 +436,16 @@ onMounted(async () => {
       <NCard v-if="masked" size="small" :title="$t('dsc.previewTitle')">
         <NDescriptions :column="2" size="small">
           <NDescriptionsItem :label="$t('dsc.documentNumber')">
-            {{ (masked.documentNumber as { value?: string })?.value ?? $t('mask.hidden') }}
+            {{ maskedValue(masked.documentNumber) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dsc.surname')">
-            {{ (masked.surname as { value?: string })?.value ?? $t('mask.hidden') }}
+            {{ maskedValue(masked.surname) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dsc.givenNames')">
-            {{ (masked.givenNames as { value?: string })?.value ?? $t('mask.hidden') }}
+            {{ maskedValue(masked.givenNames) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dsc.cardAccess')">
-            {{ (masked.can as { value?: string })?.value ?? $t('mask.hidden') }}
+            {{ maskedValue(masked.can) }}
           </NDescriptionsItem>
         </NDescriptions>
       </NCard>

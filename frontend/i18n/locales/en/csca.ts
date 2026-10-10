@@ -38,6 +38,7 @@ export default {
   issued: 'Issued certificate',
   revoked: 'Revoked',
   revoke: 'Revoke',
+  revokeConfirm: 'Revoke this certificate? It can no longer be used to sign documents.',
   rollover: 'Roll over CSCA key',
   crl: 'CRL',
   privateKey: 'Private key',

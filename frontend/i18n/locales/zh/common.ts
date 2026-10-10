@@ -40,6 +40,7 @@ export default {
     open: '打开',
     view: '查看',
     details: '详情',
+    actions: '操作',
     filter: '筛选',
     all: '全部',
     yes: '是',

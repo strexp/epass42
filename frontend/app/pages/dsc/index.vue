@@ -10,9 +10,11 @@ import {
   NSpace,
   NText,
 } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 import { FilePlus2, ListChecks, ScrollText, Settings } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useRealm } from '~/composables/useRealm'
+import DateTimeText from '~/components/common/DateTimeText.vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 
 definePageMeta({ layout: 'realm' })
@@ -31,6 +33,7 @@ const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
 const requests = ref<RequestRow[]>([])
+const loading = ref(false)
 
 const signedIn = computed(() => state.value.me !== null)
 const isReviewer = computed(() => (state.value.me?.reviewScope ?? 'none') !== 'none')
@@ -59,8 +62,16 @@ function openDetails(row: RequestRow): void {
   void navigateTo(`/dsc/requests/${row.reference}`)
 }
 
-const columns = computed(() => {
-  const base = [
+/** Makes the whole row open the request (the button stays for keyboard users). */
+function rowProps(row: RequestRow) {
+  return {
+    style: 'cursor: pointer;',
+    onClick: () => openDetails(row),
+  }
+}
+
+const columns = computed<DataTableColumns<RequestRow>>(() => {
+  const base: DataTableColumns<RequestRow> = [
     {
       title: t('dsc.statusTitle'),
       key: 'status',
@@ -71,7 +82,11 @@ const columns = computed(() => {
       key: 'reference',
       render: (row: RequestRow) => h('span', { class: 'epass42-mono' }, row.reference),
     },
-    { title: t('dsc.submittedAt'), key: 'createdAt' },
+    {
+      title: t('dsc.submittedAt'),
+      key: 'createdAt',
+      render: (row: RequestRow) => h(DateTimeText, { value: row.createdAt }),
+    },
   ]
   if (isReviewer.value) {
     base.push({ title: 'MNT', key: 'mnt' }, { title: 'IP', key: 'ip' })
@@ -82,7 +97,13 @@ const columns = computed(() => {
     render: (row: RequestRow) =>
       h(
         NButton,
-        { size: 'tiny', onClick: () => openDetails(row) },
+        {
+          size: 'tiny',
+          onClick: (event: MouseEvent) => {
+            event.stopPropagation()
+            openDetails(row)
+          },
+        },
         { default: () => t('dsc.viewDetails') },
       ),
   })
@@ -93,10 +114,13 @@ onMounted(async () => {
   await ensureLoaded()
   if (!signedIn.value) return
   await loadActivePassport()
+  loading.value = true
   try {
     requests.value = (await api<{ items: RequestRow[] }>('/dsc/requests?mine=1')).items ?? []
   } catch {
     requests.value = []
+  } finally {
+    loading.value = false
   }
 })
 </script>
@@ -159,7 +183,15 @@ onMounted(async () => {
       </NCard>
 
       <NCard v-if="signedIn" :title="$t('dsc.myRequests')" size="small">
-        <NDataTable v-if="requests.length" :columns="columns" :data="requests" size="small" />
+        <NDataTable
+          v-if="requests.length"
+          :columns="columns"
+          :data="requests"
+          :loading="loading"
+          :pagination="{ pageSize: 10 }"
+          :row-props="rowProps"
+          size="small"
+        />
         <NEmpty v-else :description="$t('common.empty')" />
       </NCard>
       <NCard v-else size="small">

@@ -3,6 +3,7 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDropdown,
   NFormItem,
   NInput,
   NResult,
@@ -11,10 +12,12 @@ import {
   NTabPane,
   NTabs,
   NTag,
+  NText,
 } from 'naive-ui'
 import { h, onMounted, reactive, ref } from 'vue'
 import { COUNTRY_ALPHA3 } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
+import { documentTypeOptions } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
 
 interface PkdCertificate {
@@ -47,12 +50,14 @@ interface RevokedDocument {
 
 const api = useApi()
 const apiBase = useApiBase()
+const { t } = useI18n()
 
 const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
 const masterlists = ref<{ id: string }[]>([])
 const dscs = ref<PkdDsc[]>([])
 const revoked = ref<RevokedDocument[]>([])
+const loading = ref(false)
 
 /** The MRZ fields a visitor reads from a document to check revocation. */
 const lookup = reactive({
@@ -61,10 +66,6 @@ const lookup = reactive({
   documentNumber: '',
   dateOfBirth: '',
 })
-const documentTypeOptions = [
-  { label: 'Passport', value: 'P' },
-  { label: 'Identity card', value: 'ID' },
-]
 const checkResult = ref<{ hash: string; revoked: boolean } | null>(null)
 const checking = ref(false)
 
@@ -82,19 +83,20 @@ async function checkRevoked(): Promise<void> {
   }
 }
 
+/** The DER/PEM download menu shown in each directory table row. */
 function downloadLinks(id: string) {
-  return h('div', { class: 'epass42-actions' }, [
-    h(
-      NButton,
-      { size: 'tiny', onClick: () => downloadUrl(`${apiBase}/pkd/objects/${id}.der`, `${id}.der`) },
-      { default: () => 'DER' },
-    ),
-    h(
-      NButton,
-      { size: 'tiny', onClick: () => downloadUrl(`${apiBase}/pkd/objects/${id}.pem`, `${id}.pem`) },
-      { default: () => 'PEM' },
-    ),
-  ])
+  return h(
+    NDropdown,
+    {
+      options: [
+        { label: 'DER', key: 'der' },
+        { label: 'PEM', key: 'pem' },
+      ],
+      onSelect: (key: string | number) =>
+        downloadUrl(`${apiBase}/pkd/objects/${id}.${String(key)}`, `${id}.${String(key)}`),
+    },
+    { default: () => h(NButton, { size: 'tiny' }, { default: () => t('common.download') }) },
+  )
 }
 
 const certColumns = [
@@ -111,8 +113,6 @@ const mlColumns = [
   { title: 'ID', key: 'id' },
   { title: '', key: 'download', render: (row: { id: string }) => downloadLinks(row.id) },
 ]
-
-const { t } = useI18n()
 
 const dscColumns = [
   { title: t('pkd.name'), key: 'name', ellipsis: { tooltip: true } },
@@ -160,11 +160,16 @@ const revokedColumns = [
 const pagination = { pageSize: 10 }
 
 onMounted(async () => {
-  certificates.value = (await api<{ items: PkdCertificate[] }>('/pkd/certificates')).items
-  crls.value = (await api<{ items: PkdCrl[] }>('/pkd/crls')).items
-  masterlists.value = (await api<{ items: { id: string }[] }>('/pkd/masterlists')).items
-  dscs.value = (await api<{ items: PkdDsc[] }>('/pkd/dscs')).items
-  revoked.value = (await api<{ items: RevokedDocument[] }>('/pkd/revoked')).items
+  loading.value = true
+  try {
+    certificates.value = (await api<{ items: PkdCertificate[] }>('/pkd/certificates')).items
+    crls.value = (await api<{ items: PkdCrl[] }>('/pkd/crls')).items
+    masterlists.value = (await api<{ items: { id: string }[] }>('/pkd/masterlists')).items
+    dscs.value = (await api<{ items: PkdDsc[] }>('/pkd/dscs')).items
+    revoked.value = (await api<{ items: RevokedDocument[] }>('/pkd/revoked')).items
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -178,18 +183,26 @@ onMounted(async () => {
           <NDataTable
             :columns="certColumns"
             :data="certificates"
+            :loading="loading"
             :pagination="pagination"
             size="small"
           />
         </NCard>
       </NTabPane>
       <NTabPane name="crls" :tab="$t('pkd.crls')">
-        <NDataTable :columns="crlColumns" :data="crls" :pagination="pagination" size="small" />
+        <NDataTable
+          :columns="crlColumns"
+          :data="crls"
+          :loading="loading"
+          :pagination="pagination"
+          size="small"
+        />
       </NTabPane>
       <NTabPane name="mls" :tab="$t('pkd.masterlists')">
         <NDataTable
           :columns="mlColumns"
           :data="masterlists"
+          :loading="loading"
           :pagination="pagination"
           size="small"
         />
@@ -197,7 +210,13 @@ onMounted(async () => {
       <NTabPane name="dscs" :tab="$t('pkd.dscs')">
         <NCard size="small">
           <p>{{ $t('pkd.dscsHint') }}</p>
-          <NDataTable :columns="dscColumns" :data="dscs" :pagination="pagination" size="small" />
+          <NDataTable
+            :columns="dscColumns"
+            :data="dscs"
+            :loading="loading"
+            :pagination="pagination"
+            size="small"
+          />
         </NCard>
       </NTabPane>
       <NTabPane name="revoked" :tab="$t('pkd.revoked')">
@@ -212,18 +231,13 @@ onMounted(async () => {
               />
             </NFormItem>
             <NFormItem :label="$t('pkd.issuingState')" style="margin-bottom: 0">
-              <NInput v-model:value="lookup.issuingState" maxlength="3" style="width: 110px" />
+              <NText class="epass42-mono">{{ lookup.issuingState }}</NText>
             </NFormItem>
             <NFormItem :label="$t('pkd.documentNumber')" style="margin-bottom: 0">
               <NInput v-model:value="lookup.documentNumber" maxlength="9" style="width: 160px" />
             </NFormItem>
             <NFormItem :label="$t('pkd.dateOfBirth')" style="margin-bottom: 0">
-              <NInput
-                v-model:value="lookup.dateOfBirth"
-                maxlength="8"
-                placeholder="900101"
-                style="width: 130px"
-              />
+              <DateField v-model="lookup.dateOfBirth" style="width: 160px" />
             </NFormItem>
             <NFormItem label=" " style="margin-bottom: 0">
               <NButton
@@ -247,6 +261,7 @@ onMounted(async () => {
           <NDataTable
             :columns="revokedColumns"
             :data="revoked"
+            :loading="loading"
             :pagination="pagination"
             size="small"
           />

@@ -80,6 +80,14 @@ function openDetails(row: Application): void {
   void navigateTo(`/csca/applications/${row.id}`)
 }
 
+/** Makes the whole row open the application (the button stays for keyboard users). */
+function rowProps(row: Application) {
+  return {
+    style: 'cursor: pointer;',
+    onClick: () => openDetails(row),
+  }
+}
+
 const columns = [
   { title: '#', key: 'id' },
   { title: 'CN', key: 'subjectCn' },
@@ -97,7 +105,13 @@ const columns = [
     render: (row: Application) =>
       h(
         NButton,
-        { size: 'tiny', onClick: () => openDetails(row) },
+        {
+          size: 'tiny',
+          onClick: (event: MouseEvent) => {
+            event.stopPropagation()
+            openDetails(row)
+          },
+        },
         { default: () => t('csca.viewApplication') },
       ),
   },
@@ -202,6 +216,8 @@ onMounted(async () => {
           :columns="columns"
           :data="applications"
           :loading="loading"
+          :pagination="{ pageSize: 10 }"
+          :row-props="rowProps"
           size="small"
         />
         <NEmpty v-else :description="$t('common.empty')" />

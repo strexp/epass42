@@ -6,6 +6,8 @@ import {
   NIcon,
   NInput,
   NInputNumber,
+  NRadio,
+  NRadioGroup,
   NSelect,
   NSpace,
   NSwitch,
@@ -80,6 +82,11 @@ async function saveDeliveryMode(value: string): Promise<void> {
   }
 }
 
+/** `NRadioGroup` emits a wider union than the delivery mode accepts. */
+function setDeliveryMode(value: string | number | boolean): void {
+  void saveDeliveryMode(String(value))
+}
+
 async function saveProfile(): Promise<void> {
   try {
     await api('/dsc/settings/issuing-profile', { method: 'PUT', body: profile.value })
@@ -111,12 +118,21 @@ onMounted(async () => {
       <template v-else>
         <NCard :title="$t('dsc.deliveryMode')" size="small">
           <NText depth="3">{{ $t('dsc.deliveryModeHint') }}</NText>
-          <NSelect
+          <NRadioGroup
             :value="deliveryMode"
-            :options="deliveryOptions"
-            style="max-width: 360px; margin-top: 8px"
-            @update:value="saveDeliveryMode"
-          />
+            style="display: block; margin-top: 8px"
+            @update:value="setDeliveryMode"
+          >
+            <NSpace>
+              <NRadio
+                v-for="option in deliveryOptions"
+                :key="String(option.value)"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </NRadio>
+            </NSpace>
+          </NRadioGroup>
         </NCard>
 
         <NCard :title="$t('dsc.issuingProfile')" size="small">

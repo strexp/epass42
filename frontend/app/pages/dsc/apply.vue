@@ -22,6 +22,7 @@ import {
   NTooltip,
   useMessage,
 } from 'naive-ui'
+import type { FormInst, FormRules } from 'naive-ui'
 import { Send, Dices, LogIn, Copy, Info } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@epass42/shared'
@@ -31,6 +32,7 @@ import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
+import { documentTypeOptions } from '~/utils/documentTypes'
 
 definePageMeta({ layout: 'realm' })
 
@@ -80,10 +82,6 @@ const sexOptions = computed(() => [
   { label: t('dsc.sexMale'), value: 'M' },
   { label: t('dsc.sexUnspecified'), value: '<' },
 ])
-const documentTypeOptions = [
-  { label: 'Passport', value: 'P' },
-  { label: 'Identity card', value: 'ID' },
-]
 
 interface Jurisdiction {
   mnts: string[]
@@ -167,23 +165,43 @@ const sexDisplay = computed(() => (mrz.sex === '<' ? 'X' : mrz.sex))
 /** A CAN is six digits when provided; an empty value means "use the MRZ". */
 const canValid = computed(() => canIsValid(can.value))
 
-const canSubmit = computed(
-  () => mrz.surname !== '' && mrz.documentNumber !== '' && mrz.dateOfBirth !== '' && canValid.value,
-)
-
 /** Wizard: 0 details, 1 photo, 2 additional, 3 review. */
 const LAST_STEP = 3
 const step = ref(0)
-const detailsValid = computed(
-  () => mrz.surname !== '' && mrz.documentNumber !== '' && mrz.dateOfBirth !== '' && canValid.value,
-)
+const detailsFormRef = ref<FormInst | null>(null)
 const photoValid = computed(() => portrait.value !== null)
-const stepValid = computed(() =>
-  step.value === 0 ? detailsValid.value : step.value === 1 ? photoValid.value : true,
-)
 
-function nextStep(): void {
-  if (step.value < LAST_STEP && stepValid.value) step.value += 1
+/** Step-0 field rules; Naive UI renders the inline feedback under each field. */
+const detailsRules = computed<FormRules>(() => ({
+  documentNumber: {
+    required: true,
+    message: t('errors.required'),
+    trigger: ['input', 'blur'],
+  },
+  surname: {
+    required: true,
+    message: t('errors.required'),
+    trigger: ['input', 'blur'],
+  },
+  dateOfBirth: {
+    required: true,
+    message: t('errors.required'),
+    trigger: ['change'],
+  },
+}))
+
+async function nextStep(): Promise<void> {
+  if (step.value === 0) {
+    try {
+      await detailsFormRef.value?.validate()
+    } catch {
+      return
+    }
+  } else if (step.value === 1 && !photoValid.value) {
+    message.error(t('dsc.portraitHint'))
+    return
+  }
+  if (step.value < LAST_STEP) step.value += 1
 }
 
 function prevStep(): void {
@@ -220,8 +238,9 @@ async function submit(): Promise<void> {
     step.value = 1
     return
   }
-  if (!canSubmit.value) {
-    message.error(t('errors.validation_failed'))
+  try {
+    await detailsFormRef.value?.validate()
+  } catch {
     step.value = 0
     return
   }
@@ -375,21 +394,21 @@ onMounted(async () => {
             </div>
           </NAlert>
 
-          <NForm label-placement="top">
+          <NForm ref="detailsFormRef" :model="mrz" :rules="detailsRules" label-placement="top">
             <div class="epass42-grid">
               <NFormItem :label="$t('dsc.documentation')">
                 <NSelect v-model:value="mrz.documentCode" :options="documentTypeOptions" />
               </NFormItem>
-              <NFormItem :label="$t('dsc.documentNumber')" required>
+              <NFormItem path="documentNumber" :label="$t('dsc.documentNumber')" required>
                 <NInput v-model:value="mrz.documentNumber" maxlength="9" />
               </NFormItem>
-              <NFormItem :label="$t('dsc.surname')" required>
+              <NFormItem path="surname" :label="$t('dsc.surname')" required>
                 <NInput v-model:value="mrz.surname" maxlength="39" />
               </NFormItem>
               <NFormItem :label="$t('dsc.givenNames')">
                 <NInput v-model:value="mrz.givenNames" maxlength="39" />
               </NFormItem>
-              <NFormItem required>
+              <NFormItem path="dateOfBirth" required>
                 <template #label>
                   <NSpace align="center" :size="4">
                     <span>{{ $t('dsc.dateOfBirth') }}</span>
@@ -403,7 +422,7 @@ onMounted(async () => {
                     </NTooltip>
                   </NSpace>
                 </template>
-                <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
+                <DateField v-model="mrz.dateOfBirth" />
               </NFormItem>
               <NFormItem :label="$t('dsc.sex')">
                 <NSelect v-model:value="mrz.sex" :options="sexOptions" />
@@ -438,6 +457,8 @@ onMounted(async () => {
                       :placeholder="$t('dsc.canPlaceholder')"
                       :status="canValid ? undefined : 'error'"
                       style="max-width: 160px"
+                      :input-props="{ inputmode: 'numeric' }"
+                      :allow-input="(value: string) => /^\d*$/.test(value)"
                       @update:value="setCan"
                     />
                     <NButton @click="generateCan">
@@ -475,7 +496,7 @@ onMounted(async () => {
                 <NInput v-model:value="person.name" placeholder="Name" />
                 <NInput v-model:value="person.telephone" placeholder="Telephone" />
                 <NInput v-model:value="person.address" placeholder="Address" />
-                <NInput v-model:value="person.dateRecorded" placeholder="CCYYMMDD" />
+                <DateField v-model="person.dateRecorded" :digits="8" />
               </div>
               <NButton size="small" style="margin-top: 8px" @click="addPerson">{{
                 $t('dsc.addPerson')
@@ -549,21 +570,10 @@ onMounted(async () => {
             <NButton v-if="step > 0" @click="prevStep">{{ $t('common.previous') }}</NButton>
           </div>
           <div>
-            <NButton
-              v-if="step < LAST_STEP"
-              type="primary"
-              :disabled="!stepValid"
-              @click="nextStep"
-            >
+            <NButton v-if="step < LAST_STEP" type="primary" @click="nextStep">
               {{ $t('common.next') }}
             </NButton>
-            <NButton
-              v-else
-              type="primary"
-              :loading="submitting"
-              :disabled="!canSubmit"
-              @click="submit"
-            >
+            <NButton v-else type="primary" :loading="submitting" @click="submit">
               <template #icon
                 ><NIcon><Send /></NIcon
               ></template>

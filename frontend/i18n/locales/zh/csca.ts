@@ -37,6 +37,7 @@ export default {
   issued: '已签发证书',
   revoked: '已吊销',
   revoke: '吊销',
+  revokeConfirm: '确定吊销该证书？吊销后将无法再用于签发证件。',
   rollover: '轮换 CSCA 密钥',
   crl: 'CRL',
   privateKey: '私钥',

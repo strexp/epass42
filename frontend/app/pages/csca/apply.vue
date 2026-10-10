@@ -17,6 +17,7 @@ import {
   NText,
   useMessage,
 } from 'naive-ui'
+import type { FormInst, FormRules } from 'naive-ui'
 import { LogIn, Save } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
@@ -71,6 +72,7 @@ function login(): void {
 /** Wizard: 0 application, 1 review. */
 const LAST_STEP = 1
 const step = ref(0)
+const formRef = ref<FormInst | null>(null)
 
 function isUrl(value: string): boolean {
   if (value.trim() === '') return true
@@ -82,21 +84,37 @@ function isUrl(value: string): boolean {
   }
 }
 
-const applicationValid = computed(() => {
-  if (form.subjectCn.trim() === '') return false
-  if (
-    form.keyMode === 'user_uploaded' &&
-    form.csrPem.trim() === '' &&
-    form.publicKeyPem.trim() === ''
-  ) {
-    return false
-  }
-  return isUrl(form.applicationUrl)
-})
-const stepValid = computed(() => (step.value === 0 ? applicationValid.value : true))
+/** Field rules; Naive UI renders the inline feedback under each field. */
+const rules = computed<FormRules>(() => ({
+  subjectCn: {
+    required: true,
+    message: t('errors.required'),
+    trigger: ['input', 'blur'],
+  },
+  applicationUrl: {
+    validator: (_rule: unknown, value: string) => isUrl(value),
+    message: t('errors.invalid_url'),
+    trigger: ['input', 'blur'],
+  },
+  csrPem: {
+    validator: () =>
+      form.keyMode !== 'user_uploaded' ||
+      form.csrPem.trim() !== '' ||
+      form.publicKeyPem.trim() !== '',
+    message: t('csca.uploadHint'),
+    trigger: ['input', 'blur'],
+  },
+}))
 
-function nextStep(): void {
-  if (step.value < LAST_STEP && stepValid.value) step.value += 1
+async function nextStep(): Promise<void> {
+  if (step.value === 0) {
+    try {
+      await formRef.value?.validate()
+    } catch {
+      return
+    }
+  }
+  if (step.value < LAST_STEP) step.value += 1
 }
 
 function prevStep(): void {
@@ -104,8 +122,9 @@ function prevStep(): void {
 }
 
 async function submit(): Promise<void> {
-  if (!applicationValid.value) {
-    message.error(t('errors.validation_failed'))
+  try {
+    await formRef.value?.validate()
+  } catch {
     step.value = 0
     return
   }
@@ -155,11 +174,17 @@ onMounted(async () => {
 
       <template v-if="step === 0">
         <NText depth="3">{{ $t('auth.signedInTo', { realm: 'CSCA' }) }}</NText>
-        <NForm label-placement="top" style="margin-top: 12px">
+        <NForm
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-placement="top"
+          style="margin-top: 12px"
+        >
           <NFormItem :label="$t('csca.keyMode')">
             <NSelect v-model:value="form.keyMode" :options="keyModeOptions" />
           </NFormItem>
-          <NFormItem :label="$t('csca.subjectCn')" required>
+          <NFormItem path="subjectCn" :label="$t('csca.subjectCn')" required>
             <NInput v-model:value="form.subjectCn" maxlength="64" />
           </NFormItem>
           <NFormItem :label="$t('csca.subjectO')">
@@ -168,7 +193,7 @@ onMounted(async () => {
           <NFormItem :label="$t('csca.subjectOu')">
             <NInput v-model:value="form.subjectOu" maxlength="64" />
           </NFormItem>
-          <NFormItem v-if="form.keyMode === 'user_uploaded'" :label="$t('csca.csr')">
+          <NFormItem v-if="form.keyMode === 'user_uploaded'" path="csrPem" :label="$t('csca.csr')">
             <NInput v-model:value="form.csrPem" type="textarea" :rows="6" />
           </NFormItem>
           <NFormItem v-if="form.keyMode === 'user_uploaded'" :label="$t('csca.publicKey')">
@@ -190,7 +215,7 @@ onMounted(async () => {
           <NFormItem :label="$t('csca.issuancePolicy')">
             <NSelect v-model:value="form.issuancePolicy" :options="policyOptions" />
           </NFormItem>
-          <NFormItem :label="$t('csca.applicationUrl')">
+          <NFormItem path="applicationUrl" :label="$t('csca.applicationUrl')">
             <NInput v-model:value="form.applicationUrl" placeholder="https://" />
           </NFormItem>
           <NFormItem :label="$t('csca.notes')">
@@ -237,21 +262,10 @@ onMounted(async () => {
             <NButton v-if="step > 0" @click="prevStep">{{ $t('common.previous') }}</NButton>
           </div>
           <div>
-            <NButton
-              v-if="step < LAST_STEP"
-              type="primary"
-              :disabled="!stepValid"
-              @click="nextStep"
-            >
+            <NButton v-if="step < LAST_STEP" type="primary" @click="nextStep">
               {{ $t('common.next') }}
             </NButton>
-            <NButton
-              v-else
-              type="primary"
-              :loading="submitting"
-              :disabled="!applicationValid"
-              @click="submit"
-            >
+            <NButton v-else type="primary" :loading="submitting" @click="submit">
               <template #icon
                 ><NIcon><Save /></NIcon
               ></template>

@@ -49,7 +49,7 @@ export default {
   placeOfBirth: '出生地',
   address: '住址',
   telephone: '电话',
-  dateOfBirthHint: '六位数字，例如 1990 年 1 月 1 日为 900101。',
+  dateOfBirthHint: '选择出生日期；将以 YYMMDD 格式写入 MRZ。',
   mrz: '证件（护照）',
   documentation: '证件类型',
   portrait: '您的照片（DG2）',
@@ -87,6 +87,7 @@ export default {
   statusTitle: '申请状态',
   reveal: '领取（一次性）',
   produce: '生成文件',
+  produceConfirm: '现在生成个性化文件？',
   revealWarningTitle: '一次性、不可撤销的领取',
   revealWarning:
     '此文件用于制作您的证件，仅可领取一次。领取后会立即从服务器删除。离开本页前请妥善保存。',

@@ -148,10 +148,10 @@ onMounted(async () => {
             {{ application.applicationUrl ?? '—' }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.submittedAt')">
-            {{ application.createdAt }}
+            <DateTimeText :value="application.createdAt" />
           </NDescriptionsItem>
           <NDescriptionsItem v-if="application.reviewedAt" :label="$t('csca.reviewedAt')">
-            {{ application.reviewedAt }}
+            <DateTimeText :value="application.reviewedAt" />
           </NDescriptionsItem>
         </NDescriptions>
         <NText v-if="application.notes" depth="3" style="display: block; margin-top: 8px">

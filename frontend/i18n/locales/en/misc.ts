@@ -29,6 +29,8 @@ export default {
     forbidden: 'You do not have permission to perform this action.',
     not_found: 'The requested record was not found.',
     validation_failed: 'Please correct the highlighted fields.',
+    required: 'This field is required.',
+    invalid_url: 'Enter a valid URL.',
     no_security_mechanism: 'Select at least one security mechanism.',
     pace_required: 'Chip Authentication requires PACE.',
     request_already_consumed: 'This file has already been claimed and can no longer be retrieved.',

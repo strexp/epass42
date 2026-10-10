@@ -1,8 +1,21 @@
 <script setup lang="ts">
-import { NButton, NCard, NDataTable, NEmpty, NIcon, NTag, useMessage } from 'naive-ui'
+import {
+  NButton,
+  NCard,
+  NCode,
+  NDataTable,
+  NEmpty,
+  NIcon,
+  NPopover,
+  NSelect,
+  NSpace,
+  NTag,
+  useMessage,
+} from 'naive-ui'
 import { RefreshCw } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import type { Realm } from '@epass42/shared'
+import DateTimeText from '~/components/common/DateTimeText.vue'
 import { errorMessageKey } from '~/composables/useApi'
 
 /** The `GET /:realm/audit` payload. */
@@ -27,6 +40,24 @@ const message = useMessage()
 
 const entries = ref<AuditEntry[]>([])
 const loading = ref(false)
+const actionFilter = ref<string | null>(null)
+
+/** The table page size; the audit log can grow without bound. */
+const pagination = { pageSize: 10 }
+
+/** The distinct actions present in the log, for the filter control. */
+const actionOptions = computed(() =>
+  [...new Set(entries.value.map((entry) => entry.action))].map((action) => ({
+    label: action,
+    value: action,
+  })),
+)
+
+const filteredEntries = computed(() =>
+  actionFilter.value === null
+    ? entries.value
+    : entries.value.filter((entry) => entry.action === actionFilter.value),
+)
 
 async function load(): Promise<void> {
   loading.value = true
@@ -41,7 +72,12 @@ async function load(): Promise<void> {
 }
 
 const columns = computed(() => [
-  { title: t('audit.time'), key: 'createdAt', width: 180 },
+  {
+    title: t('audit.time'),
+    key: 'createdAt',
+    width: 180,
+    render: (row: AuditEntry) => h(DateTimeText, { value: row.createdAt }),
+  },
   {
     title: t('audit.actor'),
     key: 'actor',
@@ -62,8 +98,22 @@ const columns = computed(() => [
   {
     title: t('audit.detail'),
     key: 'detail',
-    ellipsis: { tooltip: true },
-    render: (row: AuditEntry) => (row.detail ? JSON.stringify(row.detail) : '—'),
+    width: 220,
+    render: (row: AuditEntry) =>
+      row.detail
+        ? h(
+            NPopover,
+            { trigger: 'hover', placement: 'left', style: { maxWidth: '520px' } },
+            {
+              trigger: () =>
+                h('span', { class: 'epass42-audit-detail' }, JSON.stringify(row.detail)),
+              default: () =>
+                h(NCode, { language: 'json', wordWrap: true }, () =>
+                  JSON.stringify(row.detail, null, 2),
+                ),
+            },
+          )
+        : '—',
   },
 ])
 
@@ -73,20 +123,42 @@ onMounted(load)
 <template>
   <NCard size="small">
     <template #action>
-      <NButton size="small" :loading="loading" @click="load">
-        <template #icon
-          ><NIcon><RefreshCw /></NIcon
-        ></template>
-        {{ $t('common.reload') }}
-      </NButton>
+      <NSpace align="center" :size="8">
+        <NSelect
+          v-model:value="actionFilter"
+          :options="actionOptions"
+          :placeholder="$t('common.filter')"
+          clearable
+          size="small"
+          style="min-width: 200px"
+        />
+        <NButton size="small" :loading="loading" @click="load">
+          <template #icon
+            ><NIcon><RefreshCw /></NIcon
+          ></template>
+          {{ $t('common.reload') }}
+        </NButton>
+      </NSpace>
     </template>
     <NDataTable
-      v-if="entries.length"
+      v-if="filteredEntries.length"
       :columns="columns"
-      :data="entries"
+      :data="filteredEntries"
       :loading="loading"
+      :pagination="pagination"
       size="small"
     />
     <NEmpty v-else :description="$t('common.empty')" />
   </NCard>
 </template>
+
+<style scoped>
+.epass42-audit-detail {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+</style>

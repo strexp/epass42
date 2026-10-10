@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { NCheckbox, NFormItem, NInputNumber, NSelect, NSpace, NSwitch, NTag, NText } from 'naive-ui'
+import {
+  NCheckbox,
+  NCheckboxGroup,
+  NFormItem,
+  NInputNumber,
+  NSelect,
+  NSpace,
+  NSwitch,
+  NTag,
+  NText,
+} from 'naive-ui'
 import { computed, watch } from 'vue'
 import type { SecurityOptions } from '@epass42/shared'
 
@@ -45,6 +55,16 @@ function paceProfileDisabled(profile: 'ecdhGm3des' | 'ecdhGmAes128'): boolean {
   const other = profile === 'ecdhGm3des' ? 'ecdhGmAes128' : 'ecdhGm3des'
   return model.value.pace[profile] && !model.value.pace[other]
 }
+
+/** The selected PACE profiles, as the checkbox group's value. */
+const paceProfiles = computed<(string | number)[]>({
+  get: () =>
+    (['ecdhGm3des', 'ecdhGmAes128'] as const).filter((profile) => model.value.pace[profile]),
+  set: (value) => {
+    model.value.pace.ecdhGm3des = value.includes('ecdhGm3des')
+    model.value.pace.ecdhGmAes128 = value.includes('ecdhGmAes128')
+  },
+})
 
 const aaAlgorithmOptions = computed(() => [
   { label: t('dsc.securityAaSha1'), value: 'rsaSha1' },
@@ -92,18 +112,16 @@ function setCaAlgorithm(value: string): void {
               {{ $t('dsc.securityRequired') }}
             </NTag>
           </NSpace>
-          <NCheckbox
-            v-model:checked="model.pace.ecdhGm3des"
-            :disabled="paceProfileDisabled('ecdhGm3des')"
-          >
-            {{ $t('dsc.securityPace3des') }}
-          </NCheckbox>
-          <NCheckbox
-            v-model:checked="model.pace.ecdhGmAes128"
-            :disabled="paceProfileDisabled('ecdhGmAes128')"
-          >
-            {{ $t('dsc.securityPaceAes128') }}
-          </NCheckbox>
+          <NCheckboxGroup v-model:value="paceProfiles" :disabled="!paceEnabled">
+            <NSpace vertical :size="4">
+              <NCheckbox value="ecdhGm3des" :disabled="paceProfileDisabled('ecdhGm3des')">
+                {{ $t('dsc.securityPace3des') }}
+              </NCheckbox>
+              <NCheckbox value="ecdhGmAes128" :disabled="paceProfileDisabled('ecdhGmAes128')">
+                {{ $t('dsc.securityPaceAes128') }}
+              </NCheckbox>
+            </NSpace>
+          </NCheckboxGroup>
         </NSpace>
       </NFormItem>
 
