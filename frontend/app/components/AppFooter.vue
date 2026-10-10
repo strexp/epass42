@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NText } from 'naive-ui'
+import { NSpace, NText } from 'naive-ui'
 
 const config = useRuntimeConfig()
 const year = new Date().getFullYear()
@@ -13,8 +13,10 @@ const version = config.public.appVersion as string
         <NText strong>{{ $t('app.name') }}</NText>
         <NText depth="3"> · {{ $t('footer.authority') }}</NText>
       </div>
-      <NText depth="3">{{ $t('footer.version', { version }) }}</NText>
-      <NText depth="3">{{ $t('footer.copyright', { year }) }}</NText>
+      <NSpace align="center" :size="8">
+        <NText depth="3">{{ $t('footer.version', { version }) }}</NText>
+        <NText depth="3">{{ $t('footer.copyright', { year }) }}</NText>
+      </NSpace>
     </div>
   </footer>
 </template>
