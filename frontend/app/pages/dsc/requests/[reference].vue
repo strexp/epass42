@@ -16,6 +16,9 @@ import {
   NSpace,
   NTag,
   NText,
+  NTimeline,
+  NTimelineItem,
+  useDialog,
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
@@ -49,6 +52,7 @@ const route = useRoute()
 const api = useApi()
 const { t, te } = useI18n()
 const message = useMessage()
+const dialog = useDialog()
 const notify = useNotify()
 const { auth, state, ensureLoaded } = useRealm('dsc')
 
@@ -130,6 +134,32 @@ const deliveryOptions = computed(() => [
 
 /** The data groups present in the request, in ascending order. */
 const dataGroups = computed(() => meta.value?.dataGroups ?? [])
+
+/** The request lifecycle as a timeline. */
+const timeline = computed(() => {
+  const row = meta.value
+  if (!row) return []
+  const events: {
+    time: string | null
+    label: string
+    type: 'default' | 'info' | 'success' | 'warning' | 'error'
+  }[] = [{ time: row.createdAt, label: t('status.submitted.label'), type: 'info' }]
+  if (row.reviewedAt) {
+    const approved = row.status === 'approved' || row.status === 'revoked'
+    events.push({
+      time: row.reviewedAt,
+      label: approved ? t('status.approved.label') : t('status.rejected.label'),
+      type: approved ? 'success' : 'error',
+    })
+  }
+  if (row.consumedAt) {
+    events.push({ time: row.consumedAt, label: t('status.consumed.label'), type: 'success' })
+  }
+  if (row.revokedAt) {
+    events.push({ time: row.revokedAt, label: t('status.revoked.label'), type: 'warning' })
+  }
+  return events
+})
 
 /** A human-readable explanation of a data group (ICAO Doc 9303-10). */
 function dataGroupLabel(dataGroup: number): string {
@@ -220,6 +250,19 @@ async function reveal(): Promise<void> {
   }
 }
 
+/** Confirms the one-time, irreversible claim before handing out the file. */
+function confirmClaim(): void {
+  dialog.warning({
+    title: t('dsc.revealWarningTitle'),
+    content: t('dsc.revealWarning'),
+    positiveText: t('dsc.reveal'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => {
+      void reveal()
+    },
+  })
+}
+
 onMounted(async () => {
   await ensureLoaded()
   if (!signedIn.value) return
@@ -260,6 +303,16 @@ onMounted(async () => {
             </NSpace>
           </NDescriptionsItem>
         </NDescriptions>
+        <NTimeline style="margin-top: 16px">
+          <NTimelineItem
+            v-for="(event, index) in timeline"
+            :key="index"
+            :type="event.type"
+            :time="event.time ?? undefined"
+          >
+            {{ event.label }}
+          </NTimelineItem>
+        </NTimeline>
         <NAlert
           v-if="meta.rejectReason"
           type="error"
@@ -285,7 +338,7 @@ onMounted(async () => {
           {{ $t('dsc.revealWarning') }}
         </NAlert>
         <div class="epass42-actions" style="margin-top: 12px">
-          <NButton v-if="canClaim" type="warning" @click="reveal">
+          <NButton v-if="canClaim" type="warning" @click="confirmClaim">
             {{ $t('dsc.reveal') }}
           </NButton>
           <NButton v-if="canProduce" type="warning" @click="reveal">

@@ -13,16 +13,17 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@epass42/shared": "workspace:*",
     "@lucide/vue": "^1.53.0",
     "@nuxtjs/color-mode": "^4.0.1",
     "@nuxtjs/i18n": "^10.6.0",
     "@pinia/nuxt": "^1.0.2",
-    "@epass42/shared": "workspace:*",
     "naive-ui": "^2.45.3",
     "nuxt": "^4.6.0",
     "ofetch": "^1.5.1",
     "pinia": "^4.0.3",
     "vue": "^3.5.43",
+    "vue-advanced-cropper": "^2.8.9",
     "vue-router": "^5.4.0",
     "zod": "^4.1.12"
   },
