@@ -8,7 +8,7 @@
  */
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { baseDn, listObjects, type PkdObject } from './directory'
+import { baseDn, listObjects, suffixEntry, type PkdObject } from './directory'
 
 /** Encodes bytes as an LDIF `::` base64 value. */
 function base64Value(bytes: Uint8Array): string {
@@ -54,11 +54,12 @@ function entryFor(config: AppConfig, object: PkdObject): string {
 /** Renders the full directory as LDIF (suitable for `slapadd`). */
 export function buildLdif(db: Db, config: AppConfig): string {
   const base = baseDn(config)
+  const suffix = suffixEntry(config)
   const header = [
-    'dn: ' + base,
+    `dn: ${suffix.dn}`,
     'objectClass: top',
-    'objectClass: organization',
-    `o: ePass 42`,
+    `objectClass: ${suffix.objectClass}`,
+    `${suffix.attribute}: ${suffix.value}`,
     '',
     `dn: ou=csca,${base}`,
     'objectClass: top',

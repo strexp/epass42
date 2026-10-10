@@ -29,6 +29,38 @@ export function baseDn(config: AppConfig): string {
   return config.pkd.baseDn ?? `c=${config.countryAlpha2},dc=data,dc=download,dc=pkd,dc=icao,dc=int`
 }
 
+/** The suffix (naming) entry derived from the base DN. */
+export interface SuffixEntry {
+  dn: string
+  /** Naming attribute of the first RDN (e.g. `c`, `dc`, `o`, `ou`). */
+  attribute: string
+  value: string
+  /** Structural object class whose naming attribute matches. */
+  objectClass: string
+}
+
+/**
+ * Derives a valid suffix entry from the base DN so the naming attribute of the
+ * first RDN is present with a matching object class (required by LDAP).
+ */
+export function suffixEntry(config: AppConfig): SuffixEntry {
+  const dn = baseDn(config)
+  const rdn = dn.split(',')[0] ?? ''
+  const eq = rdn.indexOf('=')
+  const attribute = (eq === -1 ? 'o' : rdn.slice(0, eq)).trim()
+  const value = (eq === -1 ? '' : rdn.slice(eq + 1)).trim().replace(/\\(.)/g, '$1')
+  const lower = attribute.toLowerCase()
+  const objectClass =
+    lower === 'c'
+      ? 'country'
+      : lower === 'dc'
+        ? 'domain'
+        : lower === 'ou'
+          ? 'organizationalUnit'
+          : 'organization'
+  return { dn, attribute, value, objectClass }
+}
+
 /** Lists every published object. */
 export function listObjects(db: Db, config: AppConfig): PkdObject[] {
   void config

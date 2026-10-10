@@ -57,6 +57,8 @@ export interface CscaProfile {
   country?: string
   /** Optional organisation name (encoded as an `O` attribute). */
   organization?: string
+  /** Optional organisational unit (encoded as an `OU` attribute). */
+  organizationalUnit?: string
   /** Locality used in the SAN directoryName (profiled as `UDN`). */
   locality?: string
   /** Optional state/province when the locality alone is not unique. */
@@ -75,6 +77,10 @@ export interface CscaProfile {
 export interface DscProfile {
   commonName: string
   country?: string
+  /** Optional organisation name (encoded as an `O` attribute). */
+  organization?: string
+  /** Optional organisational unit (encoded as an `OU` attribute). */
+  organizationalUnit?: string
   /** Authorised document types, e.g. `['P']`. */
   documentTypes: string[]
   notBefore: Date
@@ -97,9 +103,15 @@ export interface GeneratedCertificate {
   fingerprintSha256: string
 }
 
-/** Encodes a name string (`CN=...,C=...`, with an optional `O`). */
-function nameOf(commonName: string, country = 'XD', organization?: string): x509.Name {
+/** Encodes a name string (`CN=...,OU=...,O=...,C=...`). */
+function nameOf(
+  commonName: string,
+  country = 'XD',
+  organization?: string,
+  organizationalUnit?: string,
+): x509.Name {
   const parts = [`CN=${commonName}`]
+  if (organizationalUnit) parts.push(`OU=${organizationalUnit}`)
   if (organization) parts.push(`O=${organization}`)
   parts.push(`C=${country}`)
   return new x509.Name(parts.join(','))
@@ -146,7 +158,12 @@ export async function createCscaRoot(
   ]
   const certificate = await x509.X509CertificateGenerator.createSelfSigned({
     keys: { publicKey: key.publicKey, privateKey: key.privateKey },
-    name: nameOf(profile.commonName, profile.country, profile.organization),
+    name: nameOf(
+      profile.commonName,
+      profile.country,
+      profile.organization,
+      profile.organizationalUnit,
+    ),
     serialNumber: bytesToHex(profile.serial ?? randomSerial()),
     notBefore: profile.notBefore,
     notAfter: profile.notAfter,
@@ -185,7 +202,12 @@ export async function createDsc(
     cscaIssuerAltName(),
     crlDistributionPoints(profile.crlDistributionPoints),
   ]
-  const subject = nameOf(profile.commonName, profile.country)
+  const subject = nameOf(
+    profile.commonName,
+    profile.country,
+    profile.organization,
+    profile.organizationalUnit,
+  )
   const certificate = await x509.X509CertificateGenerator.create({
     publicKey: subjectKey.publicKey,
     signingKey: issuer.key.privateKey,
@@ -218,15 +240,27 @@ export async function createCscaLink(
   const pss = newProfile.pss ?? newKeyPss
   const nameChanged =
     oldCertificate.subjectName.getField('CN')[0] !== newProfile.commonName ||
-    oldCertificate.subjectName.getField('C')[0] !== (newProfile.country ?? 'XD')
+    oldCertificate.subjectName.getField('C')[0] !== (newProfile.country ?? 'XD') ||
+    oldCertificate.subjectName.getField('O')[0] !== newProfile.organization ||
+    oldCertificate.subjectName.getField('OU')[0] !== newProfile.organizationalUnit
   const extensions = [
     await subjectKeyIdentifier(newPublicKey),
     await authorityKeyIdentifier(oldKey.publicKey),
     ...(nameChanged
       ? [
           nameChangeExtension(
-            simpleNameValue('', newProfile.country ?? 'XD'),
-            simpleNameValue(newProfile.commonName, newProfile.country),
+            simpleNameValue(
+              '',
+              newProfile.country ?? 'XD',
+              newProfile.organization,
+              newProfile.organizationalUnit,
+            ),
+            simpleNameValue(
+              newProfile.commonName,
+              newProfile.country,
+              newProfile.organization,
+              newProfile.organizationalUnit,
+            ),
           ),
         ]
       : []),
@@ -243,7 +277,12 @@ export async function createCscaLink(
   const certificate = await x509.X509CertificateGenerator.create({
     publicKey: newPublicKey,
     signingKey: oldKey.privateKey,
-    subject: nameOf(newProfile.commonName, newProfile.country),
+    subject: nameOf(
+      newProfile.commonName,
+      newProfile.country,
+      newProfile.organization,
+      newProfile.organizationalUnit,
+    ),
     issuer: oldCertificate.subjectName,
     serialNumber: bytesToHex(options.serial ?? randomSerial()),
     notBefore: newProfile.notBefore,
@@ -271,7 +310,12 @@ export async function createMasterListSigner(
   const certificate = await x509.X509CertificateGenerator.create({
     publicKey: subjectKey.publicKey,
     signingKey: issuer.key.privateKey,
-    subject: nameOf(profile.commonName, profile.country),
+    subject: nameOf(
+      profile.commonName,
+      profile.country,
+      profile.organization,
+      profile.organizationalUnit,
+    ),
     issuer: issuer.certificate.subjectName,
     serialNumber: bytesToHex(profile.serial ?? randomSerial()),
     notBefore: profile.notBefore,

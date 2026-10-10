@@ -49,7 +49,10 @@ const niaDscSchema = z.object({
 
 const cscaSchema = z.object({
   commonName: z.string().default('ePass 42 CSCA'),
-  organization: z.string().optional(),
+  /** Organisation (`O`) placed in the CSCA and DSC subject names. */
+  organization: z.string().default('ePass 42'),
+  /** Optional organisational unit (`OU`) in the subject names. */
+  organizationalUnit: z.string().optional(),
   locality: z.string().default(COUNTRY_ALPHA3),
   validityYears: z.number().int().min(1).default(13),
   privateKeyUsageYears: z.number().int().min(1).default(4),

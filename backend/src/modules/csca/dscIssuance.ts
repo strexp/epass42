@@ -108,6 +108,8 @@ export class DscIssuanceService {
       {
         commonName: params.commonName,
         country: config.countryAlpha2,
+        organization: config.csca.organization,
+        organizationalUnit: config.csca.organizationalUnit,
         documentTypes: params.documentTypes,
         notBefore: now,
         notAfter: addYears(now, params.validityYears),

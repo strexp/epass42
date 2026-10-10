@@ -111,6 +111,11 @@ describe('M5 CSCA role', () => {
     expect(approve.statusCode).toBe(201)
     const certPem = json(approve).certPem as string
 
+    // Subjects carry the NIA organisation (O), matching common ICAO PKD
+    // practice; the CSCA and its DSCs are consistent.
+    expect(parseCertificatePem(cscaPem).subject).toContain('O=ePass 42')
+    expect(parseCertificatePem(certPem).subject).toContain('O=ePass 42')
+
     // The issued DSC chains to the bootstrapped CSCA.
     const result = await verifyDscAgainstCsca(parseCertificatePem(certPem), [
       parseCertificatePem(cscaPem),

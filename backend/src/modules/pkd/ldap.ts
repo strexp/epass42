@@ -8,7 +8,7 @@
 import ldapjs from 'ldapjs'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { baseDn, listObjects, type PkdObject } from './directory'
+import { baseDn, listObjects, suffixEntry, type PkdObject } from './directory'
 
 /** An LDAP entry with a plain attribute map (values lowercased keys). */
 export interface LdapEntry {
@@ -19,8 +19,15 @@ export interface LdapEntry {
 /** Builds the LDAP DIT from the published objects. */
 export function buildEntries(db: Db, config: AppConfig): LdapEntry[] {
   const base = baseDn(config)
+  const suffix = suffixEntry(config)
   const entries: LdapEntry[] = [
-    { dn: base, attributes: { objectclass: ['top', 'organization'], o: ['ePass 42'] } },
+    {
+      dn: suffix.dn,
+      attributes: {
+        objectclass: ['top', suffix.objectClass],
+        [suffix.attribute.toLowerCase()]: [suffix.value],
+      },
+    },
     {
       dn: `ou=csca,${base}`,
       attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['csca'] },

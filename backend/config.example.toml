@@ -43,6 +43,11 @@ from = "ePass 42 <no-reply@localhost>"
 # CSCA (M5): bootstrap a self-signed online CSCA key when none exists.
 [csca]
 commonName = "ePass 42 CSCA"
+# Organisation (O) placed in the CSCA/DSC subject names (kept identical across
+# both, matching common ICAO PKD practice).  Set the NIA/issuing authority.
+organization = "ePass 42"
+# Optional organisational unit (OU) in the subject names; leave unset to omit.
+# organizationalUnit = "ePass 42 PKI"
 validityYears = 13
 privateKeyUsageYears = 4
 keyBits = 4096

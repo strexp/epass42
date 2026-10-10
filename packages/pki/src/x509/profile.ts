@@ -149,7 +149,16 @@ export function extendedKeyUsage(oids: string[], critical = false): x509.Extensi
   return new x509.ExtendedKeyUsageExtension(oids, critical)
 }
 
-/** The ASN.1 Name (RDNSequence) for a `C`/`CN` subject, used by NameChange. */
-export function simpleNameValue(commonName: string, country = 'XD'): Bytes {
-  return rdnSequence([attribute('2.5.4.6', country), attribute('2.5.4.3', commonName)])
+/** The ASN.1 Name (RDNSequence) for a `C`/`O`/`OU`/`CN` subject. */
+export function simpleNameValue(
+  commonName: string,
+  country = 'XD',
+  organization?: string,
+  organizationalUnit?: string,
+): Bytes {
+  const attributes = [attribute('2.5.4.3', commonName)]
+  if (organizationalUnit) attributes.push(attribute('2.5.4.11', organizationalUnit))
+  if (organization) attributes.push(attribute('2.5.4.10', organization))
+  attributes.push(attribute('2.5.4.6', country))
+  return rdnSequence(attributes)
 }

@@ -75,6 +75,9 @@ describe('X.509 CSCA profile', () => {
     const dsc = await createDsc(
       {
         commonName: 'ePass 42 Test DSC',
+        country: 'XD',
+        organization: 'ePass 42',
+        organizationalUnit: 'PKI',
         documentTypes: ['P'],
         notBefore,
         notAfter,
@@ -85,6 +88,10 @@ describe('X.509 CSCA profile', () => {
       { certificate: csca.certificate, key: cscaKey },
     )
     const cert = dsc.certificate
+    // O/OU are populated so the subject matches common ICAO PKD practice.
+    expect(cert.subject).toContain('O=ePass 42')
+    expect(cert.subject).toContain('OU=PKI')
+    expect(cert.subject).toContain('CN=ePass 42 Test DSC')
     expect(cert.getExtension(OIDS.idIcaoDocumentType)).toBeTruthy()
     expect(cert.getExtension(OIDS.basicConstraints)).toBeFalsy()
     expect(cert.getExtension(OIDS.extKeyUsage)).toBeFalsy()

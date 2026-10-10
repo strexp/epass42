@@ -149,6 +149,7 @@ epass42/
 
 - PKD REST（`/pkd/certificates|crls|masterlists|objects/:id.:format|ldif`）、LDIF、只读 LDAP（ldapjs，仅 Bind/Search）、OpenLDAP schema/slapd 示例。
 - ML Signer（EKU `2.23.136.1.1.3`）、`POST /pkd/masterlists`、发布与 LDIF；pkijs 与 `openssl cms -verify` 双验证。
+- 后缀条目按其 RDN 推导命名属性与 objectClass（`c` → `country` 等），保证 `slapadd` 可导入；证书 Subject 统一填充 `O`（`csca.organization`，默认 `ePass 42`），`OU` 可选（`csca.organizationalUnit`），CSCA/DSC/ML Signer 保持一致。
 
 ### M11 前端（Nuxt 4 SPA + Naive UI）
 

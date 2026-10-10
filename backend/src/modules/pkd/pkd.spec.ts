@@ -54,7 +54,28 @@ describe('M9 PKD REST and LDIF', () => {
     expect(ldif.body).toContain('objectClass: 2.23.136.2')
     expect(ldif.body).toContain('2.23.136.1.1.2::')
     expect(ldif.body).toContain(`dn: ${baseDn(config)}`)
+    // The suffix entry must carry its RDN naming attribute and a matching
+    // object class, otherwise `slapadd` rejects it.
+    expect(ldif.body).toContain('objectClass: country')
+    expect(ldif.body).toContain('c: XD')
     void db
+  })
+
+  it('emits every entry with its RDN naming attribute (slapadd precondition)', async () => {
+    const { app } = await setup()
+    const ldif = await app.inject({ method: 'GET', url: '/pkd/ldif' })
+    const blocks = ldif.body.split(/\n\n+/).filter((block) => block.trim() !== '')
+    for (const block of blocks) {
+      const lines = block.split('\n')
+      const dnLine = lines.find((line) => line.startsWith('dn: '))!
+      const dn = dnLine.slice(4)
+      const attribute = dn.split(',')[0]!.split('=')[0]!.toLowerCase()
+      const present = lines.some((line) => {
+        const lower = line.toLowerCase()
+        return lower.startsWith(`${attribute}:`) || lower.startsWith(`${attribute}::`)
+      })
+      expect(present, `entry "${dn}" is missing its RDN attribute ${attribute}`).toBe(true)
+    }
   })
 
   it('generates a Master List via the admin endpoint', async () => {
@@ -94,6 +115,9 @@ describe('M9 LDAP entry building and filters', () => {
   it('builds the DIT', async () => {
     const { db, config } = await setup()
     const entries = buildEntries(db, config)
+    const suffix = entries.find((entry) => entry.dn === baseDn(config))!
+    expect(suffix.attributes.c).toEqual(['XD'])
+    expect(suffix.attributes.objectclass).toContain('country')
     expect(
       entries.some((entry) => entry.dn.startsWith('cn=') && entry.dn.includes('ou=csca,')),
     ).toBe(true)

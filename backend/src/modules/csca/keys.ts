@@ -50,6 +50,7 @@ export class CscaKeyService {
       {
         commonName: config.csca.commonName,
         organization: config.csca.organization,
+        organizationalUnit: config.csca.organizationalUnit,
         locality: config.csca.locality,
         country: config.countryAlpha2,
         notBefore: now,
@@ -131,6 +132,7 @@ export class CscaKeyService {
       {
         commonName: config.csca.commonName,
         organization: config.csca.organization,
+        organizationalUnit: config.csca.organizationalUnit,
         country: config.countryAlpha2,
         locality: config.csca.locality,
         notBefore: now,
@@ -154,6 +156,7 @@ export class CscaKeyService {
       {
         commonName: config.csca.commonName,
         organization: config.csca.organization,
+        organizationalUnit: config.csca.organizationalUnit,
         locality: config.csca.locality,
         country: config.countryAlpha2,
         notBefore: now,
