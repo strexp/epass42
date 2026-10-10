@@ -30,3 +30,38 @@ jobs:
             --out "$RUNNER_TEMP/csca" --cn "ePass 42 CI CSCA" --key-rsa-bits 2048
           pnpm --filter @epass42/scripts exec tsx src/verify.ts \
             cert "$RUNNER_TEMP/csca/csca.crt" --kind csca
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build backend (dist)
+        run: pnpm --filter @epass42/backend build
+      - name: Build frontend (static SPA)
+        env:
+          # Runtime-substituted placeholder; see frontend/Dockerfile.
+          NUXT_PUBLIC_API_BASE: __EPASS42_API_BASE__
+        run: pnpm --filter @epass42/frontend generate
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: epass42-backend
+          path: backend/dist
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: epass42-frontend
+          path: frontend/.output/public
+          if-no-files-found: error
+          retention-days: 14

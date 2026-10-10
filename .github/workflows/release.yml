@@ -1,0 +1,101 @@
+name: Release
+
+# Push a version tag (e.g. `v0.1.0`) to publish a draft GitHub release with the
+# build bundles and push both Docker images to GitHub Packages (GHCR).
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # create the draft release
+  packages: write # push images to ghcr.io
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Build the distributable bundles that are attached to the release.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build backend (dist)
+        run: pnpm --filter @epass42/backend build
+      - name: Build frontend (static SPA)
+        env:
+          NUXT_PUBLIC_API_BASE: __EPASS42_API_BASE__
+        run: pnpm --filter @epass42/frontend generate
+      - name: Package bundles
+        run: |
+          mkdir -p release
+          tar -C frontend/.output/public -czf "release/epass42-frontend-${GITHUB_REF_NAME}.tar.gz" .
+          tar -C backend/dist -czf "release/epass42-backend-${GITHUB_REF_NAME}.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-bundles
+          path: release/*.tar.gz
+          if-no-files-found: error
+
+  # Build and push the two Docker images to GitHub Packages.
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+          - name: backend
+            dockerfile: backend/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Lowercase the owner for the image name
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/epass42-${{ matrix.name }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NUXT_PUBLIC_API_BASE=__EPASS42_API_BASE__
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          provenance: false
+
+  # Create the draft release once the images and bundles are ready.
+  release:
+    needs: [build, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-bundles
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: release/*.tar.gz

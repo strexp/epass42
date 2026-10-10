@@ -1,0 +1,42 @@
+# Keep the Docker build context small and free of host/CI state.
+#
+# The build context is the repository root (the pnpm workspace lives there), so
+# this file applies to both frontend/Dockerfile and backend/Dockerfile.
+
+# Version control / CI
+.git
+.gitignore
+.github
+
+# Dependencies (installed inside the image)
+node_modules
+**/node_modules
+
+# Build output (rebuilt inside the image)
+**/dist
+**/build
+**/coverage
+**/.nuxt
+**/.output
+**/.nitro
+**/.cache
+**/*.tsbuildinfo
+
+# Local state, secrets and configuration
+**/data
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/*.sqlite
+**/*.sqlite3
+config.toml
+**/config.toml
+.env
+**/.env
+secrets
+
+# Local-only reference material and editor noise
+reference
+.vscode
+.idea
+.DS_Store

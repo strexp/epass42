@@ -1,0 +1,50 @@
+# ePass 42 full-stack deployment (frontend + backend).
+#
+# Both containers bind to loopback and are meant to be reached through a reverse
+# proxy on the host (which terminates TLS and routes the two origins).  There is
+# no TLS here on purpose.
+#
+# Usage:
+#   cp ../backend/config.example.toml ../backend/config.toml   # then edit it
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# The `build.context` is the repository root, so the Dockerfiles can see the
+# pnpm workspace.
+
+name: epass42
+
+services:
+  backend:
+    image: ghcr.io/strexp/epass42-backend:latest
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    volumes:
+      # TOML-only configuration (must exist; copy config.example.toml).
+      - ../backend/config.toml:/app/backend/config.toml:ro
+      # SQLite database, KEK and generated artifacts.
+      - backend-data:/app/backend/data
+    ports:
+      - '127.0.0.1:3000:3000'
+
+  frontend:
+    image: ghcr.io/strexp/epass42-frontend:latest
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      EPASS42_FRONTEND_HOST: 0.0.0.0
+      EPASS42_FRONTEND_PORT: '8080'
+      # Backend origin baked into the SPA at container start.  Empty = same
+      # origin (path-prefixed reverse proxy); set e.g. https://api.example.net
+      # for a cross-origin deployment.
+      EPASS42_API_BASE: ''
+    ports:
+      - '127.0.0.1:8080:8080'
+
+volumes:
+  backend-data:
