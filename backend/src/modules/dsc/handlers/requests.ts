@@ -9,7 +9,7 @@ import { buildMrzLines, validateMrzLines } from '@epass42/pki'
 import { signRequestSchema, type SignRequest, LIMITS } from '@epass42/shared'
 
 import { writeAudit } from '../../../audit/audit'
-import { mntDelegatesToNia } from '../../auth/authorization'
+import { adminMnts, mntDelegatesToNia } from '../../auth/authorization'
 import { activeOwnDsc } from '../../mnt/delegation'
 import { canonicalMnts } from '../../jurisdiction/whois'
 import { resolvePrincipal, type AuthContext } from '../../auth/middleware'
@@ -117,13 +117,18 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
   )
 
   // IP / session based maintainer jurisdiction: tells the applicant whether its
-  // maintainer uses its own DSC (so it can be redirected away from NIA).
+  // maintainer uses its own DSC (so it can be redirected away from NIA), and
+  // who reviews an NIA-signed request (its own maintainer + the DSC admins).
   server.get('/dsc/jurisdiction', async (request) => {
     const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
-    const mnts = principal?.account.activeMnt
-      ? [principal.account.activeMnt]
-      : await resolveIpMnts(deps, request.ip)
-    if (mnts.length === 0) return { mnts: [], useNiaDsc: null, notice: false, ownDscUrl: null }
+    const ownMnt = principal?.account.activeMnt ?? null
+    const mnts = ownMnt ? [ownMnt] : await resolveIpMnts(deps, request.ip)
+    const reviewers = [
+      ...new Set([...(ownMnt ? [ownMnt] : []), ...adminMnts(db, deps.config, 'dsc')]),
+    ]
+    if (mnts.length === 0) {
+      return { mnts: [], useNiaDsc: null, notice: false, ownDscUrl: null, reviewers }
+    }
     // The notice applies when any of the IP's maintainers uses its own DSC.
     const notice = mnts.some((mnt) => !mntDelegatesToNia(db, mnt))
     let ownDscUrl: string | null = null
@@ -134,7 +139,7 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
         break
       }
     }
-    return { mnts, useNiaDsc: !notice, notice, ownDscUrl }
+    return { mnts, useNiaDsc: !notice, notice, ownDscUrl, reviewers }
   })
 }
 

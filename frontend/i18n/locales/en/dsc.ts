@@ -11,6 +11,8 @@ export default {
   stepExtra: 'Additional information',
   stepReview: 'Review and submit',
   reviewSummary: 'Review your details, then submit the request.',
+  reviewersTitle: 'Who reviews my application',
+  reviewersBody: 'Your request is signed with the NIA certificate and reviewed by: {mnts}.',
   submittedTitle: 'Request submitted',
   submittedHint: 'Your request is now awaiting review. Keep this reference to track it.',
   detailTitle: 'Request details',

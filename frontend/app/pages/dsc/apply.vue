@@ -90,6 +90,8 @@ interface Jurisdiction {
   useNiaDsc: boolean | null
   notice: boolean
   ownDscUrl: string | null
+  /** Who reviews an NIA-signed request: the applicant's own MNT + DSC admins. */
+  reviewers: string[]
 }
 const jurisdiction = ref<Jurisdiction | null>(null)
 const noticeDismissed = ref(false)
@@ -344,6 +346,16 @@ onMounted(async () => {
         </NAlert>
 
         <NAlert type="info" style="margin-bottom: 16px">{{ $t('dsc.applyIntro') }}</NAlert>
+
+        <!-- When the applicant uses the NIA certificate: who will review it. -->
+        <NAlert
+          v-if="jurisdiction && !jurisdiction.notice && jurisdiction.reviewers.length"
+          type="info"
+          :title="$t('dsc.reviewersTitle')"
+          style="margin-bottom: 16px"
+        >
+          {{ $t('dsc.reviewersBody', { mnts: jurisdiction.reviewers.join(', ') }) }}
+        </NAlert>
 
         <NSteps :current="step + 1" size="small" style="margin-bottom: 16px">
           <NStep :title="$t('dsc.stepDetails')" />

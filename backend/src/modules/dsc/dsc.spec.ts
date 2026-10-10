@@ -798,7 +798,7 @@ describe('M7 DSC signing service', () => {
   })
 
   it('reports maintainer jurisdiction from whois and settings', async () => {
-    const { app, db } = await harness(
+    const { app, db, oidc } = await harness(
       {},
       staticMntResolver({ '10.1.2.3': ['AS1-MNT'], '192.0.2.1': [] }),
     )
@@ -819,6 +819,19 @@ describe('M7 DSC signing service', () => {
       remoteAddress: '192.0.2.1',
     })
     expect(outOfRange.json()).toMatchObject({ mnts: [], notice: false })
+
+    // A signed-in applicant on the NIA route sees who reviews: their own MNT
+    // plus the DSC administrators.
+    const user = await login(app, oidc, 'dsc', 'dsc-client', USER)
+    const signedIn = await app.inject({
+      method: 'GET',
+      url: '/dsc/jurisdiction',
+      headers: { cookie: user },
+    })
+    const body = signedIn.json() as { notice: boolean; reviewers: string[] }
+    expect(body.notice).toBe(false)
+    expect(body.reviewers).toContain('USER-MNT')
+    expect(body.reviewers).toContain('EXAMPLE-DSC-MNT')
   })
 
   it('lets the owner view status/preview and reveal by reference', async () => {

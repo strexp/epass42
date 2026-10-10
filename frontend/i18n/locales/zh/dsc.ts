@@ -10,6 +10,8 @@ export default {
   stepExtra: '附加信息',
   stepReview: '复核并提交',
   reviewSummary: '请复核您的信息，然后提交申请。',
+  reviewersTitle: '谁会审核我的申请',
+  reviewersBody: '您的申请由 NIA 证书签署，审核方为：{mnts}。',
   submittedTitle: '申请已提交',
   submittedHint: '您的申请已进入审核。请保存此受理编号以便查询。',
   detailTitle: '申请详情',
