@@ -11,7 +11,7 @@ import {
 import type { Db } from '../../db/client'
 import { dscCert } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
-import { currentCscaKey, type CscaService } from './service'
+import { currentCscaKey } from './service'
 
 const THIRD_USER = {
   sub: 'third-user',
@@ -37,7 +37,6 @@ interface Harness {
   userCookie: string
   cscaPem: string
   db: Db
-  csca: CscaService
 }
 
 async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promise<Harness> {
@@ -68,7 +67,6 @@ async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promis
     userCookie,
     cscaPem,
     db: built.dbHandle.db,
-    csca: built.csca,
   }
 }
 
@@ -425,10 +423,10 @@ describe('M5 CSCA role', () => {
     expect(response.json().error).toBe('no_private_key')
   })
 
-  it('keeps the system NIA DSC private key internal', async () => {
-    const { app, cscaCookie, db, csca } = await harness()
-    await csca.ensureNiaDsc()
+  it('publishes the system NIA DSC at startup without exposing its key', async () => {
+    const { app, cscaCookie, db } = await harness()
 
+    // The system DSC is prepared at startup, so it is listed immediately.
     const listed = await app.inject({
       method: 'GET',
       url: '/csca/certificates?includeRevoked=true',

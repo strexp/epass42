@@ -388,8 +388,10 @@ onMounted(async () => {
                 <NInput v-model:value="mrz.givenNames" maxlength="39" />
               </NFormItem>
               <NFormItem :label="$t('dsc.dateOfBirth')">
-                <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
-                <NText depth="3" style="font-size: 12px">{{ $t('dsc.dateOfBirthHint') }}</NText>
+                <NSpace vertical :size="4" style="width: 100%">
+                  <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
+                  <NText depth="3" style="font-size: 12px">{{ $t('dsc.dateOfBirthHint') }}</NText>
+                </NSpace>
               </NFormItem>
               <NFormItem :label="$t('dsc.sex')">
                 <NSelect v-model:value="mrz.sex" :options="sexOptions" />

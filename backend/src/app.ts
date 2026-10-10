@@ -210,6 +210,17 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   }
   const dsc = new DscService(dbHandle.db, config, csca)
 
+  // Prepare the system NIA Document Signer certificate at startup so it is
+  // always present in the certificate registry and the PKD directory.  Only
+  // its private key stays internal (it is never exportable).
+  if (realmEnabled(config, 'csca') && realmEnabled(config, 'dsc')) {
+    try {
+      await csca.ensureNiaDsc()
+    } catch (error) {
+      app.log.error({ err: error }, 'failed to prepare the system NIA Document Signer certificate')
+    }
+  }
+
   registerHealthRoutes(app, dbHandle)
   registerConfigRoutes(app, { config, providers })
   registerAuditRoutes(app, { config, db: dbHandle.db, sessions })
