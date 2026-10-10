@@ -205,12 +205,6 @@ onBeforeUnmount(stopCamera)
     <NText v-if="tooLarge" type="warning" style="display: block; font-size: 12px">
       {{ $t('dsc.portraitTooLarge') }}
     </NText>
-    <img
-      v-if="model"
-      :src="model.previewDataUrl"
-      alt=""
-      style="max-width: 120px; margin-top: 8px"
-    />
 
     <NModal
       v-model:show="modalOpen"
