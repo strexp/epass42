@@ -77,7 +77,7 @@ export class DscService {
     return this.requests.activePassport(accountId)
   }
 
-  /** Revokes an approved passport so the applicant may apply again. */
+  /** Revokes an approved passport so it is no longer active. */
   revokePassport(row: SignRequestRow, reason: string | null): SignRequestRow {
     // Drop any unclaimed perso artifact before marking the passport revoked.
     this.artifacts.destroyArtifact(row)

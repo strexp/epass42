@@ -382,33 +382,18 @@ describe('M7 DSC signing service', () => {
     })
     expect(forbidden.statusCode).toBe(403)
 
-    // The single-active-passport rule blocks a second submission until the
-    // current passport is revoked.
-    const blocked = await app.inject({
-      method: 'POST',
-      url: '/dsc/requests',
-      headers: { cookie: reviewerCookie },
-      payload: payload('Q1111111', { dscSelection: { mode: 'nia' } }),
-    })
-    expect(blocked.statusCode).toBe(409)
-    expect(blocked.json().error).toBe('active_passport_exists')
-    const revoke = await app.inject({
-      method: 'POST',
-      url: `/dsc/passports/${ownId}/revoke`,
-      headers: { cookie: reviewerCookie },
-      payload: {},
-    })
-    expect(revoke.statusCode).toBe(200)
-    expect(revoke.json().status).toBe('revoked')
-
-    // A second own request may not be approved with global settings.
+    // A second request may be submitted while a passport is active: approving
+    // the re-issuance would supersede the current passport.
     const another = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
       headers: { cookie: reviewerCookie },
       payload: payload('Q1111111', { dscSelection: { mode: 'nia' } }),
     })
+    expect(another.statusCode).toBe(201)
     const anotherId = another.json().reference as string
+
+    // A second own request may not be approved with global settings.
     const settings = await app.inject({
       method: 'POST',
       url: `/dsc/requests/${anotherId}/approve`,
@@ -471,7 +456,7 @@ describe('M7 DSC signing service', () => {
     })
     expect(approve.statusCode).toBe(200)
 
-    // Free the single active-passport slot before applying again.
+    // The owner can revoke the approved passport explicitly.
     const revoke = await app.inject({
       method: 'POST',
       url: `/dsc/passports/${beforeId}/revoke`,
@@ -950,7 +935,7 @@ describe('M7 DSC signing service', () => {
     expect(adminMe.json().reviewScope).toBe('nia')
   })
 
-  it('enforces a single active passport and exposes it to its owner', async () => {
+  it('supersedes the previous active passport on re-issuance', async () => {
     const { app, oidc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
     const cookie = await applicant(app, oidc)
@@ -1004,17 +989,17 @@ describe('M7 DSC signing service', () => {
     })
     expect(foreignLookup.statusCode).toBe(403)
 
-    // A second submission is rejected until the passport is revoked.
-    const blocked = await app.inject({
+    // A second submission is allowed while a passport is active.
+    const second = await app.inject({
       method: 'POST',
       url: '/dsc/requests',
       headers: { cookie },
       payload: payload('P2000002'),
     })
-    expect(blocked.statusCode).toBe(409)
-    expect(blocked.json().error).toBe('active_passport_exists')
+    expect(second.statusCode).toBe(201)
+    const secondReference = second.json().reference as string
 
-    // Only the owner may revoke it.
+    // Only the owner may revoke a passport.
     const forbidden = await app.inject({
       method: 'POST',
       url: `/dsc/passports/${reference}/revoke`,
@@ -1023,23 +1008,39 @@ describe('M7 DSC signing service', () => {
     })
     expect(forbidden.statusCode).toBe(403)
 
+    // Approving the re-issued passport invalidates the previous active one.
+    const approveSecond = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${secondReference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approveSecond.statusCode).toBe(200)
+
+    const previous = await app.inject({
+      method: 'GET',
+      url: `/dsc/requests/${reference}`,
+      headers: { cookie },
+    })
+    expect(previous.json().status).toBe('revoked')
+
+    // The new passport is now the single active one.
+    const active2 = await app.inject({
+      method: 'GET',
+      url: '/dsc/passports/active',
+      headers: { cookie },
+    })
+    expect(active2.json().passport.reference).toBe(secondReference)
+
+    // The owner may still revoke it explicitly.
     const revoke = await app.inject({
       method: 'POST',
-      url: `/dsc/passports/${reference}/revoke`,
+      url: `/dsc/passports/${secondReference}/revoke`,
       headers: { cookie },
       payload: { reason: 'reissued' },
     })
     expect(revoke.statusCode).toBe(200)
     expect(revoke.json().status).toBe('revoked')
-
-    // The slot is free again.
-    const after = await app.inject({
-      method: 'POST',
-      url: '/dsc/requests',
-      headers: { cookie },
-      payload: payload('P2000002'),
-    })
-    expect(after.statusCode).toBe(201)
   })
 
   it('scopes "my requests" by account regardless of dn42 claims', async () => {

@@ -122,7 +122,7 @@ function loginToApply(): void {
   auth.login('dsc', '/dsc/apply')
 }
 
-/** Revokes the active passport so a new request may be submitted. */
+/** Revokes the active passport early (a new approval would also supersede it). */
 async function revokePassport(): Promise<void> {
   if (!activePassport.value) return
   revoking.value = true
@@ -258,36 +258,33 @@ onMounted(async () => {
         </NResult>
       </template>
 
-      <!-- Single active passport: revoke before applying again. -->
-      <template v-else-if="activePassport">
-        <NAlert type="warning" :title="$t('dsc.activePassportTitle')" style="margin-bottom: 12px">
-          {{ $t('dsc.activePassportHint') }}
-        </NAlert>
-        <NDescriptions :column="2" size="small">
-          <NDescriptionsItem :label="$t('dsc.passportDocumentNumber')">
-            {{ activePassport.documentNumber }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('dsc.requestReference')">
-            <NText class="epass42-mono">{{ activePassport.reference }}</NText>
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('dsc.passportIssuedAt')">
-            {{ activePassport.createdAt }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('dsc.statusTitle')">
-            <StatusTag :status="activePassport.status" />
-          </NDescriptionsItem>
-        </NDescriptions>
-        <div class="epass42-actions" style="margin-top: 12px">
-          <NButton size="small" @click="revokeOpen = true">
-            {{ $t('dsc.revokePassport') }}
-          </NButton>
-          <NuxtLink :to="`/dsc/requests/${activePassport.reference}`">
-            <NButton size="small">{{ $t('dsc.viewDetails') }}</NButton>
-          </NuxtLink>
-        </div>
-      </template>
-
+      <!-- Re-issuance: warn that a new request supersedes the active passport. -->
       <template v-else>
+        <NAlert
+          v-if="activePassport"
+          type="warning"
+          :title="$t('dsc.activePassportTitle')"
+          style="margin-bottom: 12px"
+        >
+          <div>{{ $t('dsc.activePassportHint') }}</div>
+          <NDescriptions :column="2" size="small" style="margin-top: 8px">
+            <NDescriptionsItem :label="$t('dsc.passportDocumentNumber')">
+              {{ activePassport.documentNumber }}
+            </NDescriptionsItem>
+            <NDescriptionsItem :label="$t('dsc.requestReference')">
+              <NText class="epass42-mono">{{ activePassport.reference }}</NText>
+            </NDescriptionsItem>
+          </NDescriptions>
+          <div class="epass42-actions" style="margin-top: 8px">
+            <NuxtLink :to="`/dsc/requests/${activePassport.reference}`">
+              <NButton size="small">{{ $t('dsc.viewDetails') }}</NButton>
+            </NuxtLink>
+            <NButton size="small" @click="revokeOpen = true">
+              {{ $t('dsc.revokePassport') }}
+            </NButton>
+          </div>
+        </NAlert>
+
         <NText depth="3">{{ $t('dsc.submitHint') }}</NText>
         <NAlert type="info" style="margin-top: 8px">{{ $t('dsc.applyIntro') }}</NAlert>
 
@@ -423,7 +420,7 @@ onMounted(async () => {
 
       <template #action>
         <NButton
-          v-if="signedIn && !activePassport && !reference"
+          v-if="signedIn && !reference"
           type="primary"
           :loading="submitting"
           :disabled="!canSubmit"

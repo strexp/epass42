@@ -25,7 +25,6 @@ export const ERROR_CODES = [
   'no_private_key',
   'private_key_consumed',
   'dg2_too_large',
-  'active_passport_exists',
   'passport_not_active',
   'request_not_found',
   'request_already_consumed',

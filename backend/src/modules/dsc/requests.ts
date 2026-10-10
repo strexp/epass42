@@ -78,19 +78,27 @@ export class DscRequestService {
   }
 
   /**
-   * The account's currently active passport: the most recent approved request
-   * (produced and/or claimed).  A revoked or rejected request is not active.
+   * Every active passport of an account, newest first: an approved request
+   * (produced and/or claimed) that has not been revoked or rejected.
    */
-  activePassport(accountId: number): SignRequestRow | undefined {
+  activePassports(accountId: number): SignRequestRow[] {
     return this.db
       .select()
       .from(signRequest)
       .where(and(eq(signRequest.requesterAccountId, accountId), eq(signRequest.status, 'approved')))
       .orderBy(desc(signRequest.createdAt))
-      .get()
+      .all()
   }
 
-  /** Revokes the account's active passport, freeing it for a new application. */
+  /**
+   * The account's currently active passport: the most recent approved request
+   * (produced and/or claimed).  A revoked or rejected request is not active.
+   */
+  activePassport(accountId: number): SignRequestRow | undefined {
+    return this.activePassports(accountId)[0]
+  }
+
+  /** Marks a passport revoked so it is no longer the owner's active passport. */
   revoke(row: SignRequestRow, reason: string | null): SignRequestRow {
     this.db
       .update(signRequest)
@@ -102,15 +110,6 @@ export class DscRequestService {
 
   /** Creates a signing request and returns its one-time reference. */
   submit(payload: SignRequest, requester: Requester): SubmitResult {
-    // A logged-in applicant may only hold one usable passport at a time; the
-    // active passport must be revoked before a new request can be submitted.
-    if (requester.accountId !== null && this.activePassport(requester.accountId)) {
-      throw new AppError(
-        'active_passport_exists',
-        'an active passport already exists; revoke it before applying again',
-        409,
-      )
-    }
     const reference = randomToken(24)
     const createdAt = nowIso()
     const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString()

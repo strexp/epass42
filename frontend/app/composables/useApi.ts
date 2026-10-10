@@ -47,6 +47,5 @@ const ERROR_KEYS = new Set([
   'no_private_key',
   'private_key_consumed',
   'dg2_too_large',
-  'active_passport_exists',
   'passport_not_active',
 ])

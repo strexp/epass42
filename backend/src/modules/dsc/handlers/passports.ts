@@ -1,7 +1,7 @@
 /**
  * DSC passport routes: the applicant's currently active passport and its
- * self-service revocation.  A logged-in applicant may hold at most one active
- * passport; it must be revoked before another request can be submitted.
+ * self-service revocation.  Approving a new request supersedes the previous
+ * active passport, so an applicant has at most one active passport at a time.
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
@@ -29,7 +29,7 @@ export function registerPassportRoutes(app: FastifyInstance, deps: DscRouteDeps)
     })
   })
 
-  // Applicant self-service revocation: frees the single active-passport slot.
+  // Applicant self-service revocation of the current active passport.
   server.post(
     '/dsc/passports/:reference/revoke',
     {

@@ -275,13 +275,13 @@ export default defineI18nConfig(() => ({
         submitHint: 'This information is used to prepare your document.',
         activePassportTitle: 'Active passport',
         activePassportHint:
-          'You can hold only one active passport at a time. Revoke it before requesting a new personalization.',
+          'You already have an active passport. You may still apply again, but approving the new request will invalidate the current passport.',
         activePassportEmpty: 'You have no active passport.',
         passportDocumentNumber: 'Document number',
         passportIssuedAt: 'Issued',
         revokePassport: 'Revoke passport',
         revokePassportConfirm:
-          'Revoke this active passport? Once revoked you can submit a new request.',
+          'Revoke this passport now? It will no longer be usable. A newly approved passport replaces it automatically.',
         revokeReason: 'Reason (optional)',
         statuses: {
           submitted: 'Submitted',
@@ -342,8 +342,6 @@ export default defineI18nConfig(() => ({
         no_private_key: 'This certificate has no downloadable private key.',
         private_key_consumed: 'The private key has already been downloaded and deleted.',
         dg2_too_large: 'The photo is too large; please choose a smaller image.',
-        active_passport_exists:
-          'You already have an active passport. Revoke it before applying again.',
         passport_not_active: 'This passport is not active.',
       },
     },
