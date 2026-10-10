@@ -64,6 +64,9 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CscaRouteD
       const principal = request.principal!
       const row = db.select().from(dscCert).where(eq(dscCert.id, request.params.id)).get()
       if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
+      // System-managed signers (NIA, Master List) are internal: their keys are
+      // never exported and must not be consumed.
+      if (row.source !== 'owned') return reply.code(403).send({ error: 'forbidden' })
       const own = row.mnt !== null && row.mnt === principal.account.activeMnt
       if (!principal.isAdmin && !own) return reply.code(403).send({ error: 'forbidden' })
       if (!row.keyRef) {

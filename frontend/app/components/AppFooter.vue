@@ -13,9 +13,7 @@ const version = config.public.appVersion as string
         <NText strong>{{ $t('app.name') }}</NText>
         <NText depth="3"> · {{ $t('footer.authority') }}</NText>
       </div>
-      <NText depth="3">
-        {{ $t('footer.identifier') }} · {{ $t('footer.version', { version }) }}
-      </NText>
+      <NText depth="3">{{ $t('footer.version', { version }) }}</NText>
       <NText depth="3">{{ $t('footer.copyright', { year }) }}</NText>
     </div>
   </footer>

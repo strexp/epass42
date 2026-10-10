@@ -53,7 +53,9 @@ export function certMetadata(row: typeof dscCert.$inferSelect) {
     notAfter: row.notAfter,
     revokedAt: row.revokedAt,
     fingerprintSha256: fingerprint,
-    hasPrivateKey: row.keyRef !== null,
+    // Only application-issued ("owned") certificates carry an exportable key;
+    // the system NIA and Master List signers stay internal.
+    hasPrivateKey: row.keyRef !== null && row.source === 'owned',
     certPem: row.certPem,
   }
 }

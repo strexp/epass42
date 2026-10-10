@@ -75,9 +75,8 @@ export default {
   },
   footer: {
     authority: 'National Immigration Agency',
-    identifier: "NIA{'@'}gov.dn42",
-    copyright: '© {year} National Immigration Agency',
     version: 'Version {version}',
+    copyright: "© {year} NIA{'@'}gov.dn42",
   },
   status: {
     submitted: { label: 'Submitted', description: 'Received and awaiting review.' },

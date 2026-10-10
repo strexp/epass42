@@ -1,4 +1,5 @@
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify'
+import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -7,8 +8,10 @@ import {
   parseCertificatePem,
   verifyDscAgainstCsca,
 } from '@epass42/pki'
+import type { Db } from '../../db/client'
+import { dscCert } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
-import { currentCscaKey } from './service'
+import { currentCscaKey, type CscaService } from './service'
 
 const THIRD_USER = {
   sub: 'third-user',
@@ -33,6 +36,8 @@ interface Harness {
   cscaCookie: string
   userCookie: string
   cscaPem: string
+  db: Db
+  csca: CscaService
 }
 
 async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promise<Harness> {
@@ -56,7 +61,15 @@ async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promis
   const cscaCookie = await login('csca')
   const userCookie = await login('dsc')
   const cscaPem = currentCscaKey(built.dbHandle.db)!.certPem
-  return { app, oidc, cscaCookie, userCookie, cscaPem }
+  return {
+    app,
+    oidc,
+    cscaCookie,
+    userCookie,
+    cscaPem,
+    db: built.dbHandle.db,
+    csca: built.csca,
+  }
 }
 
 function json(res: LightMyRequestResponse): Record<string, unknown> {
@@ -410,5 +423,31 @@ describe('M5 CSCA role', () => {
     })
     expect(response.statusCode).toBe(404)
     expect(response.json().error).toBe('no_private_key')
+  })
+
+  it('keeps the system NIA DSC private key internal', async () => {
+    const { app, cscaCookie, db, csca } = await harness()
+    await csca.ensureNiaDsc()
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/csca/certificates?includeRevoked=true',
+      headers: { cookie: cscaCookie },
+    })
+    const nia = (
+      listed.json().items as { id: number; source: string; hasPrivateKey: boolean }[]
+    ).find((row) => row.source === 'nia')
+    expect(nia).toBeTruthy()
+    expect(nia!.hasPrivateKey).toBe(false)
+
+    // The download is refused and, crucially, the sealed key is not consumed.
+    const key = await app.inject({
+      method: 'GET',
+      url: `/csca/certificates/${nia!.id}/private-key`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(key.statusCode).toBe(403)
+    const row = db.select().from(dscCert).where(eq(dscCert.id, nia!.id)).get()!
+    expect(row.keyRef).not.toBeNull()
   })
 })

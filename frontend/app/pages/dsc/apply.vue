@@ -21,7 +21,7 @@ import {
   NText,
   useMessage,
 } from 'naive-ui'
-import { Send, Dices, LogIn } from '@lucide/vue'
+import { Send, Dices, LogIn, Copy } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@epass42/shared'
 import { COUNTRY_ALPHA3 } from '@epass42/shared'
@@ -72,6 +72,7 @@ const email = ref('')
 const notes = ref('')
 const submitting = ref(false)
 const reference = ref<string | null>(null)
+const copied = ref(false)
 
 const sexOptions = computed(() => [
   { label: t('dsc.sexFemale'), value: 'F' },
@@ -157,6 +158,9 @@ const previewExpiry = computed(() => {
 })
 const previewMrz = computed(() => ({ ...mrz, dateOfExpiry: previewExpiry.value }))
 
+/** Sex as shown in the summary: the MRZ filler `<` reads as `X`. */
+const sexDisplay = computed(() => (mrz.sex === '<' ? 'X' : mrz.sex))
+
 /** A CAN is six digits when provided; an empty value means "use the MRZ". */
 const canValid = computed(() => canIsValid(can.value))
 
@@ -193,6 +197,18 @@ function generateCan(): void {
 
 function addPerson(): void {
   people.value.push({ name: '', telephone: '', address: '', dateRecorded: '' })
+}
+
+/** Copies the one-time reference to the clipboard. */
+async function copyReference(): Promise<void> {
+  if (!reference.value) return
+  try {
+    await navigator.clipboard.writeText(reference.value)
+    copied.value = true
+    window.setTimeout(() => (copied.value = false), 2000)
+  } catch {
+    message.error(t('errors.generic'))
+  }
 }
 
 async function submit(): Promise<void> {
@@ -269,7 +285,15 @@ onMounted(async () => {
         :title="$t('dsc.submittedTitle')"
         :description="$t('dsc.submittedHint')"
       >
-        <NText class="epass42-mono" data-testid="reference">{{ reference }}</NText>
+        <NSpace vertical align="center" :size="8">
+          <NText code class="epass42-mono" data-testid="reference">{{ reference }}</NText>
+          <NButton size="small" @click="copyReference">
+            <template #icon
+              ><NIcon><Copy /></NIcon
+            ></template>
+            {{ copied ? $t('common.copied') : $t('common.copy') }}
+          </NButton>
+        </NSpace>
         <template #footer>
           <NuxtLink :to="`/dsc/requests/${reference}`">
             <NButton type="primary">{{ $t('dsc.viewDetails') }}</NButton>
@@ -485,7 +509,7 @@ onMounted(async () => {
             <NDescriptionsItem :label="$t('dsc.dateOfBirth')">{{
               mrz.dateOfBirth
             }}</NDescriptionsItem>
-            <NDescriptionsItem :label="$t('dsc.sex')">{{ mrz.sex }}</NDescriptionsItem>
+            <NDescriptionsItem :label="$t('dsc.sex')">{{ sexDisplay }}</NDescriptionsItem>
             <NDescriptionsItem :label="$t('dsc.email')">{{ email || '—' }}</NDescriptionsItem>
           </NDescriptions>
           <img
