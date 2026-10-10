@@ -19,9 +19,10 @@ import {
   NStep,
   NSteps,
   NText,
+  NTooltip,
   useMessage,
 } from 'naive-ui'
-import { Send, Dices, LogIn, Copy } from '@lucide/vue'
+import { Send, Dices, LogIn, Copy, Info } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@epass42/shared'
 import { COUNTRY_ALPHA3 } from '@epass42/shared'
@@ -387,11 +388,19 @@ onMounted(async () => {
               <NFormItem :label="$t('dsc.givenNames')">
                 <NInput v-model:value="mrz.givenNames" maxlength="39" />
               </NFormItem>
-              <NFormItem :label="$t('dsc.dateOfBirth')">
-                <NSpace vertical :size="4" style="width: 100%">
-                  <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
-                  <NText depth="3" style="font-size: 12px">{{ $t('dsc.dateOfBirthHint') }}</NText>
-                </NSpace>
+              <NFormItem>
+                <template #label>
+                  <span>{{ $t('dsc.dateOfBirth') }}</span>
+                  <NTooltip>
+                    <template #trigger>
+                      <NIcon :size="14" style="margin-left: 4px; opacity: 0.6; cursor: help">
+                        <Info />
+                      </NIcon>
+                    </template>
+                    {{ $t('dsc.dateOfBirthHint') }}
+                  </NTooltip>
+                </template>
+                <NInput v-model:value="mrz.dateOfBirth" maxlength="6" placeholder="900101" />
               </NFormItem>
               <NFormItem :label="$t('dsc.sex')">
                 <NSelect v-model:value="mrz.sex" :options="sexOptions" />

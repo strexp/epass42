@@ -55,7 +55,7 @@ export default {
   home: {
     intro: '国家移民管理局的官方证件签发服务。',
     cscaCard: '为您的机构申请文档签名证书。',
-    dscCard: '申请护照或身份证件的个性化文件。',
+    dscCard: '申请、审核并交付护照与身份证件的个性化文件。',
     pkdCard: '查询已发布的证书、吊销列表与吊销证件。',
     public: '公开',
     requiresSignIn: '需要登录',
