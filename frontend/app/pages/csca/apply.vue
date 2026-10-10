@@ -22,6 +22,7 @@ import { LogIn, Save } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { documentTypeValues } from '~/utils/documentTypes'
 
 definePageMeta({ layout: 'realm' })
 
@@ -60,10 +61,9 @@ const policyOptions = computed(() => [
   { label: t('csca.policyStrict'), value: 'restricted' },
 ])
 
-const documentTypeOptions = [
-  { label: 'P — Passport (TD3)', value: 'P' },
-  { label: 'ID — Identity card', value: 'ID' },
-]
+const documentTypeOptions = computed(() =>
+  documentTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
+)
 
 function login(): void {
   auth.login('csca', '/csca/apply')

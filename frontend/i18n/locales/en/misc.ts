@@ -32,7 +32,7 @@ export default {
     required: 'This field is required.',
     invalid_url: 'Enter a valid URL.',
     no_security_mechanism: 'Select at least one security mechanism.',
-    pace_required: 'Chip Authentication requires PACE.',
+    pace_required: 'Enable PACE before Chip Authentication.',
     request_already_consumed: 'This file has already been claimed and can no longer be retrieved.',
     reveal_not_allowed: 'This file is delivered by staff, not claimed by the applicant.',
     document_number_conflict: 'This document number already exists for your organisation.',

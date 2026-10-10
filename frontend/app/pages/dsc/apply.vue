@@ -32,7 +32,7 @@ import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
-import { documentTypeOptions } from '~/utils/documentTypes'
+import { documentTypeValues } from '~/utils/documentTypes'
 
 definePageMeta({ layout: 'realm' })
 
@@ -82,6 +82,10 @@ const sexOptions = computed(() => [
   { label: t('dsc.sexMale'), value: 'M' },
   { label: t('dsc.sexUnspecified'), value: '<' },
 ])
+
+const documentTypeOptions = computed(() =>
+  documentTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
+)
 
 interface Jurisdiction {
   mnts: string[]
@@ -493,9 +497,9 @@ onMounted(async () => {
             </NCollapseItem>
             <NCollapseItem :title="$t('dsc.notifySection')" name="notify">
               <div v-for="(person, index) in people" :key="index" class="epass42-grid">
-                <NInput v-model:value="person.name" placeholder="Name" />
-                <NInput v-model:value="person.telephone" placeholder="Telephone" />
-                <NInput v-model:value="person.address" placeholder="Address" />
+                <NInput v-model:value="person.name" :placeholder="$t('dsc.fullName')" />
+                <NInput v-model:value="person.telephone" :placeholder="$t('dsc.telephone')" />
+                <NInput v-model:value="person.address" :placeholder="$t('dsc.address')" />
                 <DateField v-model="person.dateRecorded" :digits="8" />
               </div>
               <NButton size="small" style="margin-top: 8px" @click="addPerson">{{

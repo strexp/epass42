@@ -88,14 +88,14 @@ function rowProps(row: Application) {
   }
 }
 
-const columns = [
+const columns = computed(() => [
   { title: '#', key: 'id' },
-  { title: 'CN', key: 'subjectCn' },
-  { title: 'MNT', key: 'mnt' },
-  { title: 'IP', key: 'ip' },
-  { title: 'Mode', key: 'keyMode' },
+  { title: t('common.cn'), key: 'subjectCn' },
+  { title: t('common.mnt'), key: 'mnt' },
+  { title: t('common.ip'), key: 'ip' },
+  { title: t('common.mode'), key: 'keyMode' },
   {
-    title: 'Status',
+    title: t('common.status'),
     key: 'status',
     render: (row: Application) => h(StatusTag, { status: row.status }),
   },
@@ -115,7 +115,7 @@ const columns = [
         { default: () => t('csca.viewApplication') },
       ),
   },
-]
+])
 
 onMounted(async () => {
   await ensureLoaded()

@@ -89,7 +89,7 @@ const columns = computed<DataTableColumns<RequestRow>>(() => {
     },
   ]
   if (isReviewer.value) {
-    base.push({ title: 'MNT', key: 'mnt' }, { title: 'IP', key: 'ip' })
+    base.push({ title: t('common.mnt'), key: 'mnt' }, { title: t('common.ip'), key: 'ip' })
   }
   base.push({
     title: '',

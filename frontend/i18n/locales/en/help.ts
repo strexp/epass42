@@ -8,11 +8,11 @@ export default {
   title: 'How it works',
   subtitle: 'Choose the role that matches you to see the relevant end-to-end workflow.',
   intro:
-    'ePass 42 covers the whole document lifecycle — signing certificate, personalization and border verification. Steps marked “On this site” happen in this application; the others happen with your own tooling.',
+    'ePass 42 covers the whole document lifecycle: signing certificate, personalization and border verification. Steps marked “On this site” happen in this application; the others happen with your own tooling.',
   related: 'Go to',
   notSureTitle: 'Not sure which role fits you?',
   notSureBody:
-    'Anyone can browse the public PKD directory and check whether a document is revoked — no sign-in required.',
+    'Anyone can browse the public PKD directory and check whether a document is revoked, without signing in.',
   tag: {
     system: 'On this site',
     external: 'Off-site',
@@ -54,49 +54,49 @@ export default {
   flows: {
     applicant: {
       summary:
-        'The personalization file is what turns a blank chip into your document. You request it here, an officer approves it, and then you claim it exactly once.',
+        'You request the personalization file that will be used to produce your document. An officer approves it, and then you claim it once.',
       steps: {
         s1: {
           title: 'Sign in',
-          body: 'Sign in to the personalization realm with your dn42 account. If your maintainer is delegated to the NIA certificate, you can apply right here.',
+          body: 'Sign in to the personalization realm with your dn42 account.',
         },
         s2: {
           title: 'Enter the document details',
-          body: 'Fill in the machine-readable-zone fields (name, document number, date of birth, sex). Issuing state, nationality and expiry are filled in by the service, and there is no raw hex input anywhere.',
+          body: 'Fill in your details: name, document number, date of birth and sex.',
         },
         s3: {
           title: 'Add your photo',
-          body: 'Crop a recent photo to a 4:5 portrait. It is encoded to the DG2 face image in your browser before it is uploaded.',
+          body: 'Crop a recent photo to a 4:5 portrait.',
         },
         s4: {
           title: 'Add anything optional',
-          body: 'Optionally add a card access number, a signature or display image, additional details (DG11–DG13) and the people to notify (DG16).',
+          body: 'Optionally add a card access number, a signature or display image, additional details and the people to notify.',
         },
         s5: {
           title: 'Wait for review',
-          body: 'A reviewing officer — the NIA, or a reviewer delegated for your maintainer — checks the submission and approves or rejects it.',
+          body: 'A reviewing officer checks your submission and approves or rejects it.',
         },
         s6: {
           title: 'Claim the file once',
-          body: 'The preview is masked. Claiming is irreversible: the file is deleted from the server right after you download it, so store it somewhere safe.',
+          body: 'You can preview the result first. Claiming is final and can be done only once, so save the downloaded file somewhere safe.',
         },
       },
     },
     reviewer: {
       summary:
-        'You decide on requests that your maintainer has delegated to the NIA certificate. You can see the unmasked submission, but only for your own maintainer.',
+        'You decide on personalization requests for your organisation. The detail page shows the submitted data without masking.',
       steps: {
         s1: {
           title: 'Sign in',
-          body: 'Sign in to the personalization realm. Your review scope is returned with your session and decides which queue you see.',
+          body: 'Sign in to the personalization realm.',
         },
         s2: {
           title: 'Open the review queue',
-          body: 'The review queue lists the requests you are allowed to decide on; ordinary applicants and unrelated users are redirected away.',
+          body: 'The review queue lists the requests you may decide on.',
         },
         s3: {
           title: 'Open a request',
-          body: 'The detail page shows the submitted data unmasked for reviewers (this access is written to the audit log), together with the applicant and delivery information.',
+          body: 'The detail page shows the submitted data without masking, together with the applicant and delivery information.',
         },
         s4: {
           title: 'Approve or reject',
@@ -164,7 +164,7 @@ export default {
         },
         s6: {
           title: 'Publish and verify the master list',
-          body: 'Generate the CSCA master list, publish it to the PKD and check it, for example with standard CMS tooling such as OpenSSL.',
+          body: 'Generate the CSCA master list and publish it to the PKD.',
         },
       },
     },
@@ -230,7 +230,7 @@ export default {
       steps: {
         s1: {
           title: 'Fetch the trusted data',
-          body: 'Download the CSCA certificates, CRLs and master lists from the PKD as DER/PEM, or import the LDIF dump into an OpenLDAP server. Keep a recent copy close to the reader for offline use.',
+          body: 'Download the CSCA certificates, CRLs and master lists from the PKD as DER/PEM, or import the LDIF dump into an LDAP server.',
         },
         s2: {
           title: 'Build the trust chain',
@@ -238,7 +238,7 @@ export default {
         },
         s3: {
           title: 'Read the chip',
-          body: 'Open the session with Basic Access Control (MRZ) or PACE (MRZ or CAN), then read DG1, DG2 and EF.SOD — and EF.CardAccess / EF.CardSecurity when present.',
+          body: 'Open the session with Basic Access Control (MRZ) or PACE (MRZ or CAN), then read DG1, DG2 and EF.SOD, plus EF.CardAccess / EF.CardSecurity when present.',
         },
         s4: {
           title: 'Passive Authentication',
@@ -246,7 +246,7 @@ export default {
         },
         s5: {
           title: 'Active and Chip Authentication',
-          body: 'Optionally challenge DG15 for Active Authentication and run Chip Authentication with EF.CardSecurity to confirm that the chip — not a copy — is answering.',
+          body: 'Optionally challenge DG15 for Active Authentication and run Chip Authentication with EF.CardSecurity to confirm that the real chip, not a copy, is answering.',
         },
         s6: {
           title: 'Check revocation',
@@ -264,15 +264,15 @@ export default {
         },
         s2: {
           title: 'Download and verify',
-          body: 'Download any object as DER or PEM and verify it with standard PKI tooling such as OpenSSL.',
+          body: 'Download any object as DER or PEM and verify it with standard PKI tooling.',
         },
         s3: {
           title: 'Import into LDAP',
-          body: 'Download the LDIF dump and load it into OpenLDAP with slapadd. The directory is read-only and never accepts writes over LDAP.',
+          body: 'Download the LDIF dump if you want to load the directory into your own LDAP server.',
         },
         s4: {
           title: 'Check a document',
-          body: 'Enter the document type, issuing state, document number and date of birth. ePass 42 compares the SHA-256 hash and tells you whether the document is revoked, publishing no personal data.',
+          body: 'Enter the document type, issuing state, document number and date of birth to check whether a document has been revoked.',
         },
       },
     },

@@ -19,7 +19,7 @@ export default {
   status: 'Status',
   revoked: 'Revoked documents',
   revokedHint:
-    'Revoked passports are published as SHA-256 hashes of their canonical MRZ fields (document type, issuing state, document number and date of birth). Hash the document you hold, or look it up below — no personal data is published.',
+    'Revoked documents are listed below. To check a document you hold, enter its details and ePass 42 will tell you whether it is revoked.',
   hash: 'Hash',
   documentCode: 'Document type',
   issuingState: 'Issuing state',

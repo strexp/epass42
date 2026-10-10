@@ -88,8 +88,8 @@ const columns = computed(() => [
     key: 'reference',
     render: (row: RequestRow) => h('span', { class: 'epass42-mono' }, row.reference),
   },
-  { title: 'MNT', key: 'mnt' },
-  { title: 'IP', key: 'ip' },
+  { title: t('common.mnt'), key: 'mnt' },
+  { title: t('common.ip'), key: 'ip' },
   { title: t('dsc.signingCertificate'), key: 'dscSelection' },
   {
     title: t('dsc.statusTitle'),
@@ -120,7 +120,7 @@ const queueColumns = computed(() => [
     key: 'reference',
     render: (row: RequestRow) => h('span', { class: 'epass42-mono' }, row.reference),
   },
-  { title: 'MNT', key: 'mnt' },
+  { title: t('common.mnt'), key: 'mnt' },
   {
     title: '',
     key: 'actions',

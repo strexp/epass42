@@ -18,7 +18,7 @@ export default {
   status: '状态',
   revoked: '吊销证件',
   revokedHint:
-    '已吊销护照以其规范 MRZ 字段（证件类型、签发国、证件号码、出生日期）的 SHA-256 哈希发布。您可自行对持有证件计算哈希，或在下方查询 — 不会发布任何个人数据。',
+    '下方列出已吊销的证件。如需核验您持有的证件，请输入其信息，ePass 42 会告知是否已被吊销。',
   hash: '哈希',
   documentCode: '证件类型',
   issuingState: '签发国',

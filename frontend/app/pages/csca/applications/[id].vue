@@ -133,8 +133,12 @@ onMounted(async () => {
                 : $t('csca.keyModeUpload')
             }}
           </NDescriptionsItem>
-          <NDescriptionsItem label="MNT">{{ application.mnt ?? '—' }}</NDescriptionsItem>
-          <NDescriptionsItem label="IP">{{ application.ip ?? '—' }}</NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.mnt')">{{
+            application.mnt ?? '—'
+          }}</NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.ip')">{{
+            application.ip ?? '—'
+          }}</NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.documentType')">
             {{ application.documentType ?? '—' }}
           </NDescriptionsItem>

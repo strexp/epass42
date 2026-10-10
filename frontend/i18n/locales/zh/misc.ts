@@ -31,7 +31,7 @@ export default {
     required: '此项为必填。',
     invalid_url: '请输入有效的 URL。',
     no_security_mechanism: '请至少选择一种安全机制。',
-    pace_required: '芯片认证需要 PACE。',
+    pace_required: '请先启用 PACE 再启用芯片认证。',
     request_already_consumed: '该文件已被领取，无法再次获取。',
     reveal_not_allowed: '该文件由工作人员交付，申请人不能领取。',
     document_number_conflict: '该证件号码在您的机构中已存在。',

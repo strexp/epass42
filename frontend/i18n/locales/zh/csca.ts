@@ -48,8 +48,8 @@ export default {
   useNiaDsc: '使用 NIA 证书（委派）',
   useOwnDsc: '使用该维护者自有的证书',
   ownDscUnavailable: '仅在维护者拥有已批准且有效的证书后可用。',
-  policyDefault: '开放 — 任何人都可申请',
-  policyNia: '选择性 — 逐案审核',
-  policyAsManaged: '内部 — 仅限本机构',
-  policyStrict: '受限 — 仅限明确授权',
+  policyDefault: '开放（任何人都可申请）',
+  policyNia: '选择性（逐案审核）',
+  policyAsManaged: '内部（仅限本机构）',
+  policyStrict: '受限（仅限明确授权）',
 } as const

@@ -14,10 +14,10 @@ import {
   NTag,
   NText,
 } from 'naive-ui'
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { COUNTRY_ALPHA3 } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
-import { documentTypeOptions } from '~/utils/documentTypes'
+import { documentTypeValues } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
 
 interface PkdCertificate {
@@ -89,8 +89,8 @@ function downloadLinks(id: string) {
     NDropdown,
     {
       options: [
-        { label: 'DER', key: 'der' },
-        { label: 'PEM', key: 'pem' },
+        { label: t('common.der'), key: 'der' },
+        { label: t('common.pem'), key: 'pem' },
       ],
       onSelect: (key: string | number) =>
         downloadUrl(`${apiBase}/pkd/objects/${id}.${String(key)}`, `${id}.${String(key)}`),
@@ -99,24 +99,24 @@ function downloadLinks(id: string) {
   )
 }
 
-const certColumns = [
-  { title: 'CN', key: 'cn' },
-  { title: 'Subject', key: 'subject' },
-  { title: 'Status', key: 'status' },
+const certColumns = computed(() => [
+  { title: t('common.cn'), key: 'cn' },
+  { title: t('common.subject'), key: 'subject' },
+  { title: t('common.status'), key: 'status' },
   { title: '', key: 'download', render: (row: PkdCertificate) => downloadLinks(row.id) },
-]
-const crlColumns = [
-  { title: 'CRL number', key: 'crlNumber' },
+])
+const crlColumns = computed(() => [
+  { title: t('pkd.crlNumber'), key: 'crlNumber' },
   { title: '', key: 'download', render: (row: PkdCrl) => downloadLinks(row.id) },
-]
-const mlColumns = [
-  { title: 'ID', key: 'id' },
+])
+const mlColumns = computed(() => [
+  { title: t('common.id'), key: 'id' },
   { title: '', key: 'download', render: (row: { id: string }) => downloadLinks(row.id) },
-]
+])
 
-const dscColumns = [
+const dscColumns = computed(() => [
   { title: t('pkd.name'), key: 'name', ellipsis: { tooltip: true } },
-  { title: 'MNT', key: 'mnt' },
+  { title: t('common.mnt'), key: 'mnt' },
   {
     title: t('pkd.type'),
     key: 'documentTypes',
@@ -149,13 +149,17 @@ const dscColumns = [
     key: 'status',
     render: (row: PkdDsc) => h(NTag, { size: 'small' }, () => row.status),
   },
-]
+])
 
-const revokedColumns = [
+const revokedColumns = computed(() => [
   { title: t('pkd.hash'), key: 'hash', ellipsis: { tooltip: true } },
   { title: t('pkd.documentCode'), key: 'documentCode' },
   { title: t('pkd.revokedAt'), key: 'revokedAt' },
-]
+])
+
+const documentTypeOptions = computed(() =>
+  documentTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
+)
 
 const pagination = { pageSize: 10 }
 

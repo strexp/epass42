@@ -82,8 +82,8 @@ async function revoke(id: number): Promise<void> {
 /** The per-certificate menu: format downloads and, for admins, revoke. */
 function actionMenu(row: Certificate) {
   const options = [
-    { label: 'PEM', key: 'pem' },
-    { label: 'DER', key: 'der' },
+    { label: t('common.pem'), key: 'pem' },
+    { label: t('common.der'), key: 'der' },
     ...(canDownloadKey(row) ? [{ label: t('csca.privateKey'), key: 'key' }] : []),
     ...(isCscaAdmin.value && row.status === 'active' && row.source === 'owned'
       ? [{ label: t('common.revoke'), key: 'revoke' }]
@@ -123,14 +123,14 @@ function onAction(row: Certificate, key: string): void {
 
 const columns = computed(() => [
   { title: '#', key: 'id' },
-  { title: 'Subject', key: 'subjectDn' },
-  { title: 'MNT', key: 'mnt' },
+  { title: t('common.subject'), key: 'subjectDn' },
+  { title: t('common.mnt'), key: 'mnt' },
   {
-    title: 'Status',
+    title: t('common.status'),
     key: 'status',
     render: (row: Certificate) => h(StatusTag, { status: row.status }),
   },
-  { title: 'SHA-256', key: 'fingerprintSha256', ellipsis: { tooltip: true } },
+  { title: t('common.sha256'), key: 'fingerprintSha256', ellipsis: { tooltip: true } },
   {
     title: '',
     key: 'actions',
