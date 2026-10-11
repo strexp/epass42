@@ -72,7 +72,9 @@ export default defineNuxtConfig({
           content:
             'Official document-signing service of the National Immigration Agency: Document Signer certificates, personalization files and the public PKD directory.',
         },
+        { name: 'theme-color', content: '#1b3a6b' },
       ],
+      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     },
   },
 
