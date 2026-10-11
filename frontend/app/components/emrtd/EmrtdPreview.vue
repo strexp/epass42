@@ -69,7 +69,7 @@ const rows = computed(() => [
   object-fit: cover;
 }
 .emrtd-photo-placeholder {
-  opacity: 0.5;
+  opacity: 0.75;
   font-size: 12px;
 }
 .emrtd-fields {
@@ -82,7 +82,7 @@ const rows = computed(() => [
   align-content: start;
 }
 dt {
-  opacity: 0.6;
+  opacity: 0.8;
   font-size: 12px;
   white-space: nowrap;
 }

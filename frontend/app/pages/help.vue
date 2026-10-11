@@ -32,6 +32,9 @@ import {
 } from '@lucide/vue'
 import { ref } from 'vue'
 
+const { t } = useI18n()
+usePageTitle(() => t('help.title'))
+
 /** Whether a workflow step happens in this application or with external tooling. */
 type StepTag = 'system' | 'external'
 

@@ -16,6 +16,7 @@ import { errorMessageKey } from '~/composables/useApi'
 const route = useRoute()
 const api = useApi()
 const { t } = useI18n()
+usePageTitle(() => t('dsc.statusTitle'))
 const message = useMessage()
 const metadata = ref<Record<string, unknown> | null>(null)
 const consumed = computed(() => Boolean(metadata.value?.consumedAt))
@@ -33,7 +34,10 @@ onMounted(async () => {
 
 <template>
   <div class="epass42-page">
-    <PageHeader :title="$t('dsc.statusTitle')" />
+    <PageHeader
+      :title="$t('dsc.statusTitle')"
+      :breadcrumbs="[{ label: $t('nav.dsc'), to: '/dsc' }, { label: $t('dsc.statusTitle') }]"
+    />
     <NCard>
       <NAlert
         v-if="!consumed && metadata?.deliveryMode === 'applicant'"

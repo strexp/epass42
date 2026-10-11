@@ -23,6 +23,7 @@ const api = useApi()
 const apiBase = useApiBase()
 const { state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
+usePageTitle(() => t('csca.certificatesTitle'))
 const message = useMessage()
 const dialog = useDialog()
 const certificates = ref<Certificate[]>([])
@@ -156,13 +157,15 @@ onMounted(async () => {
           {{ $t('csca.crl') }} (PEM)
         </NButton>
       </template>
-      <NDataTable
-        :columns="columns"
-        :data="certificates"
-        :loading="loading"
-        :pagination="{ pageSize: 10 }"
-        size="small"
-      />
+      <div role="region" :aria-label="$t('csca.certificatesTitle')">
+        <NDataTable
+          :columns="columns"
+          :data="certificates"
+          :loading="loading"
+          :pagination="{ pageSize: 10 }"
+          size="small"
+        />
+      </div>
       <template #footer>
         <NuxtLink to="/csca"
           ><NButton size="small">{{ $t('common.back') }}</NButton></NuxtLink

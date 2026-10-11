@@ -52,7 +52,7 @@ function onSelect(key: string): void {
 </script>
 
 <template>
-  <div class="epass42-header">
+  <header class="epass42-header">
     <NuxtLink to="/" class="epass42-brand">
       <NIcon size="26"><BookUser /></NIcon>
       <span class="epass42-brand-text">
@@ -60,13 +60,16 @@ function onSelect(key: string): void {
         <span class="epass42-brand-authority">{{ $t('app.authority') }}</span>
       </span>
     </NuxtLink>
-    <NMenu
-      mode="horizontal"
-      :options="options"
-      :value="active"
-      class="epass42-menu"
-      @update:value="onSelect"
-    />
+    <nav :aria-label="$t('common.navigation')" class="epass42-nav">
+      <NMenu
+        mode="horizontal"
+        :options="options"
+        :value="active"
+        responsive
+        class="epass42-menu"
+        @update:value="onSelect"
+      />
+    </nav>
     <NSpace class="epass42-header-actions" align="center">
       <NDropdown :options="localeOptions" @select="(key) => onLocaleSelect(String(key))">
         <NButton quaternary circle :aria-label="$t('common.language')">
@@ -77,16 +80,17 @@ function onSelect(key: string): void {
       </NDropdown>
       <ThemeToggle />
     </NSpace>
-  </div>
+  </header>
 </template>
 
 <style scoped>
 .epass42-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 16px;
-  height: 64px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  min-height: 64px;
   border-bottom: 1px solid rgba(128, 128, 128, 0.18);
 }
 .epass42-brand {
@@ -107,7 +111,11 @@ function onSelect(key: string): void {
 }
 .epass42-brand-authority {
   font-size: 11px;
-  opacity: 0.65;
+  opacity: 0.85;
+}
+.epass42-nav {
+  flex: 1;
+  min-width: 0;
 }
 .epass42-menu {
   flex: 1;

@@ -42,7 +42,7 @@ async function logout(): Promise<void> {
           <NAvatar
             round
             size="small"
-            :style="{ background: me ? (realm === 'csca' ? '#2080f0' : '#18a058') : '#a0a0a0' }"
+            :style="{ background: me ? (realm === 'csca' ? '#2080f0' : '#18a058') : '#767676' }"
           >
             <NIcon><ShieldCheck v-if="me" /><ShieldOff v-else /></NIcon>
           </NAvatar>

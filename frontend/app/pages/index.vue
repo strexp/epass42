@@ -2,6 +2,9 @@
 import { NButton, NCard, NGi, NGrid, NIcon, NSpace, NTag, NText } from 'naive-ui'
 import { FileBadge, FolderTree, ShieldCheck } from '@lucide/vue'
 
+const { t } = useI18n()
+usePageTitle(() => t('nav.home'))
+
 /** The public service catalogue, one card per service. */
 const cards = [
   {

@@ -24,6 +24,7 @@ definePageMeta({ layout: 'realm' })
 const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
+usePageTitle(() => t('dsc.settingsTitle'))
 const message = useMessage()
 
 const deliveryMode = ref<'applicant' | 'reviewer'>('applicant')
@@ -105,7 +106,11 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <PageHeader :title="$t('dsc.settingsTitle')" :subtitle="$t('dsc.settingsHint')" />
+      <PageHeader
+        :title="$t('dsc.settingsTitle')"
+        :subtitle="$t('dsc.settingsHint')"
+        :breadcrumbs="[{ label: $t('nav.dsc'), to: '/dsc' }, { label: $t('dsc.settingsTitle') }]"
+      />
 
       <NCard v-if="!signedIn" :title="$t('dsc.settingsTitle')" size="small">
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'DSC' }) }}</NText>
@@ -120,6 +125,8 @@ onMounted(async () => {
           <NText depth="3">{{ $t('dsc.deliveryModeHint') }}</NText>
           <NRadioGroup
             :value="deliveryMode"
+            role="radiogroup"
+            :aria-label="$t('dsc.deliveryMode')"
             style="display: block; margin-top: 8px"
             @update:value="setDeliveryMode"
           >
@@ -167,6 +174,7 @@ onMounted(async () => {
           <div style="margin-top: 8px">
             <NSwitch
               v-model:value="profile.lds2.enabled"
+              :aria-label="$t('dsc.lds2Title')"
               :disabled="!profile.security.ca.enabled && !profile.lds2.enabled"
             />
           </div>
@@ -175,6 +183,7 @@ onMounted(async () => {
             v-model:value="profile.lds2.roles"
             multiple
             :options="lds2Options"
+            :input-props="{ 'aria-label': $t('dsc.lds2Title') }"
             style="max-width: 460px; margin-top: 8px"
           />
         </NCard>

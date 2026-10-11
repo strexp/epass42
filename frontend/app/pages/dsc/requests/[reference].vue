@@ -53,6 +53,7 @@ interface RequestMeta {
 const route = useRoute()
 const api = useApi()
 const { t, te } = useI18n()
+usePageTitle(() => t('dsc.detailTitle'))
 const message = useMessage()
 const dialog = useDialog()
 const notify = useNotify()
@@ -457,6 +458,7 @@ onMounted(async () => {
             quaternary
             size="tiny"
             :aria-expanded="showDataGroups"
+            :aria-label="$t('dsc.includedData')"
             @click="showDataGroups = !showDataGroups"
           >
             <template #icon>

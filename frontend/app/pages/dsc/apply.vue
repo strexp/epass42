@@ -38,6 +38,7 @@ definePageMeta({ layout: 'realm' })
 
 const api = useApi()
 const { t } = useI18n()
+usePageTitle(() => t('dsc.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
 const { auth, state, ensureLoaded } = useRealm('dsc')
@@ -389,7 +390,8 @@ onMounted(async () => {
               :href="jurisdiction.ownDscUrl"
               target="_blank"
               rel="noopener"
-              >{{ jurisdiction.ownDscUrl }}</a
+              >{{ jurisdiction.ownDscUrl
+              }}<span class="epass42-sr-only"> ({{ $t('common.opensInNewTab') }})</span></a
             >
             <div style="margin-top: 8px">
               <NButton size="small" @click="noticeDismissed = true">{{

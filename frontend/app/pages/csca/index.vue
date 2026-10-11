@@ -21,6 +21,7 @@ interface Application {
 const { state, ensureLoaded } = useRealm('csca')
 const api = useApi()
 const { t } = useI18n()
+usePageTitle(() => t('nav.csca'))
 const message = useMessage()
 
 const applications = ref<Application[]>([])
@@ -211,15 +212,16 @@ onMounted(async () => {
             </NuxtLink>
           </NSpace>
         </template>
-        <NDataTable
-          v-if="applications.length"
-          :columns="columns"
-          :data="applications"
-          :loading="loading"
-          :pagination="{ pageSize: 10 }"
-          :row-props="rowProps"
-          size="small"
-        />
+        <div v-if="applications.length" role="region" :aria-label="$t('csca.myApplications')">
+          <NDataTable
+            :columns="columns"
+            :data="applications"
+            :loading="loading"
+            :pagination="{ pageSize: 10 }"
+            :row-props="rowProps"
+            size="small"
+          />
+        </div>
         <NEmpty v-else :description="$t('common.empty')" />
       </NCard>
     </NSpace>

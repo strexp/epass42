@@ -51,6 +51,7 @@ interface RevokedDocument {
 const api = useApi()
 const apiBase = useApiBase()
 const { t } = useI18n()
+usePageTitle(() => t('pkd.title'))
 
 const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
@@ -137,11 +138,10 @@ const dscColumns = computed(() => [
     key: 'applicationUrl',
     render: (row: PkdDsc) =>
       row.applicationUrl
-        ? h(
-            'a',
-            { href: row.applicationUrl, target: '_blank', rel: 'noopener' },
+        ? h('a', { href: row.applicationUrl, target: '_blank', rel: 'noopener' }, [
             row.applicationUrl,
-          )
+            h('span', { class: 'epass42-sr-only' }, ` (${t('common.opensInNewTab')})`),
+          ])
         : '—',
   },
   {
@@ -184,43 +184,51 @@ onMounted(async () => {
       <NTabPane name="certs" :tab="$t('pkd.certificates')">
         <NCard size="small">
           <p>{{ $t('pkd.certificatesHint') }}</p>
+          <div role="region" :aria-label="$t('pkd.certificates')">
+            <NDataTable
+              :columns="certColumns"
+              :data="certificates"
+              :loading="loading"
+              :pagination="pagination"
+              size="small"
+            />
+          </div>
+        </NCard>
+      </NTabPane>
+      <NTabPane name="crls" :tab="$t('pkd.crls')">
+        <div role="region" :aria-label="$t('pkd.crls')">
           <NDataTable
-            :columns="certColumns"
-            :data="certificates"
+            :columns="crlColumns"
+            :data="crls"
             :loading="loading"
             :pagination="pagination"
             size="small"
           />
-        </NCard>
-      </NTabPane>
-      <NTabPane name="crls" :tab="$t('pkd.crls')">
-        <NDataTable
-          :columns="crlColumns"
-          :data="crls"
-          :loading="loading"
-          :pagination="pagination"
-          size="small"
-        />
+        </div>
       </NTabPane>
       <NTabPane name="mls" :tab="$t('pkd.masterlists')">
-        <NDataTable
-          :columns="mlColumns"
-          :data="masterlists"
-          :loading="loading"
-          :pagination="pagination"
-          size="small"
-        />
+        <div role="region" :aria-label="$t('pkd.masterlists')">
+          <NDataTable
+            :columns="mlColumns"
+            :data="masterlists"
+            :loading="loading"
+            :pagination="pagination"
+            size="small"
+          />
+        </div>
       </NTabPane>
       <NTabPane name="dscs" :tab="$t('pkd.dscs')">
         <NCard size="small">
           <p>{{ $t('pkd.dscsHint') }}</p>
-          <NDataTable
-            :columns="dscColumns"
-            :data="dscs"
-            :loading="loading"
-            :pagination="pagination"
-            size="small"
-          />
+          <div role="region" :aria-label="$t('pkd.dscs')">
+            <NDataTable
+              :columns="dscColumns"
+              :data="dscs"
+              :loading="loading"
+              :pagination="pagination"
+              size="small"
+            />
+          </div>
         </NCard>
       </NTabPane>
       <NTabPane name="revoked" :tab="$t('pkd.revoked')">
@@ -262,13 +270,15 @@ onMounted(async () => {
             size="small"
             style="margin-bottom: 12px"
           />
-          <NDataTable
-            :columns="revokedColumns"
-            :data="revoked"
-            :loading="loading"
-            :pagination="pagination"
-            size="small"
-          />
+          <div role="region" :aria-label="$t('pkd.revoked')">
+            <NDataTable
+              :columns="revokedColumns"
+              :data="revoked"
+              :loading="loading"
+              :pagination="pagination"
+              size="small"
+            />
+          </div>
         </NCard>
       </NTabPane>
       <NTabPane name="ldif" :tab="$t('pkd.ldif')">

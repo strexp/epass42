@@ -45,6 +45,7 @@ interface Application {
 const route = useRoute()
 const api = useApi()
 const { t } = useI18n()
+usePageTitle(() => t('csca.applicationTitle'))
 const message = useMessage()
 const { state, ensureLoaded } = useRealm('csca')
 

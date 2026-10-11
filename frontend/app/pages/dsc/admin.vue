@@ -30,6 +30,7 @@ interface RequestRow {
 const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
+usePageTitle(() => t('dsc.adminTitle'))
 const message = useMessage()
 
 const requests = ref<RequestRow[]>([])
@@ -174,7 +175,11 @@ onMounted(async () => {
 <template>
   <div class="epass42-page">
     <NSpace vertical size="large">
-      <PageHeader :title="$t('dsc.adminTitle')" :subtitle="$t('dsc.reviewHint')" />
+      <PageHeader
+        :title="$t('dsc.adminTitle')"
+        :subtitle="$t('dsc.reviewHint')"
+        :breadcrumbs="[{ label: $t('nav.dsc'), to: '/dsc' }, { label: $t('dsc.adminTitle') }]"
+      />
 
       <NCard :title="$t('dsc.reviewQueue')" size="small">
         <template #action>
@@ -185,28 +190,30 @@ onMounted(async () => {
             {{ $t('common.reload') }}
           </NButton>
         </template>
-        <NDataTable
-          v-if="requests.length"
-          :columns="columns"
-          :data="requests"
-          :loading="loading"
-          :pagination="{ pageSize: 10 }"
-          :row-props="rowProps"
-          size="small"
-        />
+        <div v-if="requests.length" role="region" :aria-label="$t('dsc.reviewQueue')">
+          <NDataTable
+            :columns="columns"
+            :data="requests"
+            :loading="loading"
+            :pagination="{ pageSize: 10 }"
+            :row-props="rowProps"
+            size="small"
+          />
+        </div>
         <NEmpty v-else :description="$t('common.empty')" />
       </NCard>
 
       <NCard v-if="isAdmin" :title="$t('dsc.pendingQueue')" size="small">
-        <NDataTable
-          v-if="queue.length"
-          :columns="queueColumns"
-          :data="queue"
-          :loading="loading"
-          :pagination="{ pageSize: 10 }"
-          :row-props="rowProps"
-          size="small"
-        />
+        <div v-if="queue.length" role="region" :aria-label="$t('dsc.pendingQueue')">
+          <NDataTable
+            :columns="queueColumns"
+            :data="queue"
+            :loading="loading"
+            :pagination="{ pageSize: 10 }"
+            :row-props="rowProps"
+            size="small"
+          />
+        </div>
         <NEmpty v-else :description="$t('common.empty')" />
       </NCard>
     </NSpace>

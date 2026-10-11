@@ -32,6 +32,7 @@ interface RequestRow {
 const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
+usePageTitle(() => t('nav.dsc'))
 const requests = ref<RequestRow[]>([])
 const loading = ref(false)
 
@@ -183,15 +184,16 @@ onMounted(async () => {
       </NCard>
 
       <NCard v-if="signedIn" :title="$t('dsc.myRequests')" size="small">
-        <NDataTable
-          v-if="requests.length"
-          :columns="columns"
-          :data="requests"
-          :loading="loading"
-          :pagination="{ pageSize: 10 }"
-          :row-props="rowProps"
-          size="small"
-        />
+        <div v-if="requests.length" role="region" :aria-label="$t('dsc.myRequests')">
+          <NDataTable
+            :columns="columns"
+            :data="requests"
+            :loading="loading"
+            :pagination="{ pageSize: 10 }"
+            :row-props="rowProps"
+            size="small"
+          />
+        </div>
         <NEmpty v-else :description="$t('common.empty')" />
       </NCard>
       <NCard v-else size="small">

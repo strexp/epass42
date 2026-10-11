@@ -55,3 +55,55 @@ body {
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* Visually hidden but available to assistive technology. */
+.epass42-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* "Skip to content" link, hidden until focused. */
+.epass42-skip-link {
+  position: absolute;
+  top: -48px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 12px;
+  background: Canvas;
+  color: CanvasText;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  text-decoration: none;
+}
+.epass42-skip-link:focus {
+  top: 8px;
+}
+
+/* The main landmark is focused programmatically on navigation, not tabbed to. */
+.epass42-main:focus {
+  outline: none;
+}
+
+/* WCAG 2.2 §2.5.8: keep the smallest Naive buttons at ≥24×24. */
+.n-button--tiny-type {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

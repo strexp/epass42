@@ -1,5 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'realm' })
+
+const { t } = useI18n()
+usePageTitle(() => t('audit.title'))
 </script>
 
 <template>

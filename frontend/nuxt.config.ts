@@ -64,7 +64,8 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'ePass 42 · National Immigration Agency',
+      title: 'National Immigration Agency',
+      titleTemplate: '%s · ePass 42',
       htmlAttrs: { lang: 'en' },
       meta: [
         {

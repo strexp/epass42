@@ -10,7 +10,13 @@ function toggle(): void {
 </script>
 
 <template>
-  <NButton quaternary circle :aria-label="$t('common.save')" @click="toggle">
+  <NButton
+    quaternary
+    circle
+    :aria-label="$t('common.theme')"
+    :aria-pressed="colorMode.value === 'dark'"
+    @click="toggle"
+  >
     <template #icon>
       <NIcon><Moon v-if="colorMode.value === 'dark'" /><Sun v-else /></NIcon>
     </template>

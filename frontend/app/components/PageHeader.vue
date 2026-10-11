@@ -26,7 +26,10 @@ function go(to?: string): void {
         {{ crumb.label }}
       </NBreadcrumbItem>
     </NBreadcrumb>
-    <NPageHeader :title="title" :subtitle="subtitle">
+    <NPageHeader :subtitle="subtitle">
+      <template #title>
+        <h1 class="epass42-page-title">{{ title }}</h1>
+      </template>
       <template v-if="$slots.extra" #extra><slot name="extra" /></template>
       <slot />
     </NPageHeader>
@@ -39,5 +42,11 @@ function go(to?: string): void {
 }
 .epass42-breadcrumb {
   margin-bottom: 8px;
+}
+.epass42-page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 </style>

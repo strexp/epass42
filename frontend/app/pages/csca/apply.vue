@@ -29,6 +29,7 @@ definePageMeta({ layout: 'realm' })
 const api = useApi()
 const { auth, state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
+usePageTitle(() => t('csca.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
 

@@ -128,6 +128,7 @@ onMounted(load)
           v-model:value="actionFilter"
           :options="actionOptions"
           :placeholder="$t('common.filter')"
+          :input-props="{ 'aria-label': $t('common.filter') }"
           clearable
           size="small"
           style="min-width: 200px"
@@ -140,14 +141,15 @@ onMounted(load)
         </NButton>
       </NSpace>
     </template>
-    <NDataTable
-      v-if="filteredEntries.length"
-      :columns="columns"
-      :data="filteredEntries"
-      :loading="loading"
-      :pagination="pagination"
-      size="small"
-    />
+    <div v-if="filteredEntries.length" role="region" :aria-label="$t('audit.title')">
+      <NDataTable
+        :columns="columns"
+        :data="filteredEntries"
+        :loading="loading"
+        :pagination="pagination"
+        size="small"
+      />
+    </div>
     <NEmpty v-else :description="$t('common.empty')" />
   </NCard>
 </template>
