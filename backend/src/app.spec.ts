@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { makeTestApp, FakeOidc } from './test-support'
+import { makeTestApp, makeTestConfig, FakeOidc } from './test-support'
 
 async function app() {
   return makeTestApp(new FakeOidc())
@@ -48,5 +48,43 @@ describe('M3 backend skeleton', () => {
     const response = await instance.inject({ method: 'GET', url: '/nope' })
     expect(response.statusCode).toBe(404)
     expect(response.json()).toEqual({ error: 'not_found' })
+  })
+})
+
+describe('M13/T13.7 reverse proxy trust', () => {
+  it('defaults trustProxy to loopback and accepts an explicit list', () => {
+    expect(makeTestConfig().trustProxy).toEqual(['127.0.0.1', '::1'])
+    expect(makeTestConfig({ trustProxy: true }).trustProxy).toBe(true)
+    expect(makeTestConfig({ trustProxy: false }).trustProxy).toBe(false)
+    expect(makeTestConfig({ trustProxy: ['10.0.0.0/8'] }).trustProxy).toEqual(['10.0.0.0/8'])
+  })
+
+  it('honours X-Forwarded-For only from a trusted proxy', async () => {
+    const seen: string[] = []
+    const resolver = {
+      async resolve(ip: string): Promise<string[]> {
+        seen.push(ip)
+        return []
+      },
+    }
+    const { app: instance } = await makeTestApp(new FakeOidc(), {}, resolver)
+
+    // From loopback (trusted by default) the forwarded address is used.
+    await instance.inject({
+      method: 'GET',
+      url: '/dsc/jurisdiction',
+      remoteAddress: '127.0.0.1',
+      headers: { 'x-forwarded-for': '203.0.113.7' },
+    })
+    expect(seen).toEqual(['203.0.113.7'])
+
+    // From an untrusted peer the header is ignored; the socket address wins.
+    await instance.inject({
+      method: 'GET',
+      url: '/dsc/jurisdiction',
+      remoteAddress: '198.51.100.9',
+      headers: { 'x-forwarded-for': '203.0.113.7' },
+    })
+    expect(seen).toEqual(['203.0.113.7', '198.51.100.9'])
   })
 })

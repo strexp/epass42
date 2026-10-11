@@ -92,7 +92,12 @@ const configSchema = z.object({
   cookieDomain: z.string().optional(),
   /** Base64 32-byte KEK for envelope encryption (M13); optional in dev. */
   encryptionKek: z.string().optional(),
-  trustProxy: z.boolean().default(false),
+  /**
+   * Reverse proxies whose `X-Forwarded-*` headers are trusted: a list of
+   * IPs/CIDRs, `true` to trust every peer, or `false` to trust none.  The
+   * default trusts loopback, where a same-host reverse proxy connects from.
+   */
+  trustProxy: z.union([z.boolean(), z.array(z.string())]).default(['127.0.0.1', '::1']),
   rateLimit: z
     .object({
       max: z.number().int().min(0).default(120),
@@ -181,6 +186,14 @@ const configSchema = z.object({
       whois: z.string().default('whois.dn42'),
       whoisPort: z.number().int().min(1).max(65535).default(43),
       whoisTimeoutMs: z.number().int().min(100).default(5000),
+      /** How long (ms) an IP→MNT answer is cached before it is re-queried. */
+      whoisCacheTtlMs: z
+        .number()
+        .int()
+        .min(1000)
+        .default(5 * 60_000),
+      /** Maximum cached IP→MNT answers (LRU eviction beyond this). */
+      whoisCacheMaxEntries: z.number().int().min(1).default(1024),
     })
     .prefault({}),
   crl: z

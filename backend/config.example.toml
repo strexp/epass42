@@ -29,8 +29,12 @@ logLevel = "info"
 # Base64-encoded 32-byte AES-256-GCM key for envelope encryption (M13).
 # encryptionKek = "..."
 
-# Trust X-Forwarded-For from a reverse proxy (configure the proxy allowlist).
-trustProxy = false
+# Trusted reverse proxies for X-Forwarded-For / X-Forwarded-Proto: a list of
+# IPs/CIDRs, or `true` to trust every peer, or `false` to trust none.  The
+# default trusts loopback (127.0.0.1 / ::1), where a same-host proxy connects
+# from; set `true` only if the proxy address cannot be pinned down and the
+# service is not directly reachable.
+trustProxy = ["127.0.0.1", "::1"]
 
 [rateLimit]
 max = 120
@@ -110,7 +114,11 @@ keyId = 1
 [jurisdiction]
 whois = "whois.dn42"
 whoisPort = 43
+# Total (and idle) timeout per whois query.
 whoisTimeoutMs = 5000
+# IP→MNT answer cache: TTL and maximum entries (LRU eviction).
+whoisCacheTtlMs = 300000
+whoisCacheMaxEntries = 1024
 
 # PKD directory (M9).
 [pkd]
