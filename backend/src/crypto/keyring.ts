@@ -1,12 +1,7 @@
 /**
- * Private-key sealing (M5, M13 groundwork).
- *
- * The online CSCA and NIA DSC private keys are stored as AES-256-GCM
- * envelope-encrypted PKCS#8 rather than clear PEM.
- *
- * The KEK comes from `encryptionKek` in `config.toml`.  When that is not
- * configured a random key is generated once and persisted in `<dataDir>/kek`
- * (0600) so that the same key survives restarts.
+ * Private-key sealing (M5, M13): CSCA/NIA DSC keys are stored as AES-256-GCM
+ * envelope-encrypted PKCS#8.  The KEK comes from `encryptionKek`, else a random
+ * key persisted at `<dataDir>/kek` (0600) so it survives restarts.
  */
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'

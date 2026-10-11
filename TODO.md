@@ -169,7 +169,6 @@ epass42/
 
 - LDS2 记录/透明 EF 写入（空应用已实现；记录留待管理员/授权终端，见 M12+）。
 - ECDSA（显式 ECParameters）证书。
-- whois（`whois.dn42`）IP→MNT 判定的缓存与超时策略。
 
 > 注：card42 已支持 LDS1 Chip Authentication（`card42` 提交 `d386608`，CA 标量 DGI FF03 + 主文件 EF.CardSecurity DGI FF05），因此 LDS1 的 CA 改为可配置（`issuing.security.ca.enabled`）；EF.CardAccess/EF.CardSecurity 位于 Master File，LDS1 与 LDS2 共用同一份 CA 材料。
 
@@ -190,7 +189,7 @@ epass42/
 - [ ] T13.4 限流：登录、提交、查询、下载（按 IP + reference）。
 - [ ] T13.5 输入校验与上传加固：类型/大小/魔数、图像仅校验不重编码（DG2/DG5/DG7 由前端编码）、解压炸弹防护。
 - [ ] T13.6 隐私：护照数据与产物加密、可配置保留期与清理任务、日志脱敏。
-- [ ] T13.7 反代信任配置（`X-Forwarded-For` 白名单）。
+- [x] T13.7 反代信任配置：`trustProxy` 支持 IP/CIDR 白名单（`true`=信任全部、`false`=不信任），默认信任回环 `127.0.0.1`/`::1`。
 - [ ] T13.8 依赖审计（`pnpm audit`）、锁文件提交。
 - [x] T13.9 一次性交付：原子消费、`Cache-Control: no-store`、消费后安全删除（文件 + DB 字节）；产物落盘为信封加密。
 - [x] T13.10 AA/CA 私钥：随 perso 信封加密落盘、消费后删除、不入日志；领取页显著警示。
@@ -217,7 +216,9 @@ epass42/
 
 ## 17. M15 — 部署与文档
 
-- [ ] T15.1 `deploy/docker-compose.yml`：backend（挂载 SQLite 卷）、frontend、可选 OpenLDAP。
+- [x] T15.1 `deploy/docker-compose.yml`：backend（挂载 SQLite 卷）+ frontend；**不部署独立
+      OpenLDAP**，PKD 只读 LDAP 由后端内置服务器提供（`deploy/openldap/` 仅保留 LDIF 校验用
+      schema/slapd 示例）。
 - [ ] T15.2 备份/恢复：SQLite 在线备份（`sqlite3 .backup`）+ 密钥备份说明。
 - [ ] T15.3 配置参考文档、运维手册（轮换、吊销、ML、CRL 调度）。
 - [ ] T15.4 开发者文档：架构、模块、pki 内核、审计结论。

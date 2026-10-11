@@ -57,7 +57,10 @@ publicUrl = "https://api.example.net"
 frontendUrl = "https://app.example.net"
 sessionSecret = "…"          # >= 16 chars, must not be the dev default in production
 cookieSecure = true          # true when the public origin is HTTPS
-trustProxy = true            # if the reverse proxy forwards X-Forwarded-For
+# Trusted reverse proxies: IPs/CIDRs, or `true` for every peer.  Inside the
+# container the proxy appears as the Docker bridge gateway, so a compose
+# deployment usually wants `true` (the code default is loopback only).
+trustProxy = true
 ```
 
 The service starts with `node --import tsx src/index.ts` (the workspace packages
@@ -98,8 +101,9 @@ docker compose -f deploy/docker-compose.yml up -d
 - Forward the client `Host` and the public scheme (`X-Forwarded-Proto`) to the
   containers. The frontend vhost sets `absolute_redirect off` and serves
   prerendered routes without a trailing-slash redirect, so it never advertises
-  its internal scheme/port; the backend should run with `trustProxy = true` so
-  it honours `X-Forwarded-*`.
+  its internal scheme/port; the backend must trust the proxy to honour
+  `X-Forwarded-*`: set `trustProxy` to the proxy's IP/CIDR, or `true` when it
+  cannot be pinned down (the default is loopback only).
 
 ## Building locally
 
@@ -122,24 +126,8 @@ docker build -f backend/Dockerfile  -t epass42-backend  .
 - `.github/workflows/release.yml` – on a `v*` tag, pushes both images to GHCR and
   creates a **draft** GitHub release with the bundles attached.
 
-## Publishing the `packages/*` libraries (analysis only — not implemented)
+## Publishing the `packages/*` libraries
 
-The workspace libraries `@epass42/pki` and `@epass42/shared` could be published
-to the GitHub Packages npm registry, but it needs more than a workflow:
-
-1. **Scope must match the owner.** GitHub Packages requires an npm scope equal to
-   the repository owner (`@strexp`), so `@epass42/pki` / `@epass42/shared` would
-   have to be renamed, which affects every import across the workspace.
-2. **They are TS source, not build outputs.** `main`/`exports` point at
-   `src/index.ts` and the packages are `private`. To publish, they need real
-   build outputs (`dist/*.js` + `.d.ts`), a proper `exports` map, `files`, and
-   `private` removed.
-3. **Auth/versioning.** Publishing uses
-   `NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}` with `packages: write`, and the
-   versions need a release strategy (manual bumps or changesets);
-   `workspace:*` deps are rewritten by `pnpm publish`.
-4. **Consumers.** Nothing outside this repository currently imports them, so
-   publishing would only be useful for external reuse of the PKI kernel.
-
-Verdict: feasible, but it is a packaging refactor (scope + build + versioning),
-not just a workflow. Deferred.
+Not implemented. GitHub Packages would require renaming the `@epass42` scope to
+the repo owner, real build outputs (they are TS source), and a versioning/auth
+story; nothing outside this repo imports them, so it is deferred.

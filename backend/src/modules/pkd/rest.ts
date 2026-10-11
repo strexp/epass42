@@ -1,15 +1,7 @@
 /**
  * PKD REST surface (M9/T9.2, Appendix D):
- *
- *   GET /pkd/certificates        CSCA certificates
- *   GET /pkd/crls                CRLs
- *   GET /pkd/masterlists         Master Lists
- *   GET /pkd/dscs                Document Signer certificates (active + revoked)
- *   GET /pkd/revoked             Revoked document hashes (SLTD-like)
- *   GET /pkd/revoked/:hash       one revoked hash
- *   POST /pkd/revoked/check      look up a document by its MRZ fields
- *   GET /pkd/objects/:id.:format one object (der|pem)
- *   GET /pkd/ldif                full LDIF dump
+ * `GET /pkd/{certificates,crls,masterlists,dscs,revoked,revoked/:hash,ldif}`,
+ * `POST /pkd/revoked/check`, `GET /pkd/objects/:id.:format`.
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'

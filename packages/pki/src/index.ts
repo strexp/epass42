@@ -1,17 +1,7 @@
 /**
- * `@epass42/pki` — pure functions for the ICAO Doc 9303-12 PKI core and the
- * eMRTD personalization structures (data groups, EF.SOD, EF.CardAccess,
- * EF.CardSecurity, Master List, `.perso` script).
- *
- * The package has no I/O: callers pass in key material and receive bytes.
- * Modules are grouped by domain:
- *
- * - `codec/`  byte/base64/hex/PEM/DER codecs
- * - `crypto/` key generation, hashing and P-256 helpers
- * - `x509/`   certificate, extension and CRL profiles
- * - `cms/`    CMS SignedData, EF.SOD and the CSCA Master List
- * - `emrtd/`  MRZ, data groups, SecurityInfos and the `.perso` script
- * - `verify/` chain, SOD and profile verification
+ * `@epass42/pki` — pure (no-I/O) Doc 9303-12 PKI and eMRTD personalization
+ * helpers, grouped by domain: `codec/`, `crypto/`, `x509/`, `cms/`, `emrtd/`,
+ * `verify/`.
  */
 export * from './codec/base64'
 export * from './codec/bytes'

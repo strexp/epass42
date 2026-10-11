@@ -1,12 +1,8 @@
 /**
- * Perso builder for the DSC signing service (M7/T7.2).
- *
- * Turns a validated, structured signing request into a card42 `.perso` script:
- * DG1 is authoritative (server-built from the MRZ), the browser-encoded DG2/DG5/
- * DG7 are validated, DG3/DG4 are wrapped, DG11/12/13/16 are built server-side,
- * and the AA/CA keys, EF.CardAccess/DG14, EF.CardSecurity and EF.SOD are
- * generated here.  AA/CA private keys exist only inside the produced script and
- * are never persisted.
+ * Builds a card42 `.perso` script from a validated signing request (M7/T7.2):
+ * server-built DG1/DG11-16, validated browser-encoded DG2/DG5/DG7, wrapped
+ * DG3/DG4, plus AA/CA keys, EF.CardAccess/DG14, EF.CardSecurity and EF.SOD.
+ * AA/CA private keys exist only in the script, never persisted.
  */
 import {
   AA_SIGNATURE_ALG_OIDS,

@@ -14,7 +14,7 @@ epass42/
 ├── scripts/       gen-csca, verify (M2)
 ├── backend/       Fastify + SQLite/Drizzle (M3–M4)
 ├── frontend/      Nuxt 4 + Naive UI (M11)
-├── deploy/        docker-compose, OpenLDAP schema (planned)
+├── deploy/        docker-compose, Dockerfiles and the OpenLDAP schema (LDIF validation)
 └── TODO.md        milestone/task plan
 ```
 
@@ -79,14 +79,14 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
   (MRZ/`localityName`) and alpha-2 `XD` (`C=XD`, PKD paths).
 - **CSCA private keys are online** in this design (encrypted at rest; M13),
   which is what lets the service issue DSC certificates and CRLs automatically.
-- The PKD role is exposed as REST + LDIF + a read-only LDAP compatibility layer
-  (no LDAP writes; uploads go through the application API).
-- Data groups are built per ICAO Doc 9303-10 §4.7; the code reused from
-  `card42`/`card42-perso-generator` is audited in
-  [`packages/pki/AUDIT.md`](packages/pki/AUDIT.md).
-- The applicant submits only human-friendly structured fields; images (DG2/DG5/
-  DG7) are encoded in the browser, and biometric templates (DG3/DG4) are
-  uploaded pre-encoded.
+- The PKD directory is served by the backend's **built-in read-only LDAP**
+  (`ldapjs` Bind/Search over the same DIT; uploads go through the application
+  API, never LDAP). `deploy/openldap/` only holds the ICAO schema and a
+  `slapd.conf` example for validating the LDIF dump.
+- Data groups follow ICAO Doc 9303-10 §4.7 (reused code audited in
+  [`packages/pki/AUDIT.md`](packages/pki/AUDIT.md)).
+- Applicants submit structured fields only; images (DG2/DG5/DG7) are encoded in
+  the browser and biometric templates (DG3/DG4) uploaded pre-encoded.
 
 ## Status
 
@@ -105,7 +105,8 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
 - **M6** CRL generation with schedule-based refresh — done.
 - **M7** DSC signing service: structured requests, DG/AA/CA/SOD/perso build — done.
 - **M8** delivery: masked preview, one-time reveal, delivery modes and history — done.
-- **M9** PKD role: REST, LDIF dump, read-only LDAP server and OpenLDAP schema — done.
+- **M9** PKD role: REST, LDIF dump, a built-in read-only LDAP server and the
+  OpenLDAP LDIF schema — done.
 - **M10** CSCA Master List generation, publication and verification — done.
 - **M11** frontend (Nuxt 4 SPA + Naive UI): i18n (en), dark mode, API client,
   applicant/admin flows, masked preview and one-time claim — done.
