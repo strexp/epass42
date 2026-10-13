@@ -39,6 +39,11 @@ export default {
   revoke: '吊销',
   revokeConfirm: '确定吊销该证书？吊销后将无法再用于签发证件。',
   rollover: '轮换 CSCA 密钥',
+  rolloverWarning:
+    '将生成新的 CSCA 密钥，并发布一张链接证书把它与旧密钥相连。已签发的证书仍然有效，但此操作不可撤销。是否继续？',
+  masterList: '生成主列表',
+  masterListWarning: '将根据当前证书重新生成并发布 CSCA 主列表。是否继续？',
+  adminActionsHint: '证书颁发机构级别的操作。每一项都需要确认，且不可撤销。',
   crl: 'CRL',
   privateKey: '私钥',
   privateKeyTitle: '下载私钥',

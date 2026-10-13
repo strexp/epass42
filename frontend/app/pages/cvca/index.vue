@@ -1,6 +1,17 @@
 <script setup lang="ts">
-import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
-import { Check, FilePlus2, KeyRound, RefreshCw, ScrollText, X } from '@lucide/vue'
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NDataTable,
+  NEmpty,
+  NIcon,
+  NSpace,
+  NText,
+  useDialog,
+  useMessage,
+} from 'naive-ui'
+import { Check, FilePlus2, KeyRound, RefreshCw, RotateCcw, ScrollText, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -23,9 +34,11 @@ const api = useApi()
 const { t } = useI18n()
 usePageTitle(() => t('nav.cvca'))
 const message = useMessage()
+const dialog = useDialog()
 
 const applications = ref<Application[]>([])
 const loading = ref(false)
+const rolloverBusy = ref(false)
 const delegation = ref<{
   mnt: string | null
   useNiaDv: boolean
@@ -117,6 +130,29 @@ const columns = computed(() => [
       ),
   },
 ])
+
+/** Confirms the irreversible authority-key rollover before running it. */
+function confirmRollover(): void {
+  dialog.warning({
+    title: t('cvca.rollover'),
+    content: t('cvca.rolloverWarning'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => void rollover(),
+  })
+}
+
+async function rollover(): Promise<void> {
+  rolloverBusy.value = true
+  try {
+    await api('/cvca/keys/rollover', { method: 'POST', body: { confirm: true } })
+    message.success(t('common.success'))
+  } catch (error) {
+    message.error(t(errorMessageKey(error)))
+  } finally {
+    rolloverBusy.value = false
+  }
+}
 
 onMounted(async () => {
   await ensureLoaded()
@@ -222,6 +258,18 @@ onMounted(async () => {
           />
         </div>
         <NEmpty v-else :description="$t('common.empty')" />
+      </NCard>
+
+      <NCard v-if="isAdmin" :title="$t('nav.admin')" size="small">
+        <NAlert type="warning" :show-icon="false">{{ $t('cvca.adminActionsHint') }}</NAlert>
+        <NSpace style="margin-top: 12px">
+          <NButton :loading="rolloverBusy" @click="confirmRollover">
+            <template #icon
+              ><NIcon><RotateCcw /></NIcon
+            ></template>
+            {{ $t('cvca.rollover') }}
+          </NButton>
+        </NSpace>
       </NCard>
     </NSpace>
   </div>

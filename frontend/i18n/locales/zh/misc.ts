@@ -37,10 +37,9 @@ export default {
     document_number_conflict: '该证件号码在您的机构中已存在。',
     no_active_dsc: '该机构尚无已批准的文档签名证书。',
     no_active_dv: '该机构尚无已批准的文档验证者证书。',
-    no_dv_available: '没有可用于签发该终端的文档验证者证书。',
+    no_dv_available: '目前没有可用的签发机构为该终端签发证书。',
     no_private_key: '该证书没有可下载的私钥。',
     private_key_consumed: '私钥已被下载并删除。',
-    dv_key_unavailable: '本服务不再持有该文档验证者私钥，无法在此签发终端证书。',
     ta_requires_cvca:
       '终端认证需要 ECDSA 的 CVCA 密钥：请启用 CVCA 角色或设置 cvca.algorithm = "ecdsa"。',
     dg2_too_large: '照片过大，请更换更小的图片或降低质量。',

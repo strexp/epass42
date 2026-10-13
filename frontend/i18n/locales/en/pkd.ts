@@ -10,9 +10,9 @@ export default {
   masterlists: 'Master lists',
   cvca: 'Verifying CA',
   cvcaHint:
-    'Country Verifying CA certificates: the authorization-PKI trust anchors for reading and writing LDS2 data.',
+    'Country Verifying CA certificates: the trust anchors for reading and writing protected data.',
   dvs: 'Document verifiers',
-  dvsHint: 'Issued Document Verifier certificates with their LDS2 read and write authorization.',
+  dvsHint: 'Issued Document Verifier certificates with their read and write authorization.',
   holderReference: 'Holder reference',
   permissions: 'Authorization',
   dscs: 'Document signers',

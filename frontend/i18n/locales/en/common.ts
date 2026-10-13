@@ -80,7 +80,7 @@ export default {
     intro: 'Official document-signing service of the National Immigration Agency.',
     cscaCard: 'Apply for a Document Signer certificate for your organisation.',
     cvcaCard:
-      'Apply for a Document Verifier certificate to authorize reading or writing LDS2 data.',
+      'Apply for a Document Verifier certificate to read or write data on electronic documents.',
     dvCard: 'Apply for a terminal certificate for your inspection system.',
     dscCard: 'Request, review and deliver personalization files for passports and identity cards.',
     pkdCard: 'Verify published certificates, revocation lists and revoked documents.',

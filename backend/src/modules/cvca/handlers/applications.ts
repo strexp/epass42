@@ -12,7 +12,7 @@ import { z } from 'zod'
 import { dvClassSchema, dvPermissionsSchema } from '@epass42/shared'
 
 import { writeAudit } from '../../../audit/audit'
-import { dvApplication } from '../../../db/schema'
+import { dvApplication, dvCert } from '../../../db/schema'
 import { nowIso } from '../../../util/time'
 import { requireAdmin, requireSession } from '../../auth/middleware'
 import { applicationBody, dvMetadata, type CvcaRouteDeps } from '../routeContext'
@@ -117,7 +117,12 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CvcaRouteD
         targetId: row.id,
         ip: request.ip,
       })
-      return row
+      // Whether the issued DV's one-time private key is still available.
+      const cert =
+        row.dvCertId !== null
+          ? db.select().from(dvCert).where(eq(dvCert.id, row.dvCertId)).get()
+          : undefined
+      return { ...row, hasPrivateKey: cert?.keyRef != null }
     },
   )
 

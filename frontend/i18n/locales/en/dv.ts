@@ -7,9 +7,9 @@ export default {
   applicationsTitle: 'Terminal certificate applications',
   myApplications: 'My applications',
   adminTitle: 'Terminal certificate applications',
-  hint: 'A terminal certificate lets an inspection system authenticate for Terminal Authentication. It is signed by a Document Verifier and its authorization cannot exceed that DV’s grant.',
+  hint: 'A terminal certificate lets an inspection system read or write data on electronic documents.',
   applyHint:
-    'Request a terminal certificate for an inspection system. The signing Document Verifier is selected automatically from your organisation.',
+    'Request a terminal certificate for your inspection system. The organisation that signs it is chosen automatically for your organisation.',
   stepApplication: 'Application',
   stepReview: 'Review and submit',
   reviewSummary: 'Review the application before submitting it for approval.',
@@ -19,15 +19,14 @@ export default {
   subjectCn: 'Certificate common name',
   holderMnemonic: 'Holder mnemonic',
   holderMnemonicHint:
-    'Up to 9 letters or digits. The issuing Document Verifier assigns the full certificate reference automatically.',
+    'Up to 9 letters or digits. The full certificate reference is assigned automatically.',
   csr: 'CSR (PEM)',
   publicKey: 'Public key (SPKI PEM)',
   uploadHint: 'Provide a CSR or a public key; either one is enough.',
   permissionsTitle: 'Requested authorization',
   permissionsHint:
-    'Choose the LDS2 applications this terminal may read or write. An administrator may adjust these on approval, and they cannot exceed the signing DV’s grant.',
+    'Choose the applications this system may read or write. An administrator may adjust these on approval.',
   validityDays: 'Validity (days)',
-  applicationUrl: 'Application page URL',
   notes: 'Notes',
   submittedAt: 'Submitted',
   reviewedAt: 'Reviewed',
@@ -38,4 +37,8 @@ export default {
   reviewHint:
     'Adjust the authorization if needed, then approve or reject. Approving issues the terminal certificate.',
   download: 'Download certificate',
+  privateKey: 'Private key',
+  privateKeyTitle: 'Download private key',
+  privateKeyWarning:
+    'The private key can be downloaded only once. Save it securely now: it is deleted after this download and cannot be retrieved again.',
 } as const

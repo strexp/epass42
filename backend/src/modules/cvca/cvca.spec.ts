@@ -23,6 +23,12 @@ const OTHER_USER = {
   name: 'DV User',
   dn42: { asn: 4242420002, active_mnt: 'DV-MNT', mnt_by: ['DV-MNT'] },
 }
+/** A DV-realm administrator (the realm that reviews terminal applications). */
+const DV_ADMIN = {
+  sub: 'dv-admin',
+  name: 'DV Admin',
+  dn42: { asn: 4242422100, active_mnt: 'EXAMPLE-DV-MNT', mnt_by: ['EXAMPLE-DV-MNT'] },
+}
 
 const PERMISSIONS = {
   epassport: { dg3: true, dg4: false },
@@ -62,6 +68,23 @@ async function loginCvca(
     url: `/auth/cvca/callback?code=x&state=${state}`,
   })
   const cookie = callback.cookies.find((entry) => entry.name === 'epass42_cvca_sid')!
+  return `${cookie.name}=${cookie.value}`
+}
+
+/** Logs in to the DV realm as a specific identity (switching the provider). */
+async function loginDv(
+  app: FastifyInstance,
+  oidc: FakeOidc,
+  claims: Record<string, unknown>,
+): Promise<string> {
+  oidc.set('dv-client', { subject: String(claims.sub), claims })
+  const start = await app.inject({ method: 'GET', url: '/auth/dv/login' })
+  const state = new URL(start.headers.location as string).searchParams.get('state')
+  const callback = await app.inject({
+    method: 'GET',
+    url: `/auth/dv/callback?code=x&state=${state}`,
+  })
+  const cookie = callback.cookies.find((entry) => entry.name === 'epass42_dv_sid')!
   return `${cookie.name}=${cookie.value}`
 }
 
@@ -228,6 +251,16 @@ describe('M17 CVCA role', () => {
     })
     const certId = json(approve).id as number
 
+    // The application records the issued certificate and whether its key is
+    // still available (for the in-detail one-time download).
+    const detailBefore = await app.inject({
+      method: 'GET',
+      url: `/cvca/applications/${json(submit).id}`,
+      headers: { cookie: adminCookie },
+    })
+    expect(json(detailBefore).dvCertId).toBe(certId)
+    expect(json(detailBefore).hasPrivateKey).toBe(true)
+
     const key = await app.inject({
       method: 'GET',
       url: `/cvca/certificates/${certId}/private-key`,
@@ -235,6 +268,13 @@ describe('M17 CVCA role', () => {
     })
     expect(key.statusCode).toBe(200)
     expect(key.body).toContain('BEGIN PRIVATE KEY')
+
+    const detailAfter = await app.inject({
+      method: 'GET',
+      url: `/cvca/applications/${json(submit).id}`,
+      headers: { cookie: adminCookie },
+    })
+    expect(json(detailAfter).hasPrivateKey).toBe(false)
 
     const again = await app.inject({
       method: 'GET',
@@ -362,18 +402,28 @@ describe('M17 CVCA role', () => {
     })
     expect(status.json().hasActiveDv).toBe(true)
 
-    // While delegated, terminals are signed by the CVCA default DV.
+    // Terminal issuance now lives in the DV realm.  While the maintainer
+    // delegates, the CVCA default DV signs; after switching, its own DV does.
+    const applicant = await loginDv(app, oidc, OTHER_USER)
+    const dvAdmin = await loginDv(app, oidc, DV_ADMIN)
+
     const delegated = await app.inject({
       method: 'POST',
-      url: '/cvca/terminals',
-      headers: { cookie: ownerCookie },
-      payload: { subjectCn: 'Delegated IS' },
+      url: '/dv/terminal-applications',
+      headers: { cookie: applicant },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Delegated IS', permissions: PERMISSIONS },
     })
     expect(delegated.statusCode).toBe(201)
-    expect(json(delegated).dvCertId).not.toBe(ownDvId)
-    expect(json(delegated).mnt).toBe('DV-MNT')
+    const delegatedApprove = await app.inject({
+      method: 'POST',
+      url: `/dv/terminal-applications/${json(delegated).id}/approve`,
+      headers: { cookie: dvAdmin },
+    })
+    expect(delegatedApprove.statusCode).toBe(201)
+    expect(json(delegatedApprove).dvCertId).not.toBe(ownDvId)
+    expect(json(delegatedApprove).mnt).toBe('DV-MNT')
 
-    // After switching to the own DV, terminals are signed by it.
+    // After switching to the own DV, its certificate signs the terminal.
     const own = await app.inject({
       method: 'PUT',
       url: '/cvca/settings/mnt',
@@ -382,14 +432,33 @@ describe('M17 CVCA role', () => {
     })
     expect(own.statusCode).toBe(200)
     expect(own.json().useNiaDv).toBe(false)
-    const ownSigned = await app.inject({
+
+    const ownSubmit = await app.inject({
       method: 'POST',
-      url: '/cvca/terminals',
-      headers: { cookie: ownerCookie },
-      payload: { subjectCn: 'Own IS' },
+      url: '/dv/terminal-applications',
+      headers: { cookie: applicant },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Own IS', permissions: PERMISSIONS },
     })
-    expect(ownSigned.statusCode).toBe(201)
-    expect(json(ownSigned).dvCertId).toBe(ownDvId)
+    const ownApprove = await app.inject({
+      method: 'POST',
+      url: `/dv/terminal-applications/${json(ownSubmit).id}/approve`,
+      headers: { cookie: dvAdmin },
+    })
+    expect(json(ownApprove).dvCertId).toBe(ownDvId)
+    expect(json(ownApprove).permissions).toEqual(PERMISSIONS)
+
+    // The terminal chains to the DV that signed it (card-verifiable).
+    const dvDer = await app.inject({ method: 'GET', url: `/cvca/certificates/${ownDvId}.der` })
+    const dv = parseCvCertificate(new Uint8Array(dvDer.rawPayload))
+    const terminalDer = await app.inject({
+      method: 'GET',
+      url: `/dv/terminal-applications/${json(ownSubmit).id}/certificate`,
+      headers: { cookie: applicant },
+    })
+    const cert = parseCvCertificate(new Uint8Array(terminalDer.rawPayload))
+    expect(cert.role).toBe('terminal')
+    expect(cert.authorityReference).toBe(dv.holderReference)
+    expect(await verifyCvCertificate(cert, await cvPublicKey(dv))).toBe(true)
   })
 
   it('rolls the CVCA key over with a link certificate', async () => {
@@ -423,42 +492,5 @@ describe('M17 CVCA role', () => {
     expect(row.keyAlgorithm).toBe('ECDSA')
     const parsed = parseCvCertificate(new Uint8Array(row.certDer))
     expect(parsed.publicKey.algorithm).toBe('ec')
-  })
-
-  it('issues a terminal (IS) certificate signed by the DV', async () => {
-    const { app, adminCookie } = await harness()
-    const submit = await app.inject({
-      method: 'POST',
-      url: '/cvca/applications',
-      headers: { cookie: adminCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'Border DV', permissions: PERMISSIONS },
-    })
-    const approve = await app.inject({
-      method: 'POST',
-      url: `/cvca/applications/${json(submit).id}/approve`,
-      headers: { cookie: adminCookie },
-    })
-    const dvId = json(approve).id as number
-    expect(json(approve).permissions).toEqual(PERMISSIONS)
-
-    const terminal = await app.inject({
-      method: 'POST',
-      url: `/cvca/certificates/${dvId}/terminals`,
-      headers: { cookie: adminCookie },
-      payload: { subjectCn: 'Gate terminal', holderMnemonic: 'GATE1' },
-    })
-    expect(terminal.statusCode).toBe(201)
-    expect(json(terminal).permissions).toEqual(PERMISSIONS)
-
-    const dvDer = await app.inject({ method: 'GET', url: `/cvca/certificates/${dvId}.der` })
-    const dv = parseCvCertificate(new Uint8Array(dvDer.rawPayload))
-    const terminalDer = await app.inject({
-      method: 'GET',
-      url: `/cvca/terminals/${json(terminal).id}.der`,
-    })
-    const cert = parseCvCertificate(new Uint8Array(terminalDer.rawPayload))
-    expect(cert.role).toBe('terminal')
-    expect(cert.authorityReference).toBe(dv.holderReference)
-    expect(await verifyCvCertificate(cert, await cvPublicKey(dv))).toBe(true)
   })
 })

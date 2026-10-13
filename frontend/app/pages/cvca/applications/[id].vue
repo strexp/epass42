@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'realm' })
 
 import {
+  NAlert,
   NButton,
   NCard,
   NCollapse,
@@ -14,6 +15,7 @@ import {
   NSpace,
   NTag,
   NText,
+  useDialog,
   useMessage,
 } from 'naive-ui'
 import type { DvClass, DvPermissions } from '@epass42/shared'
@@ -21,8 +23,9 @@ import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
-import { errorMessageKey } from '~/composables/useApi'
+import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { downloadUrl } from '~/utils/download'
 
 interface Application {
   id: number
@@ -44,6 +47,10 @@ interface Application {
   status: string
   reviewedAt: string | null
   rejectReason: string | null
+  /** The issued DV certificate, for the one-time private-key export. */
+  dvCertId: number | null
+  /** Whether the issued DV private key is still available. */
+  hasPrivateKey: boolean
   createdAt: string
 }
 
@@ -56,9 +63,11 @@ const EMPTY: DvPermissions = {
 
 const route = useRoute()
 const api = useApi()
+const apiBase = useApiBase()
 const { t } = useI18n()
 usePageTitle(() => t('cvca.applicationTitle'))
 const message = useMessage()
+const dialog = useDialog()
 const { state, ensureLoaded } = useRealm('cvca')
 
 const id = computed(() => String(route.params.id ?? ''))
@@ -73,6 +82,30 @@ const rejectReason = ref('')
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+
+/** A system-generated DV key may be claimed once, from the application. */
+const canDownloadKey = computed(
+  () => application.value?.status === 'approved' && application.value.hasPrivateKey,
+)
+
+/** Confirms the one-time, irreversible claim before handing out the key. */
+function confirmDownloadKey(): void {
+  const row = application.value
+  if (!row?.dvCertId) return
+  dialog.warning({
+    title: t('cvca.privateKeyTitle'),
+    content: t('cvca.privateKeyWarning'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => {
+      downloadUrl(
+        `${apiBase}/cvca/certificates/${row.dvCertId}/private-key`,
+        `dv-${row.dvCertId}.key`,
+      )
+      window.setTimeout(() => void load(), 1500)
+    },
+  })
+}
 
 const dvClassOptions = computed(() => [
   { label: t('cvca.dvClassDomestic'), value: 'domestic' },
@@ -234,6 +267,17 @@ onMounted(async () => {
         <NText v-if="application.rejectReason" depth="3" style="display: block; margin-top: 8px">
           {{ $t('cvca.rejectReason') }}: {{ application.rejectReason }}
         </NText>
+
+        <template v-if="canDownloadKey">
+          <NAlert type="warning" :title="$t('cvca.privateKeyTitle')" style="margin-top: 12px">
+            {{ $t('cvca.privateKeyWarning') }}
+          </NAlert>
+          <div class="epass42-actions" style="margin-top: 12px">
+            <NButton type="warning" @click="confirmDownloadKey">
+              {{ $t('cvca.privateKeyTitle') }}
+            </NButton>
+          </div>
+        </template>
 
         <div v-if="canReview" style="margin-top: 16px">
           <NText strong>{{ $t('cvca.approvedPermissions') }}</NText>

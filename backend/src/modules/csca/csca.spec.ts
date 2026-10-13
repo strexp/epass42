@@ -360,6 +360,15 @@ describe('M5 CSCA role', () => {
     })
     const certId = approve.json().id as number
 
+    // The application exposes the issued certificate and its one-time key.
+    const detailBefore = await app.inject({
+      method: 'GET',
+      url: `/csca/applications/${submit.json().id}`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(detailBefore.json().dscCertId).toBe(certId)
+    expect(detailBefore.json().hasPrivateKey).toBe(true)
+
     const key = await app.inject({
       method: 'GET',
       url: `/csca/certificates/${certId}/private-key`,
@@ -368,6 +377,13 @@ describe('M5 CSCA role', () => {
     expect(key.statusCode).toBe(200)
     expect(key.body).toContain('BEGIN PRIVATE KEY')
     expect(key.headers['cache-control']).toBe('no-store')
+
+    const detailAfter = await app.inject({
+      method: 'GET',
+      url: `/csca/applications/${submit.json().id}`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(detailAfter.json().hasPrivateKey).toBe(false)
 
     // The key is deleted after the first download.
     const againAsOwner = await app.inject({

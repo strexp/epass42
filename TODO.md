@@ -261,8 +261,8 @@ epass42/
       EF.CardAccess 宣告 `id-TA`；CV 证书支持 ECDSA-SHA-256（tag 86 公钥、TR-03111 plain r||s 签名）与
       CHAT（`id-IS` OID、角色位、ePassport b1/b2）+ LDS2 授权扩展（`2.23.136.1.1.9.{1,2,3}.3`）；
       perso 脚本新增 `@ta-date`（DGI FF08）与 `@cvca <W> <CAR> <YYMMDD> <auth>`（DGI FF07/FF09）。
-- [x] T17.9 CVCA 默认使用 ECDSA P-256 密钥并暴露信任锚；DV 证书为 ECDSA；`POST /cvca/certificates/:id/terminals`
-      由 DV 密钥签发终端（IS）证书（授权自动收敛到 DV 授权）；`[issuing.security.ta]` 或 DSC 设置页可启用 TA。
+- [x] T17.9 CVCA 默认使用 ECDSA P-256 密钥并暴露信任锚；DV 证书为 ECDSA；终端（IS）证书由 DV 密钥签发
+      （授权自动收敛到 DV 授权）；`[issuing.security.ta]` 或 DSC 设置页可启用 TA。
 - [x] T17.10（同步 card42 `9c3dd1e`）算法组合：
       CA 同时宣告 ECDH 3DES + AES-128（去掉 CA 算法选择）；AA 支持 RSA-SHA1/RSA-SHA256/ECDSA-SHA256
       （`@aa`/`@aa-ec`/`@aa-alg`，DG15 EC SPKI，CardAccess 仅 ECDSA 宣告 `ActiveAuthenticationInfo`）；
@@ -278,6 +278,19 @@ epass42/
       但**无委派**——签发 DV 由既有 `resolveDvSelection` 自动解析；表单覆盖全部功能位（ePassport DG3/DG4 + LDS2 三应用读写），
       管理员可在批准时覆盖权限（仍收敛到签发 DV 的授权）。新增 `terminal_application` 表与 `/dv/terminal-applications`
       （提交/列表/详情/审核/证书下载）、前端 `/dv` 页面、i18n `dv` 命名空间与 `nav.dv`/`home.dvCard`。
+- [x] T17.14 收掉 CVCA 侧终端证书直发入口：删除 `POST/GET /cvca/certificates/:id/terminals`、`POST /cvca/terminals` 及
+      `GET /cvca/terminals/:id.der`/`/private-key`，以及 `/cvca/certificates` 页的「签发终端证书」操作、弹窗与文案；
+      终端证书只能经 DV realm（`/dv/terminal-applications`）申请、审核、下载。
+- [x] T17.15 申请详情内一次性下载私钥：`dsc_application`/`dv_application` 增加 `dsc_cert_id`/`dv_cert_id`
+      （迁移 `0001`），批准时回填；CSCA/CVCA/DV 三个申请详情在已批准且私钥未领取时显示警告 + 下载按钮
+      （仿 DSC realm 的一次性领取交互），并新增 `GET /dv/terminal-applications/:id/private-key`。
+- [x] T17.16 终端申请去掉「申请页面 URL」字段（表单、提交体、`terminal_application.application_url`，迁移 `0002` 删列）；
+      帮助页新增「检查系统」「LDS2 证书管理员」角色，修正与实际不符的步骤（DSC 审核仅覆盖交付方式、perso 不宣称 DG1–DG16、
+      PKD 目录含验证证书、自建部署不宣称未实现的 NIA 端点配置），角色名统一为单一名词（文档签名者 / 文档验证者 / 检查系统，
+      无「X / Y」组合）；按受众清理 i18n：申请方（CVCA/DV）文案不再出现 LDS2/PKI/终端认证等术语，管理端与 PKD 保留技术表述。
+- [x] T17.17 补回密钥轮换 / 主列表生成的前端入口：CSCA 与 CVCA 首页新增仅管理员可见的「管理后台」卡片
+      （内联警告 + 确认弹窗），分别调用 `POST /csca/keys/rollover`、`POST /pkd/masterlists` 与 `POST /cvca/keys/rollover`；
+      help 对应步骤改为「以管理员身份」操作。
 
 > 说明：CHAT 权限位采用 BSI TR-03110 的角色位布局（`C0`=CVCA、`80`=国内 DV、`40`=国外 DV、`00`=终端），
 > ePassport 使用 byte0 的 b1/b2（DG3/DG4），LDS2 应用授权使用 `65{73{06,53}}` 扩展（Doc 9303-10 Table 99）。

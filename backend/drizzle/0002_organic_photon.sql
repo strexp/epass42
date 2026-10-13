@@ -1,0 +1,1 @@
+ALTER TABLE `terminal_application` DROP COLUMN `application_url`;

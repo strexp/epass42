@@ -7,7 +7,7 @@ import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAudit } from '../../../audit/audit'
-import { dscApplication } from '../../../db/schema'
+import { dscApplication, dscCert } from '../../../db/schema'
 import { nowIso } from '../../../util/time'
 import { requireAdmin, requireSession } from '../../auth/middleware'
 import { applicationBody, certMetadata, type CscaRouteDeps } from '../routeContext'
@@ -113,7 +113,12 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
         targetId: row.id,
         ip: request.ip,
       })
-      return row
+      // Whether the issued DSC's one-time private key is still available.
+      const cert =
+        row.dscCertId !== null
+          ? db.select().from(dscCert).where(eq(dscCert.id, row.dscCertId)).get()
+          : undefined
+      return { ...row, hasPrivateKey: cert?.keyRef != null }
     },
   )
 

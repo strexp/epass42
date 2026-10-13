@@ -32,6 +32,5 @@ export const terminalApplicationBody = z.object({
   /** The requested LDS2 read/write authorization. */
   permissions: dvPermissionsSchema,
   validityDays: z.number().int().min(1).max(92).optional(),
-  applicationUrl: z.string().url().max(2000).optional(),
   notes: z.string().max(2000).optional(),
 })

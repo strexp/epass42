@@ -9,7 +9,7 @@
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { dvPermissionsSchema } from '@epass42/shared'
@@ -51,7 +51,6 @@ export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: Dv
           publicKeyPem: request.body.publicKeyPem ?? null,
           permissionsJson: JSON.stringify(request.body.permissions),
           validityDays: request.body.validityDays ?? null,
-          applicationUrl: request.body.applicationUrl ?? null,
           notes: request.body.notes ?? null,
           status: 'submitted',
           createdAt: nowIso(),
@@ -120,7 +119,12 @@ export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: Dv
         targetId: row.id,
         ip: request.ip,
       })
-      return row
+      // Whether the issued terminal's one-time private key is still available.
+      const cert =
+        row.terminalCertId !== null
+          ? db.select().from(terminalCert).where(eq(terminalCert.id, row.terminalCertId)).get()
+          : undefined
+      return { ...row, hasPrivateKey: cert?.keyRef != null }
     },
   )
 
@@ -151,6 +155,63 @@ export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: Dv
         .get()
       if (!cert) return reply.code(404).send({ error: 'certificate_not_found' })
       return reply.type('application/octet-stream').send(Buffer.from(cert.certDer))
+    },
+  )
+
+  // One-time download of a system-generated terminal private key (owner or DV
+  // admin).  The sealed key is deleted after the first successful download.
+  server.get(
+    '/dv/terminal-applications/:id/private-key',
+    {
+      schema: { params: z.object({ id: z.coerce.number().int().positive() }) },
+      preHandler: requireSession(deps, 'dv'),
+    },
+    async (request, reply) => {
+      const principal = request.principal!
+      const row = db
+        .select()
+        .from(terminalApplication)
+        .where(eq(terminalApplication.id, request.params.id))
+        .get()
+      if (!row) return reply.code(404).send({ error: 'application_not_found' })
+      if (!principal.isAdmin && row.applicantAccountId !== principal.account.id) {
+        return reply.code(403).send({ error: 'forbidden' })
+      }
+      if (row.terminalCertId === null) {
+        return reply.code(404).send({ error: 'certificate_not_found' })
+      }
+      const cert = db
+        .select()
+        .from(terminalCert)
+        .where(eq(terminalCert.id, row.terminalCertId))
+        .get()
+      if (!cert) return reply.code(404).send({ error: 'certificate_not_found' })
+      if (!cert.keyRef) {
+        const uploaded = cert.keyMode === 'user_uploaded'
+        return reply
+          .code(uploaded ? 404 : 410)
+          .send({ error: uploaded ? 'no_private_key' : 'private_key_consumed' })
+      }
+      const pem = service.exportTerminalPrivateKey(cert)
+      const cleared = db
+        .update(terminalCert)
+        .set({ keyRef: null })
+        .where(and(eq(terminalCert.id, cert.id), isNotNull(terminalCert.keyRef)))
+        .run()
+      if (cleared.changes === 0) {
+        return reply.code(410).send({ error: 'private_key_consumed' })
+      }
+      writeAudit(db, {
+        actorAccountId: principal.account.id,
+        realm: 'dv',
+        action: 'terminal.certificate.key',
+        targetType: 'terminal_cert',
+        targetId: cert.id,
+        ip: request.ip,
+      })
+      reply.header('cache-control', 'no-store')
+      reply.header('content-disposition', `attachment; filename="terminal-${cert.id}.key"`)
+      return reply.type('application/x-pem-file').send(pem)
     },
   )
 

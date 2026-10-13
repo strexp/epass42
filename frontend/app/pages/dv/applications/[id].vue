@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'realm' })
 
 import {
+  NAlert,
   NButton,
   NCard,
   NCollapse,
@@ -12,6 +13,7 @@ import {
   NModal,
   NSpace,
   NText,
+  useDialog,
   useMessage,
 } from 'naive-ui'
 import type { DvPermissions } from '@epass42/shared'
@@ -36,8 +38,9 @@ interface Application {
   permissionsJson: string | null
   overridePermissionsJson: string | null
   terminalCertId: number | null
+  /** Whether the issued terminal private key is still available. */
+  hasPrivateKey: boolean
   validityDays: number | null
-  applicationUrl: string | null
   notes: string | null
   status: string
   reviewedAt: string | null
@@ -58,6 +61,7 @@ const apiBase = useApiBase()
 const { t } = useI18n()
 usePageTitle(() => t('dv.applicationTitle'))
 const message = useMessage()
+const dialog = useDialog()
 const { state, ensureLoaded } = useRealm('dv')
 
 const id = computed(() => String(route.params.id ?? ''))
@@ -140,6 +144,27 @@ function downloadCertificate(): void {
   )
 }
 
+/** A system-generated terminal key may be claimed once, from the application. */
+const canDownloadKey = computed(() => approved.value && application.value?.hasPrivateKey === true)
+
+/** Confirms the one-time, irreversible claim before handing out the key. */
+function confirmDownloadKey(): void {
+  if (!application.value) return
+  dialog.warning({
+    title: t('dv.privateKeyTitle'),
+    content: t('dv.privateKeyWarning'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => {
+      downloadUrl(
+        `${apiBase}/dv/terminal-applications/${id.value}/private-key`,
+        `terminal-${id.value}.key`,
+      )
+      window.setTimeout(() => void load(), 1500)
+    },
+  })
+}
+
 onMounted(async () => {
   await ensureLoaded()
   await load()
@@ -181,9 +206,6 @@ onMounted(async () => {
           }}</NDescriptionsItem>
           <NDescriptionsItem :label="$t('dv.validityDays')">
             {{ application.validityDays ?? '—' }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('dv.applicationUrl')">
-            {{ application.applicationUrl ?? '—' }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dv.submittedAt')">
             <DateTimeText :value="application.createdAt" />
@@ -251,6 +273,19 @@ onMounted(async () => {
           >
             {{ $t('dv.download') }}
           </NButton>
+          <template v-if="canDownloadKey">
+            <NAlert type="warning" :title="$t('dv.privateKeyTitle')" style="margin-top: 12px">
+              {{ $t('dv.privateKeyWarning') }}
+            </NAlert>
+            <NButton
+              type="warning"
+              size="small"
+              style="margin-top: 8px"
+              @click="confirmDownloadKey"
+            >
+              {{ $t('dv.privateKeyTitle') }}
+            </NButton>
+          </template>
         </div>
       </NCard>
 

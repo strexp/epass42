@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'realm' })
 
 import {
+  NAlert,
   NButton,
   NCard,
   NCollapse,
@@ -13,12 +14,14 @@ import {
   NSpace,
   NTag,
   NText,
+  useDialog,
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
-import { errorMessageKey } from '~/composables/useApi'
+import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { downloadUrl } from '~/utils/download'
 
 interface Application {
   id: number
@@ -39,14 +42,20 @@ interface Application {
   status: string
   reviewedAt: string | null
   rejectReason: string | null
+  /** The issued DSC certificate, for the one-time private-key export. */
+  dscCertId: number | null
+  /** Whether the issued DSC private key is still available. */
+  hasPrivateKey: boolean
   createdAt: string
 }
 
 const route = useRoute()
 const api = useApi()
+const apiBase = useApiBase()
 const { t } = useI18n()
 usePageTitle(() => t('csca.applicationTitle'))
 const message = useMessage()
+const dialog = useDialog()
 const { state, ensureLoaded } = useRealm('csca')
 
 const id = computed(() => String(route.params.id ?? ''))
@@ -57,6 +66,30 @@ const rejectReason = ref('')
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+
+/** A system-generated DSC key may be claimed once, from the application. */
+const canDownloadKey = computed(
+  () => application.value?.status === 'approved' && application.value.hasPrivateKey,
+)
+
+/** Confirms the one-time, irreversible claim before handing out the key. */
+function confirmDownloadKey(): void {
+  const row = application.value
+  if (!row?.dscCertId) return
+  dialog.warning({
+    title: t('csca.privateKeyTitle'),
+    content: t('csca.privateKeyWarning'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => {
+      downloadUrl(
+        `${apiBase}/csca/certificates/${row.dscCertId}/private-key`,
+        `dsc-${row.dscCertId}.key`,
+      )
+      window.setTimeout(() => void load(), 1500)
+    },
+  })
+}
 
 async function load(): Promise<void> {
   try {
@@ -185,6 +218,17 @@ onMounted(async () => {
         <NText v-if="application.rejectReason" depth="3" style="display: block; margin-top: 8px">
           {{ $t('csca.rejectReason') }}: {{ application.rejectReason }}
         </NText>
+
+        <template v-if="canDownloadKey">
+          <NAlert type="warning" :title="$t('csca.privateKeyTitle')" style="margin-top: 12px">
+            {{ $t('csca.privateKeyWarning') }}
+          </NAlert>
+          <div class="epass42-actions" style="margin-top: 12px">
+            <NButton type="warning" @click="confirmDownloadKey">
+              {{ $t('csca.privateKeyTitle') }}
+            </NButton>
+          </div>
+        </template>
 
         <div v-if="canReview" class="epass42-actions" style="margin-top: 12px">
           <NButton type="primary" :loading="busy" @click="approve">

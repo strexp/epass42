@@ -40,6 +40,13 @@ export default {
   revoke: 'Revoke',
   revokeConfirm: 'Revoke this certificate? It can no longer be used to sign documents.',
   rollover: 'Roll over CSCA key',
+  rolloverWarning:
+    'This creates a new CSCA key and publishes a link certificate from the previous key. Already-issued certificates stay valid, but the change cannot be undone. Continue?',
+  masterList: 'Generate master list',
+  masterListWarning:
+    'This regenerates and publishes the CSCA master list from the current certificates. Continue?',
+  adminActionsHint:
+    'Authority-level operations. Each one asks for confirmation and cannot be undone.',
   crl: 'CRL',
   privateKey: 'Private key',
   privateKeyTitle: 'Download private key',

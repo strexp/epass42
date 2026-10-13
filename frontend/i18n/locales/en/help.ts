@@ -27,20 +27,29 @@ export default {
       tagline: 'Review and decide on personalization requests for your organisation.',
     },
     certApplicant: {
-      name: 'Organisation',
-      tagline: 'Obtain a Document Signer certificate so you can sign documents.',
+      name: 'Document signer',
+      tagline: 'Apply for a Document Signer certificate so your organisation can sign documents.',
     },
     certAdmin: {
       name: 'Certificate authority admin',
       tagline: 'Approve applications, issue and revoke certificates and publish the CRL.',
     },
     cvca: {
-      name: 'Document Verifier / CVCA',
+      name: 'Document Verifier',
+      tagline: 'Apply for a Document Verifier certificate on behalf of your organisation.',
+    },
+    terminal: {
+      name: 'Inspection system',
       tagline:
-        'Apply for, review and issue Document Verifier certificates for the LDS2 authorization PKI.',
+        'Apply for a terminal certificate so your inspection system can read or write protected data.',
+    },
+    cvcaAdmin: {
+      name: 'LDS2 certificate administrator',
+      tagline:
+        'Review Document Verifier and terminal applications, manage delegation and publish the certificates.',
     },
     selfHosted: {
-      name: 'Run your own service',
+      name: 'Self-hosted service',
       tagline: 'Sign documents with your maintainer’s own certificate in a DSC-only deployment.',
     },
     personalization: {
@@ -105,7 +114,7 @@ export default {
         },
         s4: {
           title: 'Approve or reject',
-          body: 'Approve to release it for production, or reject with a reason. You may override the delivery mode and the server-filled issuing fields for this single request.',
+          body: 'Approve to release it for production, or reject with a reason. You may override the delivery mode for this single request.',
         },
         s5: {
           title: 'Deliver',
@@ -165,35 +174,91 @@ export default {
         },
         s5: {
           title: 'Roll over the CSCA key',
-          body: 'Start a key rollover to create a new CSCA key; a link certificate chains the new key to the previous one so trust is not interrupted.',
+          body: 'As an administrator, roll over the CSCA key; a link certificate chains the new key to the previous one so trust is not interrupted.',
         },
         s6: {
-          title: 'Publish and verify the master list',
-          body: 'Generate the CSCA master list and publish it to the PKD.',
+          title: 'Publish the master list',
+          body: 'As an administrator, generate the CSCA master list; it is published to the PKD.',
         },
       },
     },
     cvca: {
       summary:
-        'A Document Verifier certificate authorizes an organisation to read or write LDS2 data on eMRTDs. The CVCA issues it as a card-verifiable certificate.',
+        'A Document Verifier certificate lets your organisation read or write protected data on electronic documents. You apply for it here and it is issued once an administrator approves.',
       steps: {
         s1: {
           title: 'Sign in',
           body: 'Sign in to the verification realm with your dn42 account.',
         },
         s2: {
-          title: 'Apply for a DV certificate',
-          body: 'Choose a name, a key mode and the LDS2 read and write authorization your organisation needs.',
+          title: 'Apply for a certificate',
+          body: 'Give the certificate a name, choose how the key is created and pick the data your organisation needs to read or write.',
         },
         s3: {
           title: 'Review',
-          body: 'An administrator reviews the request and may adjust the requested authorization before approving.',
+          body: 'An administrator checks the request and may adjust it before approving.',
         },
         s4: {
           title: 'Collect the certificate',
-          body: 'Approval issues a card-verifiable DV certificate signed by the CVCA. A CVCA-generated private key can be downloaded once.',
+          body: 'Approval issues the certificate. If the key was generated for you, download it once and keep it safe.',
         },
         s5: {
+          title: 'Publish',
+          body: 'The certificate is published in the PKD so terminals can check what it is allowed to do.',
+        },
+      },
+    },
+    terminal: {
+      summary:
+        'A terminal certificate lets an inspection system read or write protected data on electronic documents. You request it for your organisation; it is issued once an administrator approves.',
+      steps: {
+        s1: {
+          title: 'Sign in',
+          body: 'Sign in to the terminal realm with your dn42 account.',
+        },
+        s2: {
+          title: 'Apply for a certificate',
+          body: 'Name the certificate, choose how the key is created and pick the data the system needs to read or write.',
+        },
+        s3: {
+          title: 'Review',
+          body: 'An administrator checks the request and may adjust it before approving.',
+        },
+        s4: {
+          title: 'Claim the result',
+          body: 'Approval issues the certificate. Download it, and if the key was generated for you, download that once and keep it safe.',
+        },
+        s5: {
+          title: 'Install it',
+          body: 'Install the certificate and key in the inspection system; it can then read or write the data your organisation is allowed to.',
+        },
+      },
+    },
+    cvcaAdmin: {
+      summary:
+        'You run the LDS2 authorization PKI: the CVCA issues card-verifiable DV certificates, and a DV issues terminal certificates. You review applications and keep the authorization chain published.',
+      steps: {
+        s1: {
+          title: 'Sign in as an administrator',
+          body: 'Administrator rights come from the configured maintainer list or from the identity’s MNT, and are checked per realm.',
+        },
+        s2: {
+          title: 'Review DV applications',
+          body: 'Open a DV application, check the subject and the requested authorization, adjust the DV class or permissions if needed, then approve or reject.',
+        },
+        s3: {
+          title: 'Review terminal applications',
+          body: 'Terminal applications are reviewed by the terminal realm’s administrators; the issued authorization is clamped to the granting DV’s own grant.',
+        },
+        s4: {
+          title: 'DV delegation',
+          body: 'Each maintainer chooses whether its terminals are signed by the CVCA default DV or by its own approved DV.',
+        },
+        s5: {
+          title: 'Roll over the CVCA key',
+          body: 'As an administrator, roll over the CVCA key; a link certificate chains the new key to the previous one so trust is not interrupted.',
+        },
+        s6: {
           title: 'Publish',
           body: 'The CVCA and DV certificates appear in the PKD so terminals can build the authorization trust chain.',
         },
@@ -212,8 +277,8 @@ export default {
           body: 'Enable only the personalization role so the instance registers the signing routes without running the certificate or directory roles.',
         },
         s3: {
-          title: 'Point it at the NIA services',
-          body: 'Configure the NIA PKD/CSCA endpoints, your maintainer’s DSC credentials and your own OAuth provider in config.toml.',
+          title: 'Configure your instance',
+          body: 'Enable only the personalization role, then set your own login provider and issuing fields in config.toml. The NIA service remains authoritative for the PKD and CSCA.',
         },
         s4: {
           title: 'Declare your own certificate',
@@ -239,7 +304,7 @@ export default {
         },
         s3: {
           title: 'Claim the personalization file',
-          body: 'Claim the personalization file from ePass 42. It carries DG1–DG16, EF.CardAccess, EF.CardSecurity and EF.SOD, and can be claimed only once.',
+          body: 'Claim the personalization file from ePass 42. It carries the data groups you submitted, plus EF.CardAccess, EF.CardSecurity and EF.SOD, and can be claimed only once.',
         },
         s4: {
           title: 'Personalize the card',
@@ -291,7 +356,7 @@ export default {
       steps: {
         s1: {
           title: 'Browse the directory',
-          body: 'The PKD directory lists CSCA certificates, revocation lists, master lists and Document Signer certificates.',
+          body: 'The PKD directory lists the published signing and verifying certificates, their revocation lists and the master lists.',
         },
         s2: {
           title: 'Download and verify',
@@ -327,6 +392,14 @@ export default {
     cvca: {
       apply: 'Apply for a DV certificate',
       certificates: 'DV certificates',
+    },
+    terminal: {
+      apply: 'Apply for a terminal certificate',
+      mine: 'My applications',
+    },
+    cvcaAdmin: {
+      applications: 'CVCA administration',
+      terminal: 'Terminal applications',
     },
     selfHosted: {
       certApply: 'Apply for a DSC',

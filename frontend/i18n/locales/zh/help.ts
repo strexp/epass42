@@ -24,16 +24,24 @@ export default {
       tagline: '审核并决定本机构的个性化申请。',
     },
     certApplicant: {
-      name: '机构 / 申请方',
-      tagline: '获取用于签署证件的文档签名（DSC）证书。',
+      name: '文档签名者',
+      tagline: '为您的机构申请文档签名（DSC）证书，用于签署证件。',
     },
     certAdmin: {
       name: '证书管理员',
       tagline: '审批申请、签发与吊销证书，并发布吊销列表（CRL）。',
     },
     cvca: {
-      name: '文档验证者 / CVCA',
-      tagline: '为 LDS2 授权 PKI 申请、审核并签发文档验证者（DV）证书。',
+      name: '文档验证者',
+      tagline: '为您的机构申请文档验证者证书。',
+    },
+    terminal: {
+      name: '检查系统',
+      tagline: '为检查系统申请终端证书，以读取或写入受保护的数据。',
+    },
+    cvcaAdmin: {
+      name: 'LDS2 证书管理员',
+      tagline: '审核文档验证者与终端申请、管理委派并发布证书。',
     },
     selfHosted: {
       name: '自建签发服务',
@@ -99,7 +107,7 @@ export default {
         },
         s4: {
           title: '批准或驳回',
-          body: '批准即放行制作，驳回需填写原因。您还可以针对这一条申请覆盖交付方式与服务端填写的签发字段。',
+          body: '批准即放行制作，驳回需填写原因。您还可以针对这一条申请覆盖交付方式。',
         },
         s5: {
           title: '交付',
@@ -158,35 +166,91 @@ export default {
         },
         s5: {
           title: '轮换 CSCA 密钥',
-          body: '发起密钥轮换以生成新的 CSCA 密钥；链接（Link）证书把新密钥与旧密钥相连，保证信任不中断。',
+          body: '以管理员身份轮换 CSCA 密钥；链接（Link）证书把新密钥与旧密钥相连，保证信任不中断。',
         },
         s6: {
-          title: '发布并验证主列表',
-          body: '生成 CSCA 主列表并发布到 PKD。',
+          title: '发布主列表',
+          body: '以管理员身份生成 CSCA 主列表；它会发布到 PKD。',
         },
       },
     },
     cvca: {
       summary:
-        '文档验证者（DV）证书授权机构读取或写入 eMRTD 上的 LDS2 数据。它由 CVCA 签发为卡片可验证证书。',
+        '文档验证者证书让您的机构可以读取或写入电子证件上的受保护数据。您在此申请，管理员批准后即签发。',
       steps: {
         s1: {
           title: '登录',
           body: '使用 dn42 账号登录验证业务。',
         },
         s2: {
-          title: '申请 DV 证书',
-          body: '填写名称、选择密钥方式，并选择机构所需的 LDS2 读写授权。',
+          title: '申请证书',
+          body: '填写名称、选择密钥方式，并选择机构需要读取或写入的数据。',
         },
         s3: {
           title: '审核',
-          body: '管理员审核申请，并可在批准前调整所申请的授权。',
+          body: '管理员核对申请，并可在批准前进行调整。',
         },
         s4: {
           title: '领取证书',
-          body: '批准后即签发由 CVCA 签署的卡片可验证 DV 证书。由 CVCA 生成的私钥仅可下载一次。',
+          body: '批准后即签发证书。若密钥由服务端生成，请一次性下载并妥善保存。',
         },
         s5: {
+          title: '发布',
+          body: '证书会出现在 PKD 中，供终端核对其权限。',
+        },
+      },
+    },
+    terminal: {
+      summary:
+        '终端证书让检查系统可以读取或写入电子证件上的受保护数据。您为机构提出申请，管理员批准后即签发。',
+      steps: {
+        s1: {
+          title: '登录',
+          body: '使用 dn42 账号登录终端证书业务。',
+        },
+        s2: {
+          title: '申请证书',
+          body: '填写名称、选择密钥方式，并选择该系统需要读取或写入的数据。',
+        },
+        s3: {
+          title: '审核',
+          body: '管理员核对申请，并可在批准前进行调整。',
+        },
+        s4: {
+          title: '领取结果',
+          body: '批准后即签发证书；若密钥由服务端生成，请一次性下载并妥善保存。',
+        },
+        s5: {
+          title: '安装使用',
+          body: '把证书与密钥装入检查系统，它便能按机构被允许的范围读取或写入数据。',
+        },
+      },
+    },
+    cvcaAdmin: {
+      summary:
+        '您负责 LDS2 授权 PKI：CVCA 签发卡片可验证的 DV 证书，DV 再签发终端证书。您审核申请并维护已发布的授权链。',
+      steps: {
+        s1: {
+          title: '以管理员身份登录',
+          body: '管理员权限来自配置的维护者名单或身份自身的 MNT，并按业务域分别校验。',
+        },
+        s2: {
+          title: '审核 DV 申请',
+          body: '打开 DV 申请，核对主体与所申请的授权，必要时调整 DV 类别或权限，然后批准或驳回。',
+        },
+        s3: {
+          title: '审核终端申请',
+          body: '终端申请由终端业务的审核员处理；签发的授权会收敛到签发 DV 自身的授权。',
+        },
+        s4: {
+          title: 'DV 委派',
+          body: '每个机构自行选择其终端由 CVCA 默认 DV 签署，还是由自己的已批准 DV 签署。',
+        },
+        s5: {
+          title: '轮换 CVCA 密钥',
+          body: '以管理员身份轮换 CVCA 密钥；链接证书把新密钥与旧密钥相连，保证信任不中断。',
+        },
+        s6: {
           title: '发布',
           body: 'CVCA 与 DV 证书会出现在 PKD 中，供终端构建授权信任链。',
         },
@@ -205,8 +269,8 @@ export default {
           body: '只启用个性化角色，使该实例注册签发路由，而不运行证书或目录角色。',
         },
         s3: {
-          title: '指向 NIA 服务',
-          body: '在 config.toml 中配置 NIA 的 PKD/CSCA 端点、本维护者的 DSC 凭据以及您自己的 OAuth 提供方。',
+          title: '配置您的实例',
+          body: '只启用个性化角色，并在 config.toml 中设置您自己的登录提供方与签发字段。PKD 与 CSCA 仍由 NIA 服务负责。',
         },
         s4: {
           title: '声明使用自有证书',
@@ -232,7 +296,7 @@ export default {
         },
         s3: {
           title: '领取个性化文件',
-          body: '从 ePass 42 领取个性化文件。它包含 DG1–DG16、EF.CardAccess、EF.CardSecurity 与 EF.SOD，且仅可领取一次。',
+          body: '从 ePass 42 领取个性化文件。它包含您提交的数据组，以及 EF.CardAccess、EF.CardSecurity 与 EF.SOD，且仅可领取一次。',
         },
         s4: {
           title: '个性化卡片',
@@ -283,7 +347,7 @@ export default {
       steps: {
         s1: {
           title: '浏览目录',
-          body: 'PKD 目录列出 CSCA 证书、吊销列表、主列表与文档签名证书。',
+          body: 'PKD 目录列出已发布的签发与验证证书、其吊销列表与主列表。',
         },
         s2: {
           title: '下载与验证',
@@ -319,6 +383,14 @@ export default {
     cvca: {
       apply: '申请 DV 证书',
       certificates: 'DV 证书',
+    },
+    terminal: {
+      apply: '申请终端证书',
+      mine: '我的申请',
+    },
+    cvcaAdmin: {
+      applications: 'CVCA 管理',
+      terminal: '终端申请',
     },
     selfHosted: {
       certApply: '申请 DSC 证书',

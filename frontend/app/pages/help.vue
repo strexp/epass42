@@ -22,7 +22,9 @@ import {
   FolderTree,
   Globe,
   IdCard,
+  Landmark,
   ListChecks,
+  MonitorSmartphone,
   ScanLine,
   ScrollText,
   Server,
@@ -137,6 +139,28 @@ const roles: Role[] = [
       links: [
         { to: '/cvca/apply', labelKey: 'help.links.cvca.apply', icon: FilePlus2 },
         { to: '/cvca/certificates', labelKey: 'help.links.cvca.certificates', icon: BadgeCheck },
+      ],
+    },
+  },
+  {
+    key: 'terminal',
+    icon: MonitorSmartphone,
+    flow: {
+      steps: buildSteps('terminal', ['system', 'system', 'system', 'system', 'external']),
+      links: [
+        { to: '/dv/apply', labelKey: 'help.links.terminal.apply', icon: FilePlus2 },
+        { to: '/dv', labelKey: 'help.links.terminal.mine', icon: ListChecks },
+      ],
+    },
+  },
+  {
+    key: 'cvcaAdmin',
+    icon: Landmark,
+    flow: {
+      steps: buildSteps('cvcaAdmin', ['system', 'system', 'system', 'system', 'system', 'system']),
+      links: [
+        { to: '/cvca', labelKey: 'help.links.cvcaAdmin.applications', icon: BadgeCheck },
+        { to: '/dv', labelKey: 'help.links.cvcaAdmin.terminal', icon: ListChecks },
       ],
     },
   },

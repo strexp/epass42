@@ -132,6 +132,8 @@ export const dscApplication = sqliteTable('dsc_application', {
   reviewedBy: integer('reviewed_by'),
   reviewedAt: text('reviewed_at'),
   rejectReason: text('reject_reason'),
+  /** The DSC certificate issued on approval (for the one-time key export). */
+  dscCertId: integer('dsc_cert_id').references(() => dscCert.id),
   createdAt: text('created_at').notNull(),
 })
 
@@ -212,6 +214,8 @@ export const dvApplication = sqliteTable('dv_application', {
   reviewedBy: integer('reviewed_by'),
   reviewedAt: text('reviewed_at'),
   rejectReason: text('reject_reason'),
+  /** The DV certificate issued on approval (for the one-time key export). */
+  dvCertId: integer('dv_cert_id').references(() => dvCert.id),
   createdAt: text('created_at').notNull(),
 })
 
@@ -283,7 +287,6 @@ export const terminalApplication = sqliteTable('terminal_application', {
   /** The requested LDS2 read/write permissions (JSON). */
   permissionsJson: text('permissions_json'),
   validityDays: integer('validity_days'),
-  applicationUrl: text('application_url'),
   notes: text('notes'),
   status: text('status').notNull().default('submitted'),
   /** The administrator's permission override applied at approval (JSON). */

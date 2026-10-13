@@ -49,7 +49,6 @@ const form = reactive({
     biometrics: { read: true, write: false },
   } as DvPermissions,
   validityDays: 90,
-  applicationUrl: '',
   notes: '',
 })
 const submitting = ref(false)
@@ -68,26 +67,11 @@ const LAST_STEP = 1
 const step = ref(0)
 const formRef = ref<FormInst | null>(null)
 
-function isUrl(value: string): boolean {
-  if (value.trim() === '') return true
-  try {
-    new URL(value)
-    return true
-  } catch {
-    return false
-  }
-}
-
 /** Field rules; Naive UI renders the inline feedback under each field. */
 const rules = computed<FormRules>(() => ({
   subjectCn: {
     required: true,
     message: t('errors.required'),
-    trigger: ['input', 'blur'],
-  },
-  applicationUrl: {
-    validator: (_rule: unknown, value: string) => isUrl(value),
-    message: t('errors.invalid_url'),
     trigger: ['input', 'blur'],
   },
   csrPem: {
@@ -134,7 +118,6 @@ async function submit(): Promise<void> {
         publicKeyPem: form.publicKeyPem || undefined,
         permissions: form.permissions,
         validityDays: form.validityDays,
-        applicationUrl: form.applicationUrl || undefined,
         notes: form.notes || undefined,
       },
     })
@@ -207,9 +190,6 @@ onMounted(async () => {
           <NFormItem :label="$t('dv.validityDays')">
             <NInputNumber v-model:value="form.validityDays" :min="1" :max="92" />
           </NFormItem>
-          <NFormItem path="applicationUrl" :label="$t('dv.applicationUrl')">
-            <NInput v-model:value="form.applicationUrl" placeholder="https://" />
-          </NFormItem>
           <NFormItem :label="$t('dv.notes')">
             <NInput v-model:value="form.notes" type="textarea" />
           </NFormItem>
@@ -232,9 +212,6 @@ onMounted(async () => {
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dv.validityDays')">
             {{ form.validityDays }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('dv.applicationUrl')">
-            {{ form.applicationUrl || '—' }}
           </NDescriptionsItem>
         </NDescriptions>
         <div style="margin-top: 12px">

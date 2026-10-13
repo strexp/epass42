@@ -220,7 +220,12 @@ export class DscIssuanceService {
 
     this.ctx.db
       .update(dscApplication)
-      .set({ status: 'approved', reviewedBy: adminAccountId, reviewedAt: nowIso() })
+      .set({
+        status: 'approved',
+        reviewedBy: adminAccountId,
+        reviewedAt: nowIso(),
+        dscCertId: cert.id,
+      })
       .where(eq(dscApplication.id, application.id))
       .run()
     return cert

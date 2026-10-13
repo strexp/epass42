@@ -116,6 +116,28 @@ describe('M18 DV realm terminal certificates', () => {
     })
     expect(json(detail).status).toBe('approved')
     expect(json(detail).terminalCertId).toBe(meta.id)
+    expect(json(detail).hasPrivateKey).toBe(true)
+
+    // The one-time private key is claimed from the application detail.
+    const key = await app.inject({
+      method: 'GET',
+      url: `/dv/terminal-applications/${id}/private-key`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(key.statusCode).toBe(200)
+    expect(key.body).toContain('BEGIN PRIVATE KEY')
+    const consumed = await app.inject({
+      method: 'GET',
+      url: `/dv/terminal-applications/${id}/private-key`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(consumed.statusCode).toBe(410)
+    const afterKey = await app.inject({
+      method: 'GET',
+      url: `/dv/terminal-applications/${id}`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(json(afterKey).hasPrivateKey).toBe(false)
 
     // An approval override replaces the requested permissions.
     const override = {

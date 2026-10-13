@@ -262,6 +262,7 @@ export class DvIssuanceService {
         reviewedAt: nowIso(),
         overridePermissionsJson: override.permissions ? JSON.stringify(override.permissions) : null,
         overrideDvClass: override.dvClass ?? null,
+        dvCertId: cert.id,
       })
       .where(eq(dvApplication.id, application.id))
       .run()

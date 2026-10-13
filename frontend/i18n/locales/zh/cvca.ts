@@ -12,8 +12,7 @@ export default {
   dvClass: 'DV 类别',
   dvClassDomestic: '国内（官方信任）',
   dvClassForeign: '国外（非信任）',
-  dvClassHint:
-    '国内 DV 在签发国境内受信任；国外 DV 用于跨境授权（Doc 9303-12 §3.2，BSI TR-03110 角色位）。',
+  dvClassHint: '国内 DV 在签发国境内受信任；国外 DV 用于跨境授权。',
   keyMode: '密钥方式',
   keyModeNia: '由 CVCA 生成',
   keyModeUpload: '上传 CSR / 公钥',
@@ -21,7 +20,7 @@ export default {
   publicKey: '公钥（SPKI PEM）',
   uploadHint: '请提供 CSR 或公钥，二者之一即可。',
   permissionsTitle: '申请的授权',
-  permissionsHint: '选择该文档验证者可读取或写入的 LDS2 应用。管理员可在批准时调整这些授权。',
+  permissionsHint: '选择该文档验证者可读取或写入的应用。管理员可在批准时调整这些授权。',
   permissionTravel: '旅行记录',
   permissionVisa: '签证记录',
   permissionBiometrics: '附加生物特征',
@@ -48,7 +47,8 @@ export default {
   approve: '批准并签发',
   approvedPermissions: '已批准授权',
   rejectReason: '驳回原因',
-  publicHint: '文档验证者证书用于授权您的机构读取或写入 LDS2 数据。请填写表单，管理员将进行审核。',
+  publicHint:
+    '文档验证者证书让您的机构可以读取或写入电子证件上的数据。请填写表单，管理员将进行审核。',
   myApplications: '我的申请',
   adminTitle: '文档验证者证书申请',
   certificatesTitle: '文档验证者证书',
@@ -57,10 +57,6 @@ export default {
   privateKey: '私钥',
   privateKeyTitle: '下载私钥',
   privateKeyWarning: '私钥仅可下载一次。请立即妥善保存：下载后即被删除，无法再次获取。',
-  issueTerminal: '签发终端证书',
-  terminalTitle: '签发终端（检查系统）证书',
-  terminalHint:
-    '终端证书由该文档验证者签署，供检查系统进行终端认证。其授权不能超过 DV 自身的授权。',
   issuedCertificate: '已签发证书',
   asDelegationTitle: '机构 DV 委派',
   asDelegationHint:
@@ -68,4 +64,8 @@ export default {
   useNiaDv: '使用 CVCA 默认 DV（委派）',
   useOwnDv: '使用本机构自己的 DV',
   ownDvUnavailable: '仅当该机构已有已批准的、有效的文档验证者证书后可用。',
+  rollover: '轮换 CVCA 密钥',
+  rolloverWarning:
+    '将生成新的 CVCA 密钥，并发布一张链接证书把它与旧密钥相连。已签发的证书仍然有效，但此操作不可撤销。是否继续？',
+  adminActionsHint: '证书颁发机构级别的操作。每一项都需要确认，且不可撤销。',
 } as const
