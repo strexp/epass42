@@ -194,7 +194,7 @@ onMounted(async () => {
             size="small"
           />
         </div>
-        <NEmpty v-else :description="$t('common.empty')" />
+        <NEmpty v-else :description="$t('dsc.emptyRequests')" />
       </NCard>
       <NCard v-else size="small">
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'DSC' }) }}</NText>

@@ -16,7 +16,11 @@ function go(to?: string): void {
 
 <template>
   <div class="epass42-page-header">
-    <NBreadcrumb v-if="props.breadcrumbs?.length" class="epass42-breadcrumb">
+    <NBreadcrumb
+      v-if="props.breadcrumbs?.length"
+      class="epass42-breadcrumb"
+      :aria-label="$t('common.breadcrumb')"
+    >
       <NBreadcrumbItem
         v-for="(crumb, index) in props.breadcrumbs"
         :key="index"

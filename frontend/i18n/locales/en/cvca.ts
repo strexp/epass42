@@ -52,8 +52,9 @@ export default {
   approvedPermissions: 'Approved authorization',
   rejectReason: 'Rejection reason',
   publicHint:
-    'A Document Verifier certificate authorizes your organisation to read or write data on electronic documents. Complete the form and an administrator will review it.',
+    'A Document Verifier certificate authorizes your organization to read or write data on electronic documents. Complete the form and an administrator will review it.',
   myApplications: 'My applications',
+  empty: 'No applications yet.',
   adminTitle: 'Document Verifier applications',
   certificatesTitle: 'Document Verifier certificates',
   holderReference: 'Holder reference',

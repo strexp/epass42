@@ -200,7 +200,7 @@ onMounted(async () => {
             size="small"
           />
         </div>
-        <NEmpty v-else :description="$t('common.empty')" />
+        <NEmpty v-else :description="$t('dsc.emptyQueue')" />
       </NCard>
 
       <NCard v-if="isAdmin" :title="$t('dsc.pendingQueue')" size="small">
@@ -214,7 +214,7 @@ onMounted(async () => {
             size="small"
           />
         </div>
-        <NEmpty v-else :description="$t('common.empty')" />
+        <NEmpty v-else :description="$t('dsc.emptyPending')" />
       </NCard>
     </NSpace>
   </div>

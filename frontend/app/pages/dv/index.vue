@@ -111,7 +111,7 @@ onMounted(async () => {
       </NCard>
 
       <NCard v-else size="small">
-        <NText depth="3">{{ $t('auth.signInTo', { realm: $t('nav.dv') }) }}</NText>
+        <NText depth="3">{{ $t('auth.signInTo', { realm: 'DV' }) }}</NText>
       </NCard>
 
       <NCard
@@ -137,7 +137,7 @@ onMounted(async () => {
             size="small"
           />
         </div>
-        <NEmpty v-else :description="$t('common.empty')" />
+        <NEmpty v-else :description="$t('dv.empty')" />
       </NCard>
     </NSpace>
   </div>

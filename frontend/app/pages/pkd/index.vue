@@ -19,7 +19,7 @@ import { COUNTRY_ALPHA3, type DvPermissions } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
 import { documentTypeValues } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
-import { formatDate } from '~/utils/datetime'
+import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 
 interface PkdCertificate {
@@ -65,6 +65,7 @@ interface RevokedDocument {
 const api = useApi()
 const apiBase = useApiBase()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
 usePageTitle(() => t('pkd.title'))
 
 const certificates = ref<PkdCertificate[]>([])
@@ -175,7 +176,7 @@ const dvColumns = computed(() => [
   {
     title: t('pkd.status'),
     key: 'status',
-    render: (row: PkdDv) => h(NTag, { size: 'small' }, () => row.status),
+    render: (row: PkdDv) => h(StatusTag, { status: row.status }),
   },
   { title: '', key: 'download', render: (row: PkdDv) => downloadLinks(row.id) },
 ])
@@ -212,7 +213,7 @@ const dscColumns = computed(() => [
   {
     title: t('pkd.status'),
     key: 'status',
-    render: (row: PkdDsc) => h(NTag, { size: 'small' }, () => row.status),
+    render: (row: PkdDsc) => h(StatusTag, { status: row.status }),
   },
 ])
 
@@ -350,7 +351,7 @@ onMounted(async () => {
             <NFormItem :label="$t('pkd.dateOfBirth')" style="margin-bottom: 0">
               <DateField v-model="lookup.dateOfBirth" style="width: 160px" />
             </NFormItem>
-            <NFormItem label=" " style="margin-bottom: 0">
+            <NFormItem :show-label="false" style="margin-bottom: 0">
               <NButton
                 type="primary"
                 :loading="checking"

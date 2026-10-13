@@ -84,7 +84,7 @@ async function setDelegation(value: boolean): Promise<void> {
       useNiaDv: updated.useNiaDv,
       hasActiveDv: updated.hasActiveDv,
     }
-    message.success(t('common.success'))
+    message.success(t('common.saved'))
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   }
@@ -257,7 +257,7 @@ onMounted(async () => {
             size="small"
           />
         </div>
-        <NEmpty v-else :description="$t('common.empty')" />
+        <NEmpty v-else :description="$t('cvca.empty')" />
       </NCard>
 
       <NCard v-if="isAdmin" :title="$t('nav.admin')" size="small">

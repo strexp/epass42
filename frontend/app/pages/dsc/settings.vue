@@ -78,7 +78,7 @@ async function saveDeliveryMode(value: string): Promise<void> {
   try {
     await api('/dsc/settings/delivery-mode', { method: 'PUT', body: { deliveryMode: mode } })
     deliveryMode.value = mode
-    message.success(t('common.success'))
+    message.success(t('common.saved'))
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   }
@@ -92,7 +92,7 @@ function setDeliveryMode(value: string | number | boolean): void {
 async function saveProfile(): Promise<void> {
   try {
     await api('/dsc/settings/issuing-profile', { method: 'PUT', body: profile.value })
-    message.success(t('common.success'))
+    message.success(t('common.saved'))
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   }

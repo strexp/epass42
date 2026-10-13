@@ -104,7 +104,7 @@ async function approve(): Promise<void> {
   busy.value = true
   try {
     await api(`/csca/applications/${id.value}/approve`, { method: 'POST' })
-    message.success(t('common.success'))
+    message.success(t('common.approved'))
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -122,7 +122,7 @@ async function reject(): Promise<void> {
     })
     rejectOpen.value = false
     rejectReason.value = ''
-    message.success(t('common.success'))
+    message.success(t('common.rejected'))
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))

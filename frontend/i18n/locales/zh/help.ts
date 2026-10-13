@@ -1,12 +1,12 @@
 /**
  * 帮助页中文文案。按角色给出名称、一句话说明，以及贯穿本系统与周边 eMRTD
- * 工具链（applet 安装、个性化、自建签发、边检验证……）的端到端流程。
+ * 工具链（applet 安装、个性化、自建签名、边检验证……）的端到端流程。
  */
 export default {
   title: '使用指南',
   subtitle: '选择与您相符的角色，查看对应的端到端流程。',
   intro:
-    'ePass 42 覆盖证件的完整生命周期：签发证书、个性化与边检验证。标注「在本系统」的步骤在本站完成，其余步骤使用您自己的工具完成。',
+    'ePass 42 覆盖证件的完整生命周期：签名证书、个性化与边检验证。标注「在本系统」的步骤在本站完成，其余步骤使用您自己的工具完成。',
   related: '前往',
   notSureTitle: '不确定自己属于哪种角色？',
   notSureBody: '任何人都无需登录即可浏览公开的 PKD 目录，并查询某个证件是否已被吊销。',
@@ -44,7 +44,7 @@ export default {
       tagline: '审核文档验证者与终端申请、管理委派并发布证书。',
     },
     selfHosted: {
-      name: '自建签发服务',
+      name: '自建签名服务',
       tagline: '以 DSC-only 模式部署自有服务，使用本维护者自己的证书签署证件。',
     },
     personalization: {
@@ -136,7 +136,7 @@ export default {
         },
         s5: {
           title: '签署证件',
-          body: '使用该证书（配合您的签发服务或自建的 DSC-only 部署）为每份证件生成 EF.SOD 与个性化文件。',
+          body: '使用该证书（配合您的签名服务或自建的 DSC-only 部署）为每份证件生成 EF.SOD 与个性化文件。',
         },
         s6: {
           title: '发布',
@@ -258,7 +258,7 @@ export default {
     },
     selfHosted: {
       summary:
-        '维护者可以使用自己的文档签名证书运行自有签发服务，而 NIA 服务仍作为 PKD 与 CSCA 的权威。',
+        '维护者可以使用自己的文档签名证书运行自有签名服务，而 NIA 服务仍作为 PKD 与 CSCA 的权威。',
       steps: {
         s1: {
           title: '取得 DSC 证书',
@@ -266,7 +266,7 @@ export default {
         },
         s2: {
           title: '部署 DSC-only 实例',
-          body: '只启用个性化角色，使该实例注册签发路由，而不运行证书或目录角色。',
+          body: '只启用个性化角色，使该实例注册签名路由，而不运行证书或目录角色。',
         },
         s3: {
           title: '配置您的实例',
@@ -347,7 +347,7 @@ export default {
       steps: {
         s1: {
           title: '浏览目录',
-          body: 'PKD 目录列出已发布的签发与验证证书、其吊销列表与主列表。',
+          body: 'PKD 目录列出已发布的签名与验证证书、其吊销列表与主列表。',
         },
         s2: {
           title: '下载与验证',
@@ -394,7 +394,7 @@ export default {
     },
     selfHosted: {
       certApply: '申请 DSC 证书',
-      settings: '签发设置',
+      settings: '签名设置',
     },
     personalization: {
       directory: 'PKD 目录',

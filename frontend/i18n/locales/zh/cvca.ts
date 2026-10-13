@@ -50,6 +50,7 @@ export default {
   publicHint:
     '文档验证者证书让您的机构可以读取或写入电子证件上的数据。请填写表单，管理员将进行审核。',
   myApplications: '我的申请',
+  empty: '暂无申请。',
   adminTitle: '文档验证者证书申请',
   certificatesTitle: '文档验证者证书',
   holderReference: '持有者引用',
@@ -58,12 +59,12 @@ export default {
   privateKeyTitle: '下载私钥',
   privateKeyWarning: '私钥仅可下载一次。请立即妥善保存：下载后即被删除，无法再次获取。',
   issuedCertificate: '已签发证书',
-  asDelegationTitle: '机构 DV 委派',
+  asDelegationTitle: '维护者 DV 委派',
   asDelegationHint:
-    '选择该机构用 CVCA 的默认文档验证者（委派）还是自己的已批准文档验证者来签署其终端证书。',
+    '选择该维护者用 CVCA 的默认文档验证者（委派）还是自己的已批准文档验证者来签署其终端证书。',
   useNiaDv: '使用 CVCA 默认 DV（委派）',
-  useOwnDv: '使用本机构自己的 DV',
-  ownDvUnavailable: '仅当该机构已有已批准的、有效的文档验证者证书后可用。',
+  useOwnDv: '使用该维护者自己的 DV',
+  ownDvUnavailable: '仅在维护者拥有已批准且有效的文档验证者证书后可用。',
   rollover: '轮换 CVCA 密钥',
   rolloverWarning:
     '将生成新的 CVCA 密钥，并发布一张链接证书把它与旧密钥相连。已签发的证书仍然有效，但此操作不可撤销。是否继续？',

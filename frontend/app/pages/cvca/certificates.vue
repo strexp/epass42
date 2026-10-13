@@ -6,7 +6,6 @@ import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { downloadUrl } from '~/utils/download'
-import { formatDate } from '~/utils/datetime'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 import type { DvPermissions } from '@epass42/shared'
@@ -31,6 +30,7 @@ const api = useApi()
 const apiBase = useApiBase()
 const { state, ensureLoaded } = useRealm('cvca')
 const { t } = useI18n()
+const { formatDate } = useDateTime()
 usePageTitle(() => t('cvca.certificatesTitle'))
 const message = useMessage()
 const dialog = useDialog()

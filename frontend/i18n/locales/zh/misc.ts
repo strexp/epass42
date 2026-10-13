@@ -4,6 +4,7 @@
 export default {
   audit: {
     title: '审计日志',
+    empty: '暂无审计记录。',
     time: '时间',
     actor: '操作者',
     action: '操作',
@@ -23,7 +24,8 @@ export default {
     expiry: '有效期至',
   },
   errors: {
-    generic: '出现问题，请重试。',
+    generic: '出现问题，请稍后重试。',
+    bad_request: '请求无法处理，请检查表单后重试。',
     unauthorized: '请先登录。',
     forbidden: '您没有执行该操作的权限。',
     not_found: '未找到相应记录。',
@@ -44,5 +46,15 @@ export default {
       '终端认证需要 ECDSA 的 CVCA 密钥：请启用 CVCA 角色或设置 cvca.algorithm = "ecdsa"。',
     dg2_too_large: '照片过大，请更换更小的图片或降低质量。',
     passport_not_active: '该护照不是有效状态。',
+    application_not_found: '该申请已不存在。',
+    application_already_reviewed: '该申请已完成审核。',
+    certificate_not_found: '该证书已不存在。',
+    mrz_invalid: '证件号码或出生日期无效。',
+    request_not_found: '该申请已不存在。',
+    request_not_approved: '该申请尚未获批。',
+    token_invalid: '该链接无效。',
+    token_expired: '该链接已过期。',
+    dv_key_unavailable: '该机构尚无可用的文档验证者密钥。',
+    signature_invalid: '签名验证失败。',
   },
 } as const

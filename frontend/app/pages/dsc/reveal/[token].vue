@@ -1,15 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'realm' })
 
-import {
-  NAlert,
-  NButton,
-  NCard,
-  NDescriptions,
-  NDescriptionsItem,
-  NTag,
-  useMessage,
-} from 'naive-ui'
+import { NAlert, NButton, NCard, NDescriptions, NDescriptionsItem, useMessage } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 
@@ -20,6 +12,7 @@ usePageTitle(() => t('dsc.statusTitle'))
 const message = useMessage()
 const metadata = ref<Record<string, unknown> | null>(null)
 const consumed = computed(() => Boolean(metadata.value?.consumedAt))
+const status = computed(() => String(metadata.value?.status ?? ''))
 const reference = computed(() => (metadata.value?.reference as string | undefined) ?? '')
 const submittedAt = computed(() => (metadata.value?.createdAt as string | undefined) ?? null)
 
@@ -49,7 +42,7 @@ onMounted(async () => {
       </NAlert>
       <NDescriptions v-if="metadata" :column="2" size="small">
         <NDescriptionsItem :label="$t('dsc.statusTitle')">
-          <NTag size="small">{{ metadata.status }}</NTag>
+          <StatusTag :status="status" />
         </NDescriptionsItem>
         <NDescriptionsItem :label="$t('dsc.submittedAt')">
           <DateTimeText :value="submittedAt" />

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { NButton, NCard, NGi, NGrid, NIcon, NSpace, NTag, NText } from 'naive-ui'
-import { BadgeCheck, FileBadge, FolderTree, ScanLine, ShieldCheck } from '@lucide/vue'
+import { BadgeCheck, CircleHelp, FileBadge, FolderTree, ScanLine, ShieldCheck } from '@lucide/vue'
 
 const { t } = useI18n()
 usePageTitle(() => t('nav.home'))
 
-/** The public service catalogue, one card per service. */
+/** The public site catalogue: one card per service, plus the role guide. */
 const cards = [
   {
     key: 'csca',
@@ -50,6 +50,15 @@ const cards = [
     title: 'nav.pkd',
     body: 'home.pkdCard',
     cta: 'home.ctaBrowse',
+    public: true,
+  },
+  {
+    key: 'help',
+    to: '/help',
+    icon: CircleHelp,
+    title: 'nav.help',
+    body: 'home.helpCard',
+    cta: 'home.ctaHelp',
     public: true,
   },
 ] as const

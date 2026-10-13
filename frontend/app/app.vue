@@ -17,9 +17,15 @@ const colorMode = useColorMode()
 const theme = computed(() => (colorMode.value === 'dark' ? darkTheme : lightTheme))
 
 // Naive UI's own strings and date formats follow the selected locale.
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const naiveLocale = computed(() => (locale.value === 'zh' ? zhCN : enUS))
 const naiveDateLocale = computed(() => (locale.value === 'zh' ? dateZhCN : dateEnUS))
+
+// The document language and description follow the selected locale.
+useHead({
+  htmlAttrs: { lang: () => (locale.value === 'zh' ? 'zh-CN' : 'en') },
+  meta: [{ name: 'description', content: () => t('app.description') }],
+})
 </script>
 
 <template>

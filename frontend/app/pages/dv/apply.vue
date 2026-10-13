@@ -121,7 +121,7 @@ async function submit(): Promise<void> {
         notes: form.notes || undefined,
       },
     })
-    notify.success(t('common.success'))
+    notify.success(t('common.submitted'))
     await navigateTo('/dv')
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -241,7 +241,7 @@ onMounted(async () => {
     </NCard>
 
     <NCard v-else>
-      <NResult status="info" :title="$t('auth.signInTo', { realm: $t('nav.dv') })">
+      <NResult status="info" :title="$t('auth.signInTo', { realm: 'DV' })">
         <template #footer>
           <NButton type="primary" @click="login">
             <template #icon

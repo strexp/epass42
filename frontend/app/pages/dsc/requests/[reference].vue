@@ -28,7 +28,6 @@ import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { formatMrzDate } from '~/utils/mrzDate'
-import { formatDateTime } from '~/utils/datetime'
 import { downloadText } from '~/utils/download'
 
 interface RequestMeta {
@@ -53,6 +52,7 @@ interface RequestMeta {
 const route = useRoute()
 const api = useApi()
 const { t, te } = useI18n()
+const { formatDateTime } = useDateTime()
 usePageTitle(() => t('dsc.detailTitle'))
 const message = useMessage()
 const dialog = useDialog()
@@ -96,7 +96,7 @@ async function revokePassport(): Promise<void> {
     })
     revokeOpen.value = false
     revokeReason.value = ''
-    message.success(t('common.success'))
+    message.success(t('common.revoked'))
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -223,7 +223,7 @@ async function approve(): Promise<void> {
       method: 'POST',
       body: isAdmin.value ? { deliveryMode: deliveryMode.value } : {},
     })
-    message.success(t('common.success'))
+    message.success(t('common.approved'))
     await load()
     await loadReview()
   } catch (error) {
@@ -242,7 +242,7 @@ async function reject(): Promise<void> {
     })
     rejectOpen.value = false
     rejectReason.value = ''
-    message.success(t('common.success'))
+    message.success(t('common.rejected'))
     await load()
     await loadReview()
   } catch (error) {

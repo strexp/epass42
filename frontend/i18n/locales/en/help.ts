@@ -24,11 +24,11 @@ export default {
     },
     reviewer: {
       name: 'Reviewing officer',
-      tagline: 'Review and decide on personalization requests for your organisation.',
+      tagline: 'Review and decide on personalization requests for your organization.',
     },
     certApplicant: {
       name: 'Document signer',
-      tagline: 'Apply for a Document Signer certificate so your organisation can sign documents.',
+      tagline: 'Apply for a Document Signer certificate so your organization can sign documents.',
     },
     certAdmin: {
       name: 'Certificate authority admin',
@@ -36,7 +36,7 @@ export default {
     },
     cvca: {
       name: 'Document Verifier',
-      tagline: 'Apply for a Document Verifier certificate on behalf of your organisation.',
+      tagline: 'Apply for a Document Verifier certificate on behalf of your organization.',
     },
     terminal: {
       name: 'Inspection system',
@@ -98,7 +98,7 @@ export default {
     },
     reviewer: {
       summary:
-        'You decide on personalization requests for your organisation. The detail page shows the submitted data without masking.',
+        'You decide on personalization requests for your organization. The detail page shows the submitted data without masking.',
       steps: {
         s1: {
           title: 'Sign in',
@@ -124,7 +124,7 @@ export default {
     },
     certApplicant: {
       summary:
-        'A Document Signer certificate is what your organisation uses to sign document data. You apply for it here, and it is published to the PKD once approved.',
+        'A Document Signer certificate is what your organization uses to sign document data. You apply for it here, and it is published to the PKD once approved.',
       steps: {
         s1: {
           title: 'Sign in',
@@ -132,7 +132,7 @@ export default {
         },
         s2: {
           title: 'Fill in the application',
-          body: 'Provide the common name, the organisation (O) and optional unit (OU), the document types, the validity and issuance policy, and the URL of your application page.',
+          body: 'Provide the common name, the organization (O) and optional unit (OU), the document types, the validity and issuance policy, and the URL of your application page.',
         },
         s3: {
           title: 'Choose the key mode',
@@ -184,7 +184,7 @@ export default {
     },
     cvca: {
       summary:
-        'A Document Verifier certificate lets your organisation read or write protected data on electronic documents. You apply for it here and it is issued once an administrator approves.',
+        'A Document Verifier certificate lets your organization read or write protected data on electronic documents. You apply for it here and it is issued once an administrator approves.',
       steps: {
         s1: {
           title: 'Sign in',
@@ -192,7 +192,7 @@ export default {
         },
         s2: {
           title: 'Apply for a certificate',
-          body: 'Give the certificate a name, choose how the key is created and pick the data your organisation needs to read or write.',
+          body: 'Give the certificate a name, choose how the key is created and pick the data your organization needs to read or write.',
         },
         s3: {
           title: 'Review',
@@ -210,7 +210,7 @@ export default {
     },
     terminal: {
       summary:
-        'A terminal certificate lets an inspection system read or write protected data on electronic documents. You request it for your organisation; it is issued once an administrator approves.',
+        'A terminal certificate lets an inspection system read or write protected data on electronic documents. You request it for your organization; it is issued once an administrator approves.',
       steps: {
         s1: {
           title: 'Sign in',
@@ -230,7 +230,7 @@ export default {
         },
         s5: {
           title: 'Install it',
-          body: 'Install the certificate and key in the inspection system; it can then read or write the data your organisation is allowed to.',
+          body: 'Install the certificate and key in the inspection system; it can then read or write the data your organization is allowed to.',
         },
       },
     },

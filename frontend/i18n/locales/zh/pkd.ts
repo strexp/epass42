@@ -4,7 +4,7 @@
 export default {
   title: 'PKD 目录',
   subtitle: '已发布的证书、吊销列表与吊销证件。',
-  certificates: '签发 CA',
+  certificates: '签名 CA',
   certificatesHint: '以 DER 或 PEM 下载证书，并使用标准 PKI 工具进行验证。',
   crls: '吊销列表',
   masterlists: '主列表',
@@ -14,7 +14,7 @@ export default {
   dvsHint: '已签发的文档验证者（DV）证书及其读写授权。',
   holderReference: '持有者引用',
   permissions: '授权',
-  dscs: '文档签名证书',
+  dscs: '文档签名者',
   dscsHint: '有效与已吊销的文档签名证书，含策略、类型、有效期与申请地址。',
   name: '名称',
   type: '类型',

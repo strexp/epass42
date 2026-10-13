@@ -28,16 +28,14 @@ export default {
   reviewHint: 'Review the details before approving or rejecting.',
   issuedCertificate: 'Issued certificate',
   publicHint:
-    'A Document Signer certificate is what your organisation uses to sign documents. Complete the form and an administrator will review it.',
+    'A Document Signer certificate is what your organization uses to sign documents. Complete the form and an administrator will review it.',
   myApplications: 'My applications',
+  empty: 'No applications yet.',
   adminTitle: 'Document Signer applications',
   approve: 'Approve and issue',
-  reject: 'Reject',
   rejectReason: 'Rejection reason',
   certificatesTitle: 'Document Signer certificates',
-  issued: 'Issued certificate',
   revoked: 'Revoked',
-  revoke: 'Revoke',
   revokeConfirm: 'Revoke this certificate? It can no longer be used to sign documents.',
   rollover: 'Roll over CSCA key',
   rolloverWarning:
@@ -60,6 +58,6 @@ export default {
   ownDscUnavailable: 'Available only after this maintainer has an approved, active certificate.',
   policyDefault: 'Open (anyone may apply)',
   policyNia: 'Selective (reviewed case by case)',
-  policyAsManaged: 'Internal (own organisation only)',
-  policyStrict: 'Restricted (by explicit authorisation only)',
+  policyAsManaged: 'Internal (own organization only)',
+  policyStrict: 'Restricted (by explicit authorization only)',
 } as const

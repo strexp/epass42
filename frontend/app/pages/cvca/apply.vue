@@ -145,7 +145,7 @@ async function submit(): Promise<void> {
         notes: form.notes || undefined,
       },
     })
-    notify.success(t('common.success'))
+    notify.success(t('common.submitted'))
     await navigateTo('/cvca')
   } catch (error) {
     message.error(t(errorMessageKey(error)))

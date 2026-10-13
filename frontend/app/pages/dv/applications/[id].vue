@@ -110,7 +110,7 @@ async function approve(): Promise<void> {
       method: 'POST',
       body: Object.keys(body).length ? body : undefined,
     })
-    message.success(t('common.success'))
+    message.success(t('common.approved'))
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -128,7 +128,7 @@ async function reject(): Promise<void> {
     })
     rejectOpen.value = false
     rejectReason.value = ''
-    message.success(t('common.success'))
+    message.success(t('common.rejected'))
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))

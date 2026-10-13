@@ -73,7 +73,7 @@ async function revoke(id: number): Promise<void> {
       method: 'POST',
       body: { reason: 'revoked via UI' },
     })
-    message.success(t('common.success'))
+    message.success(t('common.revoked'))
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))

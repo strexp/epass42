@@ -143,7 +143,7 @@ async function revokePassport(): Promise<void> {
     })
     revokeOpen.value = false
     revokeReason.value = ''
-    message.success(t('common.success'))
+    message.success(t('common.revoked'))
     await loadActivePassport()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -279,7 +279,7 @@ async function submit(): Promise<void> {
 
     const result = await api<{ reference: string }>('/dsc/requests', { method: 'POST', body })
     reference.value = result.reference
-    notify.success(t('common.success'), result.reference)
+    notify.success(t('common.submitted'), result.reference)
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   } finally {

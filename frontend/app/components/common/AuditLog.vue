@@ -150,7 +150,7 @@ onMounted(load)
         size="small"
       />
     </div>
-    <NEmpty v-else :description="$t('common.empty')" />
+    <NEmpty v-else :description="$t('audit.empty')" />
   </NCard>
 </template>
 
