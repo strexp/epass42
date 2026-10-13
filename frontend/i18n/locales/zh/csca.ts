@@ -10,7 +10,7 @@ export default {
   subjectO: '组织（O）',
   subjectOu: '组织单位（OU）',
   keyMode: '密钥方式',
-  keyModeNia: '由 NIA 生成',
+  keyModeNia: '由 CSCA 生成',
   keyModeUpload: '上传 CSR / 公钥',
   csr: 'CSR（PEM）',
   publicKey: '公钥（SPKI PEM）',

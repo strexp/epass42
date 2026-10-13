@@ -38,6 +38,9 @@ export default {
     document_number_conflict: 'This document number already exists for your organisation.',
     no_active_dsc:
       'No approved Document Signer certificate is available for this organisation yet.',
+    no_active_dv:
+      'No approved Document Verifier certificate is available for this organisation yet.',
+    no_dv_available: 'No Document Verifier certificate is available to sign this terminal.',
     no_private_key: 'This certificate has no downloadable private key.',
     private_key_consumed: 'The private key has already been downloaded and deleted.',
     dv_key_unavailable:

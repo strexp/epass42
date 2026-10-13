@@ -42,7 +42,7 @@ async function issueDsc(
     privateKeyUsageYears: 1,
     source: 'owned',
     mnt: 'TEST-MNT',
-    keyMode: 'nia_generated',
+    keyMode: 'remote_generated',
   })
 }
 
@@ -129,7 +129,7 @@ describe('M6 CRL', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Auto CRL DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Auto CRL DSC', documentType: 'P' },
     })
     const approve = await app.inject({
       method: 'POST',

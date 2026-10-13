@@ -78,7 +78,7 @@ describe('M17 CVCA role', () => {
       url: '/cvca/applications',
       headers: { cookie: adminCookie },
       payload: {
-        keyMode: 'nia_generated',
+        keyMode: 'remote_generated',
         subjectCn: 'Border Police DV',
         permissions: PERMISSIONS,
       },
@@ -125,7 +125,7 @@ describe('M17 CVCA role', () => {
       url: '/cvca/applications',
       headers: { cookie: adminCookie },
       payload: {
-        keyMode: 'nia_generated',
+        keyMode: 'remote_generated',
         subjectCn: 'Foreign read-only DV',
         dvClass: 'domestic',
         permissions: PERMISSIONS,
@@ -175,7 +175,7 @@ describe('M17 CVCA role', () => {
       method: 'POST',
       url: '/cvca/applications',
       headers: { cookie: userCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Own DV', permissions: PERMISSIONS },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Own DV', permissions: PERMISSIONS },
     })
     expect(submit.statusCode).toBe(201)
 
@@ -200,7 +200,7 @@ describe('M17 CVCA role', () => {
     const anon = await app.inject({
       method: 'POST',
       url: '/cvca/applications',
-      payload: { keyMode: 'nia_generated', subjectCn: 'X', permissions: PERMISSIONS },
+      payload: { keyMode: 'remote_generated', subjectCn: 'X', permissions: PERMISSIONS },
     })
     expect(anon.statusCode).toBe(401)
 
@@ -215,7 +215,11 @@ describe('M17 CVCA role', () => {
       method: 'POST',
       url: '/cvca/applications',
       headers: { cookie: adminCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Exportable DV', permissions: PERMISSIONS },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'Exportable DV',
+        permissions: PERMISSIONS,
+      },
     })
     const approve = await app.inject({
       method: 'POST',
@@ -272,7 +276,7 @@ describe('M17 CVCA role', () => {
       method: 'POST',
       url: '/cvca/applications',
       headers: { cookie: adminCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'PKD DV', permissions: PERMISSIONS },
+      payload: { keyMode: 'remote_generated', subjectCn: 'PKD DV', permissions: PERMISSIONS },
     })
     await app.inject({
       method: 'POST',
@@ -288,18 +292,104 @@ describe('M17 CVCA role', () => {
     expect(dvs.statusCode).toBe(200)
     const dvItems = json(dvs).items as {
       holderReference: string
+      source: string
       dvClass: string
       permissions: unknown
     }[]
-    expect(dvItems.length).toBe(1)
-    expect(dvItems[0].dvClass).toBe('domestic')
-    expect(dvItems[0].permissions).toEqual(PERMISSIONS)
+    // The CVCA-issued default (system) DV and the approved application DV.
+    expect(dvItems.length).toBe(2)
+    const system = dvItems.find((item) => item.source === 'system')
+    expect(system).toBeDefined()
+    const owned = dvItems.find((item) => item.source === 'owned')!
+    expect(owned.dvClass).toBe('domestic')
+    expect(owned.permissions).toEqual(PERMISSIONS)
 
     // The DER object is downloadable by id and is a CV certificate.
     const cvcaId = (json(cvca).items as { id: string }[])[0].id
     const object = await app.inject({ method: 'GET', url: `/pkd/objects/${cvcaId}.der` })
     expect(object.statusCode).toBe(200)
     expect(parseCvCertificate(new Uint8Array(object.rawPayload)).role).toBe('cvca')
+  })
+
+  it('lets a maintainer switch DV delegation and signs terminals accordingly', async () => {
+    const { app, oidc, adminCookie } = await harness()
+    const ownerCookie = await loginCvca(app, oidc, OTHER_USER)
+
+    const before = await app.inject({
+      method: 'GET',
+      url: '/cvca/settings/mnt',
+      headers: { cookie: ownerCookie },
+    })
+    expect(before.statusCode).toBe(200)
+    // Default is delegation to the CVCA default (system) DV.
+    expect(before.json().useNiaDv).toBe(true)
+    expect(before.json().hasActiveDv).toBe(false)
+
+    // Switching to an own DV is refused until one is approved.
+    const refused = await app.inject({
+      method: 'PUT',
+      url: '/cvca/settings/mnt',
+      headers: { cookie: ownerCookie },
+      payload: { useNiaDv: false },
+    })
+    expect(refused.statusCode).toBe(409)
+    expect(refused.json().error).toBe('no_active_dv')
+
+    // A CVCA admin approves a DV application for this maintainer.
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/cvca/applications',
+      headers: { cookie: ownerCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'DV-MNT own DV',
+        permissions: PERMISSIONS,
+      },
+    })
+    expect(submit.statusCode).toBe(201)
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/cvca/applications/${json(submit).id}/approve`,
+      headers: { cookie: adminCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const ownDvId = json(approve).id as number
+
+    const status = await app.inject({
+      method: 'GET',
+      url: '/cvca/settings/mnt',
+      headers: { cookie: ownerCookie },
+    })
+    expect(status.json().hasActiveDv).toBe(true)
+
+    // While delegated, terminals are signed by the CVCA default DV.
+    const delegated = await app.inject({
+      method: 'POST',
+      url: '/cvca/terminals',
+      headers: { cookie: ownerCookie },
+      payload: { subjectCn: 'Delegated IS' },
+    })
+    expect(delegated.statusCode).toBe(201)
+    expect(json(delegated).dvCertId).not.toBe(ownDvId)
+    expect(json(delegated).mnt).toBe('DV-MNT')
+
+    // After switching to the own DV, terminals are signed by it.
+    const own = await app.inject({
+      method: 'PUT',
+      url: '/cvca/settings/mnt',
+      headers: { cookie: ownerCookie },
+      payload: { useNiaDv: false },
+    })
+    expect(own.statusCode).toBe(200)
+    expect(own.json().useNiaDv).toBe(false)
+    const ownSigned = await app.inject({
+      method: 'POST',
+      url: '/cvca/terminals',
+      headers: { cookie: ownerCookie },
+      payload: { subjectCn: 'Own IS' },
+    })
+    expect(ownSigned.statusCode).toBe(201)
+    expect(json(ownSigned).dvCertId).toBe(ownDvId)
   })
 
   it('rolls the CVCA key over with a link certificate', async () => {
@@ -341,7 +431,7 @@ describe('M17 CVCA role', () => {
       method: 'POST',
       url: '/cvca/applications',
       headers: { cookie: adminCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Border DV', permissions: PERMISSIONS },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Border DV', permissions: PERMISSIONS },
     })
     const approve = await app.inject({
       method: 'POST',

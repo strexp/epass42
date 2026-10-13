@@ -36,6 +36,8 @@ export default {
     reveal_not_allowed: '该文件由工作人员交付，申请人不能领取。',
     document_number_conflict: '该证件号码在您的机构中已存在。',
     no_active_dsc: '该机构尚无已批准的文档签名证书。',
+    no_active_dv: '该机构尚无已批准的文档验证者证书。',
+    no_dv_available: '没有可用于签发该终端的文档验证者证书。',
     no_private_key: '该证书没有可下载的私钥。',
     private_key_consumed: '私钥已被下载并删除。',
     dv_key_unavailable: '本服务不再持有该文档验证者私钥，无法在此签发终端证书。',

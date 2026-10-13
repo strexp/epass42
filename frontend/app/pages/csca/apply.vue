@@ -36,7 +36,7 @@ const notify = useNotify()
 const signedIn = computed(() => state.value.me !== null)
 
 const form = reactive({
-  keyMode: 'nia_generated' as 'nia_generated' | 'user_uploaded',
+  keyMode: 'remote_generated' as 'remote_generated' | 'user_uploaded',
   subjectCn: '',
   subjectO: '',
   subjectOu: '',
@@ -51,7 +51,7 @@ const form = reactive({
 const submitting = ref(false)
 
 const keyModeOptions = computed(() => [
-  { label: t('csca.keyModeNia'), value: 'nia_generated' },
+  { label: t('csca.keyModeNia'), value: 'remote_generated' },
   { label: t('csca.keyModeUpload'), value: 'user_uploaded' },
 ])
 
@@ -230,7 +230,7 @@ onMounted(async () => {
         <NDescriptions :column="2" size="small" style="margin-top: 12px">
           <NDescriptionsItem :label="$t('csca.keyMode')">
             {{
-              form.keyMode === 'nia_generated' ? $t('csca.keyModeNia') : $t('csca.keyModeUpload')
+              form.keyMode === 'remote_generated' ? $t('csca.keyModeNia') : $t('csca.keyModeUpload')
             }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.subjectCn')">

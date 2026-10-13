@@ -104,6 +104,7 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
         name: row.subjectCn,
         mnt: row.mnt,
         status: row.status,
+        source: row.source,
         keyMode: row.keyMode,
         dvClass: row.dvClass,
         permissions: parsePermissions(row.permissionsJson),

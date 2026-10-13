@@ -50,6 +50,20 @@
       "when": 1791873080933,
       "tag": "0006_cold_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": 6,
+      "when": 1791876142308,
+      "tag": "0007_remote_generated",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791876691664,
+      "tag": "0008_thankful_captain_marvel",
+      "breakpoints": true
     }
   ]
 }

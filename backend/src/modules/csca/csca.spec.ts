@@ -101,7 +101,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'AS4242422189 DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'AS4242422189 DSC', documentType: 'P' },
     })
     expect(submit.statusCode).toBe(201)
     const applicationId = json(submit).id as number
@@ -148,7 +148,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Public DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Public DSC', documentType: 'P' },
     })
     const id = json(submit).id as number
     await app.inject({
@@ -178,7 +178,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Revocable DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Revocable DSC', documentType: 'P' },
     })
     const id = json(submit).id as number
     const approve = await app.inject({
@@ -211,7 +211,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Rejected DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Rejected DSC', documentType: 'P' },
     })
     const id = json(submit).id as number
     const reject = await app.inject({
@@ -232,7 +232,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Own application', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Own application', documentType: 'P' },
     })
     expect(submit.statusCode).toBe(201)
 
@@ -268,7 +268,7 @@ describe('M5 CSCA role', () => {
     const anon = await app.inject({
       method: 'POST',
       url: '/csca/applications',
-      payload: { keyMode: 'nia_generated', subjectCn: 'X' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'X' },
     })
     expect(anon.statusCode).toBe(401)
   })
@@ -314,7 +314,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'AS own DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'AS own DSC', documentType: 'P' },
     })
     await app.inject({
       method: 'POST',
@@ -346,7 +346,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: ownerCookie },
-      payload: { keyMode: 'nia_generated', subjectCn: 'Owned DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Owned DSC', documentType: 'P' },
     })
     const adminCookie = await loginAs(app, oidc, 'csca', 'csca-client', {
       sub: 'csca-admin',
@@ -485,7 +485,7 @@ describe('M5 CSCA role', () => {
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
       payload: {
-        keyMode: 'nia_generated',
+        keyMode: 'remote_generated',
         subjectCn: 'OU DSC',
         subjectO: 'Example Org',
         subjectOu: 'Example Unit',

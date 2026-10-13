@@ -129,7 +129,7 @@ onMounted(async () => {
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.keyMode')">
             {{
-              application.keyMode === 'nia_generated'
+              application.keyMode === 'remote_generated'
                 ? $t('csca.keyModeNia')
                 : $t('csca.keyModeUpload')
             }}

@@ -146,7 +146,7 @@ export const dscCert = sqliteTable('dsc_cert', {
   keyRef: text('key_ref'),
   /** Stored key algorithm/curve of the subject key (e.g. `ECDSA-P256`). */
   keyAlgorithm: text('key_algorithm'),
-  /** `nia_generated` (system key) or `user_uploaded` (no stored key). */
+  /** `remote_generated` (system key) or `user_uploaded` (no stored key). */
   keyMode: text('key_mode'),
   issuancePolicy: text('issuance_policy'),
   applicationUrl: text('application_url'),
@@ -227,7 +227,7 @@ export const dvCert = sqliteTable('dv_cert', {
   /** The DER-encoded card-verifiable certificate (`7F21`). */
   certDer: blob('cert_der', { mode: 'buffer' }).notNull(),
   keyRef: text('key_ref'),
-  /** `nia_generated` (system key) or `user_uploaded` (no stored key). */
+  /** `remote_generated` (system key) or `user_uploaded` (no stored key). */
   keyMode: text('key_mode'),
   /** The DV trust class: `domestic` or `foreign`. */
   dvClass: text('dv_class').notNull().default('domestic'),
@@ -343,7 +343,10 @@ export const artifact = sqliteTable('artifact', {
 
 export const mntConfig = sqliteTable('mnt_config', {
   mnt: text('mnt').primaryKey(),
-  useNiaDsc: integer('use_nia_dsc', { mode: 'boolean' }).notNull().default(false),
+  /** CSCA delegation: the maintainer delegates DSC signing to the NIA DSC. */
+  useNiaDsc: integer('use_nia_dsc', { mode: 'boolean' }).notNull().default(true),
+  /** CVCA delegation: the maintainer uses the CVCA's default (system) DV. */
+  useNiaDv: integer('use_nia_dv', { mode: 'boolean' }).notNull().default(true),
   updatedBy: integer('updated_by'),
   updatedAt: text('updated_at').notNull(),
 })

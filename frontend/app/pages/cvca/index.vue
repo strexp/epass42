@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
-import { FilePlus2, KeyRound, RefreshCw, ScrollText } from '@lucide/vue'
+import { Check, FilePlus2, KeyRound, RefreshCw, ScrollText, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -26,10 +26,16 @@ const message = useMessage()
 
 const applications = ref<Application[]>([])
 const loading = ref(false)
+const delegation = ref<{
+  mnt: string | null
+  useNiaDv: boolean
+  hasActiveDv: boolean
+} | null>(null)
 
 const me = computed(() => state.value.me)
 const isAdmin = computed(() => me.value?.isAdmin ?? false)
 const signedIn = computed(() => me.value !== null)
+const hasMnt = computed(() => (me.value?.account.activeMnt ?? null) !== null)
 
 async function loadApplications(): Promise<void> {
   loading.value = true
@@ -41,6 +47,33 @@ async function loadApplications(): Promise<void> {
     applications.value = []
   } finally {
     loading.value = false
+  }
+}
+
+async function loadDelegation(): Promise<void> {
+  if (!hasMnt.value) return
+  try {
+    delegation.value = await api('/cvca/settings/mnt')
+  } catch {
+    delegation.value = null
+  }
+}
+
+async function setDelegation(value: boolean): Promise<void> {
+  try {
+    const updated = await api<{
+      mnt: string | null
+      useNiaDv: boolean
+      hasActiveDv: boolean
+    }>('/cvca/settings/mnt', { method: 'PUT', body: { useNiaDv: value } })
+    delegation.value = {
+      mnt: updated.mnt,
+      useNiaDv: updated.useNiaDv,
+      hasActiveDv: updated.hasActiveDv,
+    }
+    message.success(t('common.success'))
+  } catch (error) {
+    message.error(t(errorMessageKey(error)))
   }
 }
 
@@ -88,6 +121,7 @@ const columns = computed(() => [
 onMounted(async () => {
   await ensureLoaded()
   if (signedIn.value) await loadApplications()
+  if (hasMnt.value) await loadDelegation()
 })
 </script>
 
@@ -112,6 +146,38 @@ onMounted(async () => {
 
       <NCard v-else size="small">
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'CVCA' }) }}</NText>
+      </NCard>
+
+      <NCard v-if="hasMnt" :title="$t('cvca.asDelegationTitle')" size="small">
+        <NText depth="3">{{ $t('cvca.asDelegationHint') }}</NText>
+        <NText v-if="delegation && !delegation.hasActiveDv" depth="3" style="display: block">
+          {{ $t('cvca.ownDvUnavailable') }}
+        </NText>
+        <template #action>
+          <NSpace>
+            <NButton
+              size="small"
+              :type="delegation?.useNiaDv ? 'primary' : 'default'"
+              @click="setDelegation(true)"
+            >
+              <template #icon
+                ><NIcon><Check /></NIcon
+              ></template>
+              {{ $t('cvca.useNiaDv') }}
+            </NButton>
+            <NButton
+              size="small"
+              :type="delegation && !delegation.useNiaDv ? 'primary' : 'default'"
+              :disabled="!delegation?.hasActiveDv"
+              @click="setDelegation(false)"
+            >
+              <template #icon
+                ><NIcon><X /></NIcon
+              ></template>
+              {{ $t('cvca.useOwnDv') }}
+            </NButton>
+          </NSpace>
+        </template>
       </NCard>
 
       <NCard

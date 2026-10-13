@@ -16,7 +16,7 @@ export interface CvcaRouteDeps extends AuthContext {
 
 /** The DV application submission body. */
 export const applicationBody = z.object({
-  keyMode: z.enum(['nia_generated', 'user_uploaded']).default('nia_generated'),
+  keyMode: z.enum(['remote_generated', 'user_uploaded']).default('remote_generated'),
   subjectCn: z.string().min(1).max(64),
   /** Optional holder mnemonic (up to 9 chars); derived from the name when absent. */
   holderMnemonic: z

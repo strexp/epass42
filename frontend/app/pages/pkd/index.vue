@@ -19,7 +19,7 @@ import { COUNTRY_ALPHA3, type DvPermissions } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
 import { documentTypeValues } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
-import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
+import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 
 interface PkdCertificate {
   id: string
@@ -161,7 +161,7 @@ const dvColumns = computed(() => [
   {
     title: t('pkd.permissions'),
     key: 'permissions',
-    render: (row: PkdDv) => h(PermissionsEditor, { modelValue: row.permissions, readonly: true }),
+    render: (row: PkdDv) => h(PermissionsSummary, { permissions: row.permissions }),
   },
   {
     title: t('pkd.validity'),

@@ -37,7 +37,7 @@ const notify = useNotify()
 const signedIn = computed(() => state.value.me !== null)
 
 const form = reactive({
-  keyMode: 'nia_generated' as 'nia_generated' | 'user_uploaded',
+  keyMode: 'remote_generated' as 'remote_generated' | 'user_uploaded',
   subjectCn: '',
   holderMnemonic: '',
   dvClass: 'domestic' as DvClass,
@@ -56,7 +56,7 @@ const form = reactive({
 const submitting = ref(false)
 
 const keyModeOptions = computed(() => [
-  { label: t('cvca.keyModeNia'), value: 'nia_generated' },
+  { label: t('cvca.keyModeNia'), value: 'remote_generated' },
   { label: t('cvca.keyModeUpload'), value: 'user_uploaded' },
 ])
 
@@ -234,7 +234,7 @@ onMounted(async () => {
         <NDescriptions :column="2" size="small" style="margin-top: 12px">
           <NDescriptionsItem :label="$t('cvca.keyMode')">
             {{
-              form.keyMode === 'nia_generated' ? $t('cvca.keyModeNia') : $t('cvca.keyModeUpload')
+              form.keyMode === 'remote_generated' ? $t('cvca.keyModeNia') : $t('cvca.keyModeUpload')
             }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('cvca.subjectCn')">

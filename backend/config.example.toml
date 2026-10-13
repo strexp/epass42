@@ -131,6 +131,11 @@ write = false
 read = false
 write = false
 
+# The CVCA-issued default ("system") DV that maintainers may delegate to.
+[cvca.dv.defaultDv]
+# commonName = "..."   # defaults to "<cvca.commonName> Default DV"
+holderMnemonic = "NIADV"
+
 # CRL scheduling (M6).
 [crl]
 autoGenerate = true

@@ -20,6 +20,7 @@ import type { DvClass, DvPermissions } from '@epass42/shared'
 import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
+import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 
@@ -177,7 +178,7 @@ onMounted(async () => {
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('cvca.keyMode')">
             {{
-              application.keyMode === 'nia_generated'
+              application.keyMode === 'remote_generated'
                 ? $t('cvca.keyModeNia')
                 : $t('cvca.keyModeUpload')
             }}
@@ -251,10 +252,13 @@ onMounted(async () => {
             <NButton @click="rejectOpen = true">{{ $t('common.reject') }}</NButton>
           </div>
         </div>
-        <NTag v-else-if="application.status === 'approved'" size="small" type="success">
-          {{ $t('cvca.approvedPermissions') }}: {{ classLabel(reviewClass) }} ·
-          <PermissionsEditor :model-value="review" readonly style="display: inline-block" />
-        </NTag>
+        <div v-else-if="application.status === 'approved'" style="margin-top: 16px">
+          <NText strong>{{ $t('cvca.approvedPermissions') }}</NText>
+          <NSpace align="center" :size="8" style="margin-top: 8px">
+            <NTag size="small">{{ classLabel(reviewClass) }}</NTag>
+            <PermissionsSummary :permissions="review" />
+          </NSpace>
+        </div>
       </NCard>
 
       <NText v-else depth="3">{{ $t('errors.not_found') }}</NText>

@@ -224,6 +224,16 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
         'sealed CVCA key cannot be decrypted (KEK mismatch): set the same encryptionKek in config.toml used before, or remove the database to bootstrap a new CVCA',
       )
     }
+    // Prepare the CVCA default (system) DV certificate so it is always
+    // available for maintainers that delegate terminal issuance to the CVCA.
+    try {
+      await cvca.ensureDefaultDv()
+    } catch (error) {
+      app.log.error(
+        { err: error },
+        'failed to prepare the CVCA default Document Verifier certificate',
+      )
+    }
   }
   const dsc = new DscService(dbHandle.db, config, csca, cvca)
 

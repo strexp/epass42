@@ -30,6 +30,12 @@ export default {
   permissionDg4: 'DG4 虹膜',
   permissionRead: '读取',
   permissionWrite: '写入',
+  permissionEpassportShort: 'ePass',
+  permissionTravelShort: '旅行',
+  permissionVisaShort: '签证',
+  permissionBiometricsShort: '生物',
+  permissionReadShort: '读',
+  permissionWriteShort: '写',
   permissionNone: '无授权',
   validityDays: '有效期（天）',
   applicationUrl: '申请页面地址',
@@ -56,4 +62,10 @@ export default {
   terminalHint:
     '终端证书由该文档验证者签署，供检查系统进行终端认证。其授权不能超过 DV 自身的授权。',
   issuedCertificate: '已签发证书',
+  asDelegationTitle: '机构 DV 委派',
+  asDelegationHint:
+    '选择该机构用 CVCA 的默认文档验证者（委派）还是自己的已批准文档验证者来签署其终端证书。',
+  useNiaDv: '使用 CVCA 默认 DV（委派）',
+  useOwnDv: '使用本机构自己的 DV',
+  ownDvUnavailable: '仅当该机构已有已批准的、有效的文档验证者证书后可用。',
 } as const

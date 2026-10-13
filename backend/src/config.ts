@@ -107,6 +107,13 @@ const cvcaSchema = z.object({
       pss: z.boolean().default(false),
       /** Permissions pre-selected in the application form. */
       defaultPermissions: dvPermissionsSchema,
+      /** The CVCA-issued default (system) DV maintainers may delegate to. */
+      defaultDv: z
+        .object({
+          commonName: z.string().optional(),
+          holderMnemonic: z.string().max(9).default('NIADV'),
+        })
+        .prefault({}),
     })
     .prefault({}),
 })

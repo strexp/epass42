@@ -2,7 +2,7 @@
  * CVCA certificate routes (M17): DV listing/download, CVCA key listing and
  * rollover, and the one-time DV private-key export.
  */
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
@@ -20,6 +20,69 @@ import { dvMetadata, terminalMetadata, type CvcaRouteDeps } from '../routeContex
 export function registerCertificateRoutes(app: FastifyInstance, deps: CvcaRouteDeps): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
   const { db, service } = deps
+
+  /** Terminal application body (shared by both issuance entry points). */
+  const terminalBody = z.object({
+    keyMode: z.enum(['remote_generated', 'user_uploaded']).default('remote_generated'),
+    subjectCn: z.string().min(1).max(64),
+    holderMnemonic: z
+      .string()
+      .min(1)
+      .max(9)
+      .regex(/^[A-Za-z0-9 ]+$/)
+      .optional(),
+    csrPem: z.string().max(20_000).optional(),
+    publicKeyPem: z.string().max(20_000).optional(),
+    permissions: dvPermissionsSchema.optional(),
+    validityDays: z.number().int().min(1).max(92).optional(),
+  })
+
+  /**
+   * Issues a terminal certificate under a DV, validating the key material and
+   * recording the audit entry.  `mnt` is the terminal holder's maintainer (the
+   * DV's own, or the applicant's when signing with the CVCA default DV).
+   */
+  async function issueTerminalUnder(
+    dv: typeof dvCert.$inferSelect,
+    body: z.infer<typeof terminalBody>,
+    actorId: number,
+    mnt: string | null,
+    ip: string,
+    reply: FastifyReply,
+  ) {
+    if (!dv.keyRef) return reply.code(409).send({ error: 'dv_key_unavailable' })
+    if (body.keyMode === 'user_uploaded' && !body.csrPem && !body.publicKeyPem) {
+      return reply.code(400).send({ error: 'csr_or_public_key_required' })
+    }
+    const publicKey =
+      body.keyMode === 'user_uploaded'
+        ? body.csrPem
+          ? cvPublicKeyFromCsr(pemToDer(body.csrPem))
+          : cvPublicKeyFromSpki(pemToDer(body.publicKeyPem!))
+        : undefined
+    const cert = await service.issueTerminal(dv, {
+      subjectCn: body.subjectCn,
+      holderMnemonic: holderMnemonicOf({
+        holderMnemonic: body.holderMnemonic ?? null,
+        subjectCn: body.subjectCn,
+        mnt,
+      }),
+      permissions: body.permissions,
+      validityDays: body.validityDays ?? deps.config.cvca.dv.validityDays,
+      mnt,
+      keyMode: body.keyMode,
+      publicKey,
+    })
+    writeAudit(db, {
+      actorAccountId: actorId,
+      realm: 'cvca',
+      action: 'terminal.certificate.issue',
+      targetType: 'terminal_cert',
+      targetId: cert.id,
+      ip,
+    })
+    return reply.code(201).send(terminalMetadata(cert))
+  }
 
   server.get('/cvca/certificates', async () => {
     const items = db.select().from(dvCert).orderBy(desc(dvCert.id)).all().map(dvMetadata)
@@ -103,20 +166,7 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CvcaRouteD
     {
       schema: {
         params: z.object({ id: z.coerce.number().int().positive() }),
-        body: z.object({
-          keyMode: z.enum(['nia_generated', 'user_uploaded']).default('nia_generated'),
-          subjectCn: z.string().min(1).max(64),
-          holderMnemonic: z
-            .string()
-            .min(1)
-            .max(9)
-            .regex(/^[A-Za-z0-9 ]+$/)
-            .optional(),
-          csrPem: z.string().max(20_000).optional(),
-          publicKeyPem: z.string().max(20_000).optional(),
-          permissions: dvPermissionsSchema.optional(),
-          validityDays: z.number().int().min(1).max(92).optional(),
-        }),
+        body: terminalBody,
       },
       preHandler: requireSession(deps, 'cvca'),
     },
@@ -126,43 +176,28 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CvcaRouteD
       if (!dv) return reply.code(404).send({ error: 'certificate_not_found' })
       const own = dv.mnt !== null && dv.mnt === principal.account.activeMnt
       if (!principal.isAdmin && !own) return reply.code(403).send({ error: 'forbidden' })
-      if (!dv.keyRef) return reply.code(409).send({ error: 'dv_key_unavailable' })
-      if (
-        request.body.keyMode === 'user_uploaded' &&
-        !request.body.csrPem &&
-        !request.body.publicKeyPem
-      ) {
-        return reply.code(400).send({ error: 'csr_or_public_key_required' })
-      }
-      const keyMode = request.body.keyMode
-      const publicKey =
-        keyMode === 'user_uploaded'
-          ? request.body.csrPem
-            ? cvPublicKeyFromCsr(pemToDer(request.body.csrPem))
-            : cvPublicKeyFromSpki(pemToDer(request.body.publicKeyPem!))
-          : undefined
-      const cert = await service.issueTerminal(dv, {
-        subjectCn: request.body.subjectCn,
-        holderMnemonic: holderMnemonicOf({
-          holderMnemonic: request.body.holderMnemonic ?? null,
-          subjectCn: request.body.subjectCn,
-          mnt: dv.mnt,
-        }),
-        permissions: request.body.permissions,
-        validityDays: request.body.validityDays ?? deps.config.cvca.dv.validityDays,
-        mnt: dv.mnt,
-        keyMode,
-        publicKey,
-      })
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'cvca',
-        action: 'terminal.certificate.issue',
-        targetType: 'terminal_cert',
-        targetId: cert.id,
-        ip: request.ip,
-      })
-      return reply.code(201).send(terminalMetadata(cert))
+      return issueTerminalUnder(dv, request.body, principal.account.id, dv.mnt, request.ip, reply)
+    },
+  )
+
+  // Delegation-aware issuance: signs with the maintainer's own active DV, or
+  // the CVCA default DV, following the DV delegation setting.  This is the
+  // entry point the Terminal certificate application system will use.
+  server.post(
+    '/cvca/terminals',
+    { schema: { body: terminalBody }, preHandler: requireSession(deps, 'cvca') },
+    async (request, reply) => {
+      const principal = request.principal!
+      const dv = service.resolveDvSelection(principal.account.activeMnt)
+      if (!dv) return reply.code(409).send({ error: 'no_dv_available' })
+      return issueTerminalUnder(
+        dv,
+        request.body,
+        principal.account.id,
+        principal.account.activeMnt,
+        request.ip,
+        reply,
+      )
     },
   )
 

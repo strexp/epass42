@@ -32,6 +32,12 @@ export default {
   permissionDg4: 'DG4 iris',
   permissionRead: 'Read',
   permissionWrite: 'Write',
+  permissionEpassportShort: 'ePass',
+  permissionTravelShort: 'Travel',
+  permissionVisaShort: 'Visa',
+  permissionBiometricsShort: 'Bio',
+  permissionReadShort: 'R',
+  permissionWriteShort: 'W',
   permissionNone: 'No authorization',
   validityDays: 'Validity (days)',
   applicationUrl: 'Application page URL',
@@ -61,4 +67,11 @@ export default {
   terminalHint:
     'The terminal certificate is signed by this Document Verifier and lets an inspection system authenticate for Terminal Authentication. Its authorization cannot exceed the DV’s grant.',
   issuedCertificate: 'Issued certificate',
+  asDelegationTitle: 'Maintainer DV delegation',
+  asDelegationHint:
+    'Choose whether this maintainer signs its terminal certificates with the CVCA default Document Verifier (delegated) or with its own approved Document Verifier.',
+  useNiaDv: 'Use CVCA default DV (delegated)',
+  useOwnDv: 'Use this maintainer’s own DV',
+  ownDvUnavailable:
+    'Available only after this maintainer has an approved, active Document Verifier.',
 } as const

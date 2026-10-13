@@ -23,6 +23,7 @@ import { useRealm } from '~/composables/useRealm'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
+import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 import type { DvPermissions } from '@epass42/shared'
 
 interface Certificate {
@@ -66,7 +67,7 @@ const terminalFor = ref<Certificate | null>(null)
 const terminalForm = reactive({
   subjectCn: '',
   holderMnemonic: '',
-  keyMode: 'nia_generated' as 'nia_generated' | 'user_uploaded',
+  keyMode: 'remote_generated' as 'remote_generated' | 'user_uploaded',
   csrPem: '',
   publicKeyPem: '',
   permissions: clonePermissions({
@@ -78,7 +79,7 @@ const terminalForm = reactive({
 })
 
 const keyModeOptions = computed(() => [
-  { label: t('cvca.keyModeNia'), value: 'nia_generated' },
+  { label: t('cvca.keyModeNia'), value: 'remote_generated' },
   { label: t('cvca.keyModeUpload'), value: 'user_uploaded' },
 ])
 
@@ -135,7 +136,7 @@ function openTerminal(row: Certificate): void {
   terminalFor.value = row
   terminalForm.subjectCn = ''
   terminalForm.holderMnemonic = ''
-  terminalForm.keyMode = 'nia_generated'
+  terminalForm.keyMode = 'remote_generated'
   terminalForm.csrPem = ''
   terminalForm.publicKeyPem = ''
   // The terminal cannot exceed the DV's grant: start from it.
@@ -224,8 +225,7 @@ const columns = computed(() => [
   {
     title: t('cvca.permissionsTitle'),
     key: 'permissions',
-    render: (row: Certificate) =>
-      h(PermissionsEditor, { modelValue: row.permissions, readonly: true }),
+    render: (row: Certificate) => h(PermissionsSummary, { permissions: row.permissions }),
   },
   {
     title: t('common.status'),

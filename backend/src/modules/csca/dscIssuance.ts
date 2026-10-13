@@ -67,7 +67,7 @@ export class DscIssuanceService {
       privateKeyUsageYears: this.ctx.config.csca.niaDsc.privateKeyUsageYears,
       source: 'nia',
       mnt: null,
-      keyMode: 'nia_generated',
+      keyMode: 'remote_generated',
     })
   }
 
@@ -84,7 +84,7 @@ export class DscIssuanceService {
     privateKeyUsageYears: number
     source: 'nia' | 'owned'
     mnt: string | null
-    keyMode: 'nia_generated' | 'user_uploaded'
+    keyMode: 'remote_generated' | 'user_uploaded'
     subjectPublicKey?: SubjectPublicKey
     issuancePolicy?: string | null
     applicationUrl?: string | null
@@ -97,7 +97,7 @@ export class DscIssuanceService {
     let subject: SubjectPublicKey
     let sealedKey: string | null = null
     let keyAlgorithm: string
-    if (params.keyMode === 'nia_generated') {
+    if (params.keyMode === 'remote_generated') {
       if (nia.algorithm === 'ecdsa') {
         const key = await generateEcKeyPair(nia.curve)
         subject = { publicKey: key.publicKey }
@@ -197,7 +197,7 @@ export class DscIssuanceService {
     const csca = await this.keys.ensure()
     if (!csca) throw new Error('no CSCA key available')
     const cscaPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
-    const keyMode = application.keyMode === 'user_uploaded' ? 'user_uploaded' : 'nia_generated'
+    const keyMode = application.keyMode === 'user_uploaded' ? 'user_uploaded' : 'remote_generated'
     const subjectPublicKey =
       keyMode === 'user_uploaded' ? await publicKeyFromApplication(application) : undefined
 

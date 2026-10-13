@@ -5,7 +5,7 @@
  * §7.2.2).  There is no revocation mechanism for CV certificates, so a DV is
  * simply active until it expires.
  */
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import {
   dvPermissionsSchema,
   hasAnyPermission,
@@ -71,12 +71,43 @@ export function publicKeyFromApplication(application: {
   throw new Error('application has no CSR or public key')
 }
 
+/** The active CVCA default (system) DV certificate, or undefined. */
+export function currentDefaultDv(db: CvcaContext['db']): DvCertRow | undefined {
+  return db
+    .select()
+    .from(dvCert)
+    .where(and(eq(dvCert.source, 'system'), eq(dvCert.status, 'active')))
+    .get()
+}
+
 /** Document Verifier issuance and lifecycle. */
 export class DvIssuanceService {
   constructor(
     private readonly ctx: CvcaContext,
     private readonly keys: CvcaKeyService,
   ) {}
+
+  /** Ensures the CVCA-issued default (system) DV exists. */
+  async ensureDefaultDv(): Promise<DvCertRow | undefined> {
+    const existing = currentDefaultDv(this.ctx.db)
+    if (existing) return existing
+    const cvca = await this.keys.ensure()
+    if (!cvca) return undefined
+    const cvcaPair = await this.keys.loadKeyPair(cvca)
+    const { config } = this.ctx
+    return this.issueDv({
+      cvca,
+      cvcaPair,
+      subjectCn: config.cvca.dv.defaultDv.commonName ?? `${config.cvca.commonName} Default DV`,
+      holderMnemonic: config.cvca.dv.defaultDv.holderMnemonic,
+      dvClass: 'domestic',
+      permissions: config.cvca.authorization,
+      validityDays: config.cvca.dv.validityDays,
+      mnt: null,
+      keyMode: 'remote_generated',
+      source: 'system',
+    })
+  }
 
   /** Allocates an unused Certificate Holder Reference for a DV. */
   private allocateReference(holderMnemonic: string): string {
@@ -108,7 +139,9 @@ export class DvIssuanceService {
     permissions: DvPermissions
     validityDays: number
     mnt: string | null
-    keyMode: 'nia_generated' | 'user_uploaded'
+    keyMode: 'remote_generated' | 'user_uploaded'
+    /** `owned` (application-issued) or `system` (CVCA default DV). */
+    source?: 'owned' | 'system'
     publicKey?: CvPublicKey
     applicationUrl?: string | null
   }): Promise<DvCertRow> {
@@ -117,7 +150,7 @@ export class DvIssuanceService {
 
     let publicKey: CvPublicKey
     let sealedKey: string | null = null
-    if (params.keyMode === 'nia_generated') {
+    if (params.keyMode === 'remote_generated') {
       const key = await generateEcKeyPair()
       publicKey = cvPublicKeyOf(key)
       sealedKey = sealPrivateKey(key.pkcs8, keks[0]!)
@@ -150,7 +183,7 @@ export class DvIssuanceService {
         authorityReference: generated.authorityReference,
         subjectCn: params.subjectCn,
         mnt: params.mnt,
-        source: 'owned',
+        source: params.source ?? 'owned',
         certDer: Buffer.from(generated.der),
         keyRef: sealedKey,
         keyMode: params.keyMode,
@@ -202,7 +235,7 @@ export class DvIssuanceService {
     const requested = parsePermissions(application.permissionsJson)
     const permissions = override.permissions ?? requested
     const dvClass = override.dvClass ?? (application.dvClass as DvClass) ?? 'domestic'
-    const keyMode = application.keyMode === 'user_uploaded' ? 'user_uploaded' : 'nia_generated'
+    const keyMode = application.keyMode === 'user_uploaded' ? 'user_uploaded' : 'remote_generated'
     const publicKey =
       keyMode === 'user_uploaded' ? publicKeyFromApplication(application) : undefined
 
@@ -283,7 +316,7 @@ export class DvIssuanceService {
       permissions?: DvPermissions
       validityDays: number
       mnt: string | null
-      keyMode: 'nia_generated' | 'user_uploaded'
+      keyMode: 'remote_generated' | 'user_uploaded'
       publicKey?: CvPublicKey
     },
   ): Promise<TerminalCertRow> {
@@ -300,7 +333,7 @@ export class DvIssuanceService {
 
     let publicKey: CvPublicKey
     let sealedKey: string | null = null
-    if (params.keyMode === 'nia_generated') {
+    if (params.keyMode === 'remote_generated') {
       const key = await generateEcKeyPair()
       publicKey = cvPublicKeyOf(key)
       sealedKey = sealPrivateKey(key.pkcs8, keks[0]!)
