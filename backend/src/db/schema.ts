@@ -23,7 +23,7 @@ export const oauthProvider = sqliteTable(
   'oauth_provider',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    realm: text('realm', { enum: ['csca', 'cvca', 'dsc'] }).notNull(),
+    realm: text('realm', { enum: ['csca', 'cvca', 'dv', 'dsc'] }).notNull(),
     issuer: text('issuer').notNull(),
     clientId: text('client_id').notNull(),
     scopes: text('scopes'),
@@ -261,6 +261,38 @@ export const terminalCert = sqliteTable('terminal_cert', {
   status: text('status').notNull().default('active'),
   notBefore: text('not_before'),
   notAfter: text('not_after'),
+  createdAt: text('created_at').notNull(),
+})
+
+/**
+ * Terminal (Inspection System) certificate applications (M18): a maintainer
+ * requests a terminal certificate, a CVCA administrator reviews it, and the
+ * resolved Document Verifier issues it.  Terminal applications have no DV
+ * delegation: the signing DV follows the maintainer's existing setting.
+ */
+export const terminalApplication = sqliteTable('terminal_application', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  mnt: text('mnt'),
+  applicantAccountId: integer('applicant_account_id').references(() => account.id),
+  ip: text('ip'),
+  keyMode: text('key_mode').notNull(),
+  subjectCn: text('subject_cn'),
+  holderMnemonic: text('holder_mnemonic'),
+  csrPem: text('csr_pem'),
+  publicKeyPem: text('public_key_pem'),
+  /** The requested LDS2 read/write permissions (JSON). */
+  permissionsJson: text('permissions_json'),
+  validityDays: integer('validity_days'),
+  applicationUrl: text('application_url'),
+  notes: text('notes'),
+  status: text('status').notNull().default('submitted'),
+  /** The administrator's permission override applied at approval (JSON). */
+  overridePermissionsJson: text('override_permissions_json'),
+  /** The terminal certificate issued on approval. */
+  terminalCertId: integer('terminal_cert_id').references(() => terminalCert.id),
+  reviewedBy: integer('reviewed_by'),
+  reviewedAt: text('reviewed_at'),
+  rejectReason: text('reject_reason'),
   createdAt: text('created_at').notNull(),
 })
 

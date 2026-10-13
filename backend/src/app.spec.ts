@@ -36,7 +36,7 @@ describe('M3 backend skeleton', () => {
     const response = await instance.inject({ method: 'GET', url: '/api/config' })
     expect(response.statusCode).toBe(200)
     const body = response.json()
-    expect(body.roles).toEqual(['pkd', 'csca', 'cvca', 'dsc'])
+    expect(body.roles).toEqual(['pkd', 'csca', 'cvca', 'dv', 'dsc'])
     expect(body.countryAlpha2).toBe('XD')
     expect(body.countryAlpha3).toBe('UDN')
     expect(body.oauthProviders.csca).toHaveLength(1)

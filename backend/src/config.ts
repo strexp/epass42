@@ -11,8 +11,8 @@ import { z } from 'zod'
 
 import { COUNTRY_ALPHA2, COUNTRY_ALPHA3, dvPermissionsSchema } from '@epass42/shared'
 
-export const realmSchema = z.enum(['csca', 'cvca', 'dsc'])
-export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dsc'])
+export const realmSchema = z.enum(['csca', 'cvca', 'dv', 'dsc'])
+export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dv', 'dsc'])
 
 /** The default (insecure) session secret used in development, also a legacy KEK. */
 export const DEV_SESSION_SECRET = 'dev-insecure-session-secret-change-me'
@@ -167,9 +167,10 @@ const configSchema = z.object({
     .object({
       csca: z.array(z.string()).default([]),
       cvca: z.array(z.string()).default([]),
+      dv: z.array(z.string()).default([]),
       dsc: z.array(z.string()).default([]),
     })
-    .default({ csca: [], cvca: [], dsc: [] }),
+    .default({ csca: [], cvca: [], dv: [], dsc: [] }),
   /** Also treat any `mnt_by` entry as an admin MNT. */
   adminIncludeMntBy: z.boolean().default(false),
   oauthProviders: z.array(oauthProviderSchema).default([]),

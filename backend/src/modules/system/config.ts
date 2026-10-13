@@ -26,6 +26,7 @@ export function registerConfigRoutes(
       oauthProviders: {
         csca: providersFor('csca'),
         cvca: providersFor('cvca'),
+        dv: providersFor('dv'),
         dsc: providersFor('dsc'),
       },
     }

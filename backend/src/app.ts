@@ -44,6 +44,7 @@ import { CvcaService } from './modules/cvca/service'
 import { registerCvcaRoutes } from './modules/cvca/routes'
 import { DscService } from './modules/dsc/service'
 import { registerDscRoutes } from './modules/dsc/routes'
+import { registerDvRoutes } from './modules/dv/routes'
 import { registerPkdRoutes } from './modules/pkd/rest'
 import { WhoisMntResolver, type MntResolver } from './modules/jurisdiction/whois'
 import { createMailer } from './mail/mailer'
@@ -212,7 +213,11 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
     }
   }
   const cvca = new CvcaService({ db: dbHandle.db, config, keks })
-  if (realmEnabled(config, 'cvca') || config.issuing.security.ta.enabled) {
+  if (
+    realmEnabled(config, 'cvca') ||
+    realmEnabled(config, 'dv') ||
+    config.issuing.security.ta.enabled
+  ) {
     await cvca.ensureCvcaKey()
     // Verify the stored key can be opened, so a KEK mismatch is reported at
     // startup rather than when issuing a DV.
@@ -257,6 +262,9 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   }
   if (realmEnabled(config, 'cvca')) {
     registerCvcaRoutes(app, { config, db: dbHandle.db, sessions, service: cvca })
+  }
+  if (realmEnabled(config, 'dv')) {
+    registerDvRoutes(app, { config, db: dbHandle.db, sessions, service: cvca })
   }
   if (realmEnabled(config, 'dsc')) {
     const mailer = createMailer(config, (message) => app.log.info(message))

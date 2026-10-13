@@ -7,12 +7,13 @@
  */
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { cvcaKey, dvApplication, dvCert, terminalCert } from '../../db/schema'
+import { cvcaKey, dvApplication, dvCert, terminalApplication, terminalCert } from '../../db/schema'
 
 export type CvcaKeyRow = typeof cvcaKey.$inferSelect
 export type DvApplicationRow = typeof dvApplication.$inferSelect
 export type DvCertRow = typeof dvCert.$inferSelect
 export type TerminalCertRow = typeof terminalCert.$inferSelect
+export type TerminalApplicationRow = typeof terminalApplication.$inferSelect
 
 /** Collaborators for the CVCA services. */
 export interface CvcaContext {

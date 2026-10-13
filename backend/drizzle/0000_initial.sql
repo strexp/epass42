@@ -303,6 +303,31 @@ CREATE TABLE `system_setting` (
 	FOREIGN KEY (`updated_by`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE TABLE `terminal_application` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`mnt` text,
+	`applicant_account_id` integer,
+	`ip` text,
+	`key_mode` text NOT NULL,
+	`subject_cn` text,
+	`holder_mnemonic` text,
+	`csr_pem` text,
+	`public_key_pem` text,
+	`permissions_json` text,
+	`validity_days` integer,
+	`application_url` text,
+	`notes` text,
+	`status` text DEFAULT 'submitted' NOT NULL,
+	`override_permissions_json` text,
+	`terminal_cert_id` integer,
+	`reviewed_by` integer,
+	`reviewed_at` text,
+	`reject_reason` text,
+	`created_at` text NOT NULL,
+	FOREIGN KEY (`applicant_account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`terminal_cert_id`) REFERENCES `terminal_cert`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
 CREATE TABLE `terminal_cert` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`dv_cert_id` integer,

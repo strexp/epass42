@@ -274,6 +274,10 @@ epass42/
       按 MNT 切换「默认 DV / 自有 DV」，`GET/PUT /cvca/settings/mnt` 与 `/cvca` 页委派卡片；`POST /cvca/terminals`
       按委派选择签发终端证书，为后续终端证书申请系统铺路。密钥生成模式 `nia_generated` 统一更名为
       `remote_generated`（基线迁移直接采用新值）；CSCA 密钥生成文案统一为「由 CSCA 生成」，DV 证书列表的授权改为紧凑概览（hover 展开）。
+- [x] T17.13 独立 DV realm（`dv` 角色，路径 `/dv`，独立 OAuth 登录）：终端（检查系统）证书申请/审核/签发，仿 DV 证书申请
+      但**无委派**——签发 DV 由既有 `resolveDvSelection` 自动解析；表单覆盖全部功能位（ePassport DG3/DG4 + LDS2 三应用读写），
+      管理员可在批准时覆盖权限（仍收敛到签发 DV 的授权）。新增 `terminal_application` 表与 `/dv/terminal-applications`
+      （提交/列表/详情/审核/证书下载）、前端 `/dv` 页面、i18n `dv` 命名空间与 `nav.dv`/`home.dvCard`。
 
 > 说明：CHAT 权限位采用 BSI TR-03110 的角色位布局（`C0`=CVCA、`80`=国内 DV、`40`=国外 DV、`00`=终端），
 > ePassport 使用 byte0 的 b1/b2（DG3/DG4），LDS2 应用授权使用 `65{73{06,53}}` 扩展（Doc 9303-10 Table 99）。

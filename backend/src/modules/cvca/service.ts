@@ -5,7 +5,7 @@
  * single entry point consumed by the routes, the PKD directory and the DSC
  * personalization builder.
  */
-import type { DvClass, DvPermissions } from '@epass42/shared'
+import { AppError, type DvClass, type DvPermissions } from '@epass42/shared'
 import type { CvKeyPair, CvPublicKey } from '@epass42/pki'
 
 import type {
@@ -13,6 +13,7 @@ import type {
   CvcaKeyRow,
   DvApplicationRow,
   DvCertRow,
+  TerminalApplicationRow,
   TerminalCertRow,
 } from './context'
 import { CvcaKeyService, currentCvcaKey, type CvcaTrustAnchor } from './keys'
@@ -23,6 +24,7 @@ export type {
   CvcaKeyRow,
   DvApplicationRow,
   DvCertRow,
+  TerminalApplicationRow,
   TerminalCertRow,
   CvcaContext,
 } from './context'
@@ -125,5 +127,30 @@ export class CvcaService {
 
   exportTerminalPrivateKey(row: TerminalCertRow): string {
     return this.dvs.exportDvPrivateKey(row)
+  }
+
+  /**
+   * Approves a terminal application: the signing DV follows the maintainer's
+   * DV delegation (own active DV, else the CVCA default DV), so terminal
+   * applications offer no delegation of their own.
+   */
+  approveTerminal(
+    application: TerminalApplicationRow,
+    adminAccountId: number | null,
+    override: { permissions?: DvPermissions } = {},
+  ): Promise<TerminalCertRow> {
+    const dv = this.resolveDvSelection(application.mnt)
+    if (!dv) {
+      throw new AppError('no_dv_available', 'no Document Verifier available to sign', 409)
+    }
+    return this.dvs.approveTerminal(application, dv, adminAccountId, override)
+  }
+
+  rejectTerminal(
+    application: TerminalApplicationRow,
+    adminAccountId: number | null,
+    reason: string,
+  ): void {
+    this.dvs.rejectTerminal(application, adminAccountId, reason)
   }
 }

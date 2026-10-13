@@ -11,8 +11,8 @@ publicUrl = "http://localhost:3000"
 # same-origin deployment.
 frontendUrl = "http://localhost:3001"
 
-# Enabled roles: any subset of ["pkd", "csca", "cvca", "dsc"].
-roles = ["pkd", "csca", "cvca", "dsc"]
+# Enabled roles: any subset of ["pkd", "csca", "cvca", "dv", "dsc"].
+roles = ["pkd", "csca", "cvca", "dv", "dsc"]
 
 databasePath = "./data/epass42.db"
 runMigrations = true
@@ -213,6 +213,7 @@ port = 3890
 [adminMnts]
 csca = ["EXAMPLE-CSCA-MNT"]
 cvca = ["EXAMPLE-CVCA-MNT"]
+dv = ["EXAMPLE-DV-MNT"]
 dsc = ["EXAMPLE-DSC-MNT"]
 # Also accept any MNT from the identity's `mnt_by`.
 adminIncludeMntBy = false
@@ -249,6 +250,19 @@ dn42 = "dn42"
 realm = "cvca"
 issuer = "https://auth.example.net"
 clientId = "epass42-cvca"
+clientSecret = "replace-me"
+alias = "auth"
+scopes = ["openid", "profile", "email", "dn42"]
+enabled = true
+
+[oauthProviders.claimMap]
+dn42 = "dn42"
+
+# DV realm login (Document Verifier holders applying for terminal certificates).
+[[oauthProviders]]
+realm = "dv"
+issuer = "https://auth.example.net"
+clientId = "epass42-dv"
 clientSecret = "replace-me"
 alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]

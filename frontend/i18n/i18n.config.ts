@@ -4,6 +4,7 @@ import enCsca from './locales/en/csca'
 import enCommon from './locales/en/common'
 import enCvca from './locales/en/cvca'
 import enDsc from './locales/en/dsc'
+import enDv from './locales/en/dv'
 import enHelp from './locales/en/help'
 import enMisc from './locales/en/misc'
 import enPkd from './locales/en/pkd'
@@ -11,6 +12,7 @@ import zhCsca from './locales/zh/csca'
 import zhCommon from './locales/zh/common'
 import zhCvca from './locales/zh/cvca'
 import zhDsc from './locales/zh/dsc'
+import zhDv from './locales/zh/dv'
 import zhHelp from './locales/zh/help'
 import zhMisc from './locales/zh/misc'
 import zhPkd from './locales/zh/pkd'
@@ -24,6 +26,7 @@ export default defineI18nConfig(() => ({
       ...enCommon,
       csca: enCsca,
       cvca: enCvca,
+      dv: enDv,
       dsc: enDsc,
       pkd: enPkd,
       help: enHelp,
@@ -33,6 +36,7 @@ export default defineI18nConfig(() => ({
       ...zhCommon,
       csca: zhCsca,
       cvca: zhCvca,
+      dv: zhDv,
       dsc: zhDsc,
       pkd: zhPkd,
       help: zhHelp,

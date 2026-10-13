@@ -12,6 +12,7 @@ export default {
     home: 'Home',
     csca: 'Signing certificates',
     cvca: 'Verifying certificates',
+    dv: 'Terminal certificates',
     dsc: 'Personalization',
     pkd: 'Directory',
     help: 'Help',
@@ -80,6 +81,7 @@ export default {
     cscaCard: 'Apply for a Document Signer certificate for your organisation.',
     cvcaCard:
       'Apply for a Document Verifier certificate to authorize reading or writing LDS2 data.',
+    dvCard: 'Apply for a terminal certificate for your inspection system.',
     dscCard: 'Request, review and deliver personalization files for passports and identity cards.',
     pkdCard: 'Verify published certificates, revocation lists and revoked documents.',
     public: 'Public',
@@ -90,6 +92,7 @@ export default {
   auth: {
     realmCsca: 'Certificate realm',
     realmCvca: 'Verification realm',
+    realmDv: 'Terminal certificate realm',
     realmDsc: 'Personalization realm',
     signedInAs: 'Signed in as',
     activeMnt: 'Active MNT',

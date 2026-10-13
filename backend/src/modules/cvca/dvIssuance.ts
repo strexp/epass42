@@ -27,7 +27,7 @@ import {
   type CvPublicKey,
 } from '@epass42/pki'
 
-import { dvApplication, dvCert, terminalCert } from '../../db/schema'
+import { dvApplication, dvCert, terminalApplication, terminalCert } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
 import {
@@ -37,6 +37,7 @@ import {
   type CvcaKeyRow,
   type DvApplicationRow,
   type DvCertRow,
+  type TerminalApplicationRow,
   type TerminalCertRow,
 } from './context'
 import type { CvcaKeyService } from './keys'
@@ -381,6 +382,66 @@ export class DvIssuanceService {
       .from(terminalCert)
       .where(eq(terminalCert.id, Number(result.lastInsertRowid)))
       .get() as TerminalCertRow
+  }
+
+  /**
+   * Approves a terminal application: issues the terminal certificate under the
+   * resolved DV and records the review on the application.  When `override` is
+   * supplied the administrator's permissions replace the applicant's request
+   * (and are still clamped to the DV's grant by {@link issueTerminal}).
+   */
+  async approveTerminal(
+    application: TerminalApplicationRow,
+    dv: DvCertRow,
+    adminAccountId: number | null,
+    override: { permissions?: DvPermissions } = {},
+  ): Promise<TerminalCertRow> {
+    const requested = parsePermissions(application.permissionsJson)
+    const permissions = override.permissions ?? requested
+    const keyMode = application.keyMode === 'user_uploaded' ? 'user_uploaded' : 'remote_generated'
+    const publicKey =
+      keyMode === 'user_uploaded' ? publicKeyFromApplication(application) : undefined
+
+    const cert = await this.issueTerminal(dv, {
+      subjectCn: application.subjectCn,
+      holderMnemonic: holderMnemonicOf(application),
+      permissions,
+      validityDays: application.validityDays ?? this.ctx.config.cvca.dv.validityDays,
+      mnt: application.mnt,
+      keyMode,
+      publicKey,
+    })
+
+    this.ctx.db
+      .update(terminalApplication)
+      .set({
+        status: 'approved',
+        reviewedBy: adminAccountId,
+        reviewedAt: nowIso(),
+        overridePermissionsJson: override.permissions ? JSON.stringify(override.permissions) : null,
+        terminalCertId: cert.id,
+      })
+      .where(eq(terminalApplication.id, application.id))
+      .run()
+    return cert
+  }
+
+  /** Rejects a terminal application. */
+  rejectTerminal(
+    application: TerminalApplicationRow,
+    adminAccountId: number | null,
+    reason: string,
+  ): void {
+    this.ctx.db
+      .update(terminalApplication)
+      .set({
+        status: 'rejected',
+        reviewedBy: adminAccountId,
+        reviewedAt: nowIso(),
+        rejectReason: reason,
+      })
+      .where(eq(terminalApplication.id, application.id))
+      .run()
   }
 }
 

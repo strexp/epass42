@@ -34,6 +34,8 @@ export const ERROR_CODES = [
   'token_expired',
   // CVCA / Terminal Authentication
   'dv_key_unavailable',
+  'no_active_dv',
+  'no_dv_available',
   'ta_requires_cvca',
   // PKI
   'signature_invalid',

@@ -76,7 +76,7 @@ const columns = computed(() => [
     title: t('audit.time'),
     key: 'createdAt',
     width: 180,
-    render: (row: AuditEntry) => h(DateTimeText, { value: row.createdAt }),
+    render: (row: AuditEntry) => h(DateTimeText, { value: row.createdAt, withTime: true }),
   },
   {
     title: t('audit.actor'),

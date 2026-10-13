@@ -8,6 +8,7 @@ import {
   Languages,
   ShieldCheck,
   BadgeCheck,
+  ScanLine,
 } from '@lucide/vue'
 import { computed, h } from 'vue'
 
@@ -24,6 +25,11 @@ const options = computed(() => [
     label: t('nav.cvca'),
     key: '/cvca',
     icon: () => h(NIcon, null, { default: () => h(BadgeCheck) }),
+  },
+  {
+    label: t('nav.dv'),
+    key: '/dv',
+    icon: () => h(NIcon, null, { default: () => h(ScanLine) }),
   },
   {
     label: t('nav.dsc'),

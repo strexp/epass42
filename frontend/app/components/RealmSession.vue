@@ -18,6 +18,7 @@ const label = computed(
     ({
       csca: t('nav.csca'),
       cvca: t('nav.cvca'),
+      dv: t('nav.dv'),
       dsc: t('nav.dsc'),
     })[props.realm],
 )
@@ -25,7 +26,7 @@ const providers = computed(() => config.value?.oauthProviders[props.realm] ?? []
 /** The realm avatar colour. */
 const avatarColor = computed(() => {
   if (!me.value) return '#767676'
-  return { csca: '#2080f0', cvca: '#7c3aed', dsc: '#18a058' }[props.realm]
+  return { csca: '#2080f0', cvca: '#7c3aed', dv: '#0d9488', dsc: '#18a058' }[props.realm]
 })
 /** Login-method options when more than one provider is configured. */
 const options = computed(() =>
