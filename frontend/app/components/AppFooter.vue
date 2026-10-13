@@ -13,6 +13,14 @@ const version = config.public.appVersion as string
         <NText strong>{{ $t('app.name') }}</NText>
         <NText depth="3"> · {{ $t('footer.authority') }}</NText>
       </div>
+      <NSpace align="center" :size="12">
+        <NuxtLink to="/privacy" class="epass42-footer-link">
+          {{ $t('legal.privacy.title') }}
+        </NuxtLink>
+        <NuxtLink to="/retention" class="epass42-footer-link">
+          {{ $t('legal.retention.title') }}
+        </NuxtLink>
+      </NSpace>
       <NSpace align="center" :size="8">
         <NText depth="3">{{ $t('footer.version', { version }) }}</NText>
         <NText depth="3">{{ $t('footer.copyright', { year }) }}</NText>
@@ -34,5 +42,14 @@ const version = config.public.appVersion as string
   align-items: center;
   gap: 8px 16px;
   justify-content: space-between;
+}
+.epass42-footer-link {
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.75;
+}
+.epass42-footer-link:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 </style>
