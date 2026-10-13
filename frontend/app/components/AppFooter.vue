@@ -14,6 +14,9 @@ const version = config.public.appVersion as string
         <NText depth="3"> · {{ $t('footer.authority') }}</NText>
       </div>
       <NSpace align="center" :size="12">
+        <NuxtLink to="/terms" class="epass42-footer-link">
+          {{ $t('legal.terms.title') }}
+        </NuxtLink>
         <NuxtLink to="/privacy" class="epass42-footer-link">
           {{ $t('legal.privacy.title') }}
         </NuxtLink>

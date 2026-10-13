@@ -81,4 +81,46 @@ export default {
       },
     },
   },
+  terms: {
+    title: 'Terms of use',
+    lead: 'These terms apply when you sign in to ePass 42 or use any of its services. By using the service you accept them.',
+    sections: {
+      scope: {
+        title: 'Scope',
+        body: 'ePass 42 is operated by the National Immigration Agency on the dn42 network. It issues and publishes certificates, produces personalization files and runs the public PKD directory. Instructions given on a page apply in addition to these terms.',
+      },
+      account: {
+        title: 'Accounts and access',
+        body: 'Use only your own dn42 identity and the access granted to you. Keep your credentials safe and do not share a session. You are responsible for everything done with your account in the realm you signed in to. Administrator and reviewer rights are granted per realm and may be withdrawn.',
+      },
+      acceptable: {
+        title: 'Acceptable use',
+        body: 'Do not upload data you are not authorized to handle, submit false or misleading information, impersonate another maintainer, probe or overload the service, or use it to issue documents that are unlawful or unauthorized. Respect the configured limits and the instructions of the operators and reviewers.',
+      },
+      applications: {
+        title: 'Applications and issuance',
+        body: 'An application must be accurate and made by someone authorized to request it. Approval is at the operator’s discretion; a request may be approved, adjusted or rejected, and a certificate or personalization file may be revoked for misuse. A generated private key and a personalization file are delivered once and must be stored securely; losing them does not entitle you to a new copy.',
+      },
+      directory: {
+        title: 'Certificates and the directory',
+        body: 'Certificates, revocation lists, master lists and the hashes of revoked documents are published so that verifying terminals can build the trust chain. Do not misrepresent a published certificate or its authorization, and do not use the directory for any purpose other than verification.',
+      },
+      intellectual: {
+        title: 'Intellectual property',
+        body: 'The service, its documentation and the material it publishes remain with the operator or their respective owners. You receive only the rights needed to use the service as these terms allow.',
+      },
+      availability: {
+        title: 'Availability and liability',
+        body: 'The service is provided on a best-effort basis, without a guarantee of uninterrupted availability or of a particular result. To the extent the law allows, the operator is not liable for indirect or consequential loss. You remain responsible for verifying the documents and certificates you rely on.',
+      },
+      enforcement: {
+        title: 'Enforcement',
+        body: 'Access may be suspended, and certificates revoked, if these terms or the applicable rules are breached, or to protect the service or its users. Serious cases may be reported through the affected maintainer.',
+      },
+      changes: {
+        title: 'Changes',
+        body: 'These terms may be updated. Continued use of the service after an update means you accept the new version.',
+      },
+    },
+  },
 } as const

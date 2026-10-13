@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NButton, NCard, NText } from 'naive-ui'
+import { NCard, NText } from 'naive-ui'
 
 const { t } = useI18n()
 usePageTitle(() => t('legal.privacy.title'))
@@ -23,11 +23,7 @@ const sections = [
     <NCard>
       <NText depth="3">{{ $t('legal.updated') }}</NText>
       <LegalDoc ns="legal.privacy" :sections="sections" />
-      <NuxtLink to="/retention">
-        <NButton text type="primary" style="margin-top: 16px">
-          {{ $t('legal.retention.title') }}
-        </NButton>
-      </NuxtLink>
+      <LegalLinks current="privacy" />
     </NCard>
   </div>
 </template>
