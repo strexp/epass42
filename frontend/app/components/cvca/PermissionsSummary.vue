@@ -4,11 +4,18 @@
  * one-line overview with the full breakdown on hover (the editable control lives
  * in the application form, not in tables).
  */
-import { NTag, NTooltip } from 'naive-ui'
+import { NTooltip } from 'naive-ui'
 import { computed } from 'vue'
 import { LDS2_ROLES, type DvPermissions, type Lds2Role } from '@epass42/shared'
 
-const props = defineProps<{ permissions: DvPermissions }>()
+const props = defineProps<{
+  permissions: DvPermissions
+  /**
+   * Optional cap for the one-line summary.  Set a value (e.g. `180px`) inside
+   * table cells so the text ellipsizes instead of widening its column.
+   */
+  maxWidth?: string
+}>()
 const { t } = useI18n()
 
 const shortLabel: Record<Lds2Role, string> = {
@@ -69,9 +76,9 @@ const short = computed(() => {
 <template>
   <NTooltip trigger="hover" :disabled="empty">
     <template #trigger>
-      <NTag size="small" :bordered="false" class="epass42-perm-summary">
+      <span class="epass42-perm-summary" :style="maxWidth ? { maxWidth } : undefined">
         {{ empty ? $t('cvca.permissionNone') : short }}
-      </NTag>
+      </span>
     </template>
     <div>
       <div v-if="epassport.length > 0">
@@ -86,6 +93,11 @@ const short = computed(() => {
 
 <style scoped>
 .epass42-perm-summary {
+  display: inline-block;
   max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 </style>

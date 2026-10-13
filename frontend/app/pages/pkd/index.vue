@@ -19,6 +19,7 @@ import { COUNTRY_ALPHA3, type DvPermissions } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
 import { documentTypeValues } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
+import { formatDate } from '~/utils/datetime'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 
 interface PkdCertificate {
@@ -161,12 +162,15 @@ const dvColumns = computed(() => [
   {
     title: t('pkd.permissions'),
     key: 'permissions',
-    render: (row: PkdDv) => h(PermissionsSummary, { permissions: row.permissions }),
+    width: 180,
+    ellipsis: true,
+    render: (row: PkdDv) =>
+      h(PermissionsSummary, { permissions: row.permissions, maxWidth: '180px' }),
   },
   {
     title: t('pkd.validity'),
     key: 'validity',
-    render: (row: PkdDv) => `${row.notBefore ?? '—'} → ${row.notAfter ?? '—'}`,
+    render: (row: PkdDv) => `${formatDate(row.notBefore)} → ${formatDate(row.notAfter)}`,
   },
   {
     title: t('pkd.status'),
@@ -192,7 +196,7 @@ const dscColumns = computed(() => [
   {
     title: t('pkd.validity'),
     key: 'validity',
-    render: (row: PkdDsc) => `${row.notBefore ?? '—'} → ${row.notAfter ?? '—'}`,
+    render: (row: PkdDsc) => `${formatDate(row.notBefore)} → ${formatDate(row.notAfter)}`,
   },
   {
     title: t('pkd.url'),
@@ -215,7 +219,11 @@ const dscColumns = computed(() => [
 const revokedColumns = computed(() => [
   { title: t('pkd.hash'), key: 'hash', ellipsis: { tooltip: true } },
   { title: t('pkd.documentCode'), key: 'documentCode' },
-  { title: t('pkd.revokedAt'), key: 'revokedAt' },
+  {
+    title: t('pkd.revokedAt'),
+    key: 'revokedAt',
+    render: (row: RevokedDocument) => formatDate(row.revokedAt),
+  },
 ])
 
 const documentTypeOptions = computed(() =>

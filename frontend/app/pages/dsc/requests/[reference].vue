@@ -28,7 +28,7 @@ import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { formatMrzDate } from '~/utils/mrzDate'
-import { formatDateTime } from '~/utils/datetime'
+import { formatDate } from '~/utils/datetime'
 import { downloadText } from '~/utils/download'
 
 interface RequestMeta {
@@ -146,25 +146,25 @@ const timeline = computed(() => {
     time: string
     label: string
     type: 'default' | 'info' | 'success' | 'warning' | 'error'
-  }[] = [{ time: formatDateTime(row.createdAt), label: t('status.submitted.label'), type: 'info' }]
+  }[] = [{ time: formatDate(row.createdAt), label: t('status.submitted.label'), type: 'info' }]
   if (row.reviewedAt) {
     const approved = row.status === 'approved' || row.status === 'revoked'
     events.push({
-      time: formatDateTime(row.reviewedAt),
+      time: formatDate(row.reviewedAt),
       label: approved ? t('status.approved.label') : t('status.rejected.label'),
       type: approved ? 'success' : 'error',
     })
   }
   if (row.consumedAt) {
     events.push({
-      time: formatDateTime(row.consumedAt),
+      time: formatDate(row.consumedAt),
       label: t('status.consumed.label'),
       type: 'success',
     })
   }
   if (row.revokedAt) {
     events.push({
-      time: formatDateTime(row.revokedAt),
+      time: formatDate(row.revokedAt),
       label: t('status.revoked.label'),
       type: 'warning',
     })

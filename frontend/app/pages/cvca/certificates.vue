@@ -21,6 +21,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { downloadUrl } from '~/utils/download'
+import { formatDate } from '~/utils/datetime'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
@@ -225,7 +226,10 @@ const columns = computed(() => [
   {
     title: t('cvca.permissionsTitle'),
     key: 'permissions',
-    render: (row: Certificate) => h(PermissionsSummary, { permissions: row.permissions }),
+    width: 180,
+    ellipsis: true,
+    render: (row: Certificate) =>
+      h(PermissionsSummary, { permissions: row.permissions, maxWidth: '180px' }),
   },
   {
     title: t('common.status'),
@@ -235,7 +239,7 @@ const columns = computed(() => [
   {
     title: t('pkd.validity'),
     key: 'validity',
-    render: (row: Certificate) => `${row.notBefore ?? '—'} → ${row.notAfter ?? '—'}`,
+    render: (row: Certificate) => `${formatDate(row.notBefore)} → ${formatDate(row.notAfter)}`,
   },
   {
     title: '',
