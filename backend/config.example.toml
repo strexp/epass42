@@ -1,8 +1,23 @@
-# ePass 42 backend configuration (optional).
-#
+# ============================================================================
+# ePass 42 backend configuration
+# ============================================================================
 # Copy this file to `config.toml`; it is the only configuration source (the
-# service reads `./config.toml` by default).
+# service reads `./config.toml` by default).  Options are grouped by the role
+# or function that owns them:
+#
+#   Shared            server, sessions, limits, access control
+#   Directory   pkd   published certificates / CRLs and the LDAP layer
+#   Signing CA  csca  CSCA and its system NIA Document Signer certificate
+#   Verifying CA cvca CVCA key, authorization and Document Verifier defaults
+#   Terminal    dv    terminal certificate applications (uses cvca settings)
+#   Perso.      dsc   issuing fields, LDS2 and security mechanisms
+#   Login             OAuth/OIDC providers, one per realm
+#
+# A role's section is only read when that role is listed in `roles` below.
 
+# ============================================================================
+# Shared — server, sessions, limits
+# ============================================================================
 env = "development"
 host = "127.0.0.1"
 port = 3000
@@ -36,15 +51,47 @@ logLevel = "info"
 # service is not directly reachable.
 trustProxy = ["127.0.0.1", "::1"]
 
+# Requests per client IP and window.
 [rateLimit]
 max = 120
 windowMs = 60000
 
+# Outgoing email (delivery links and notifications).
 [smtp]
 # url = "smtps://user:pass@smtp.example.net:465"
 from = "ePass 42 <no-reply@localhost>"
 
-# CSCA (M5): bootstrap a self-signed online CSCA key when none exists.
+# ============================================================================
+# Shared — access control
+# ============================================================================
+# Administrator maintainers per realm (M4/T4.7).
+[adminMnts]
+csca = ["EXAMPLE-CSCA-MNT"]
+cvca = ["EXAMPLE-CVCA-MNT"]
+dv = ["EXAMPLE-DV-MNT"]
+dsc = ["EXAMPLE-DSC-MNT"]
+# Also accept any MNT from the identity's `mnt_by`.
+adminIncludeMntBy = false
+
+# ============================================================================
+# Directory — role `pkd`
+# ============================================================================
+# PKD directory (M9): published certificates, CRLs, revoked documents and the
+# public browse/download endpoints.
+[pkd]
+# baseDn = "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int"
+
+# Read-only LDAP compatibility layer (M9).
+[ldap]
+enabled = false
+host = "127.0.0.1"
+port = 3890
+
+# ============================================================================
+# Signing CA — role `csca`
+# ============================================================================
+# CSCA (M5): bootstrap a self-signed online CSCA key when none exists.  Enable
+# with `roles = [..., "csca"]`.
 [csca]
 commonName = "ePass 42 CSCA"
 # Organisation (O) placed in the CSCA/DSC subject names (kept identical across
@@ -63,6 +110,7 @@ pss = false
 bootstrap = true
 crlDistributionPoints = ["ldap://epass42.local/c=XD"]
 
+# The system NIA Document Signer certificate issued at startup.
 [csca.niaDsc]
 commonName = "ePass 42 NIA DSC"
 documentTypes = ["P"]
@@ -75,9 +123,18 @@ keyBits = 2048
 pss = false
 hash = "SHA-256"
 
+# Certificate Revocation List scheduling (M6).
+[crl]
+autoGenerate = true
+maxAgeDays = 90
+minIntervalHours = 48
+
+# ============================================================================
+# Verifying CA — role `cvca`
+# ============================================================================
 # CVCA (M17, Doc 9303-12 §7.2): the LDS2 authorization-PKI trust anchor.  It
 # issues card-verifiable Document Verifier (DV) certificates and provides the
-# Terminal Authentication trust point.
+# Terminal Authentication trust point.  Enable with `roles = [..., "cvca"]`.
 [cvca]
 commonName = "ePass 42 CVCA"
 # Holder mnemonic used in the CVCA Certificate Holder Reference (max 9 chars).
@@ -92,57 +149,44 @@ pss = false
 bootstrap = true
 
 # The authorization the CVCA grants (its certificate and the trust point).
-[cvca.authorization.epassport]
-dg3 = true
-dg4 = true
+[cvca.authorization]
+epassport = { dg3 = true, dg4 = true }
+travel = { read = true, write = true }
+visa = { read = true, write = true }
+biometrics = { read = true, write = true }
 
-[cvca.authorization.travel]
-read = true
-write = true
-
-[cvca.authorization.visa]
-read = true
-write = true
-
-[cvca.authorization.biometrics]
-read = true
-write = true
-
+# Document Verifier certificates issued by the CVCA.
 [cvca.dv]
 # DV public key validity in days (the profile caps it at 3 months).
 validityDays = 90
 keyBits = 2048
 pss = false
 
-# Default authorization offered in the application form.
-[cvca.dv.defaultPermissions.epassport]
-dg3 = true
-dg4 = true
-
-[cvca.dv.defaultPermissions.travel]
-read = true
-write = false
-
-[cvca.dv.defaultPermissions.visa]
-read = true
-write = false
-
-[cvca.dv.defaultPermissions.biometrics]
-read = false
-write = false
+# Default authorization offered in the DV application form.
+[cvca.dv.defaultPermissions]
+epassport = { dg3 = true, dg4 = true }
+travel = { read = true, write = false }
+visa = { read = true, write = false }
+biometrics = { read = false, write = false }
 
 # The CVCA-issued default ("system") DV that maintainers may delegate to.
 [cvca.dv.defaultDv]
 # commonName = "..."   # defaults to "<cvca.commonName> Default DV"
 holderMnemonic = "NIADV"
 
-# CRL scheduling (M6).
-[crl]
-autoGenerate = true
-maxAgeDays = 90
-minIntervalHours = 48
+# ============================================================================
+# Terminal certificates — role `dv`
+# ============================================================================
+# The DV realm (path /dv) lets Document Verifier holders apply for terminal
+# (Inspection System) certificates.  It has no dedicated options: applications
+# are signed by the DV resolved from [cvca.dv] and the maintainer's delegation.
+# Enable with `roles = [..., "dv"]`.
 
-# Server-filled issuing fields (M7/M8), editable by NIA DSC admins.
+# ============================================================================
+# Personalization — role `dsc`
+# ============================================================================
+# Server-filled issuing fields (M7/M8), editable by NIA DSC admins.  Enable
+# with `roles = [..., "dsc"]`.
 [issuing]
 issuingState = "UDN"
 issuingAuthority = "NIA"
@@ -183,9 +227,8 @@ enabled = false
 # ICC current date (YYMMDD); defaults to the personalization date.
 # currentDate = "240101"
 # Trust-point authorization; defaults to the CVCA's [cvca.authorization].
-# [issuing.security.ta.authorization.epassport]
-# dg3 = true
-# dg4 = true
+# [issuing.security.ta.authorization]
+# epassport = { dg3 = true, dg4 = true }
 
 # dn42 whois used to resolve a client IP to its maintainer(s).  The endpoint
 # /dsc/jurisdiction looks up the IP's mnt-by to tell applicants whose
@@ -199,26 +242,11 @@ whoisTimeoutMs = 5000
 whoisCacheTtlMs = 300000
 whoisCacheMaxEntries = 1024
 
-# PKD directory (M9).
-[pkd]
-# baseDn = "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int"
-
-# Read-only LDAP compatibility layer (M9).
-[ldap]
-enabled = false
-host = "127.0.0.1"
-port = 3890
-
-# Administrator maintainers per realm (M4/T4.7).
-[adminMnts]
-csca = ["EXAMPLE-CSCA-MNT"]
-cvca = ["EXAMPLE-CVCA-MNT"]
-dv = ["EXAMPLE-DV-MNT"]
-dsc = ["EXAMPLE-DSC-MNT"]
-# Also accept any MNT from the identity's `mnt_by`.
-adminIncludeMntBy = false
-
-# OAuth/OIDC providers.  The `dn42` claim carries the ASN and maintainer data.
+# ============================================================================
+# Login — OAuth/OIDC providers, one per realm
+# ============================================================================
+# The `dn42` claim carries the ASN and maintainer data.  A realm may list more
+# than one provider; the `alias` names the login method in the UI.
 [[oauthProviders]]
 realm = "csca"
 issuer = "https://auth.example.net"
@@ -233,19 +261,7 @@ enabled = true
 [oauthProviders.claimMap]
 dn42 = "dn42"
 
-[[oauthProviders]]
-realm = "dsc"
-issuer = "https://auth.example.net"
-clientId = "epass42-dsc"
-clientSecret = "replace-me"
-alias = "auth"
-scopes = ["openid", "profile", "email", "dn42"]
-enabled = true
-
-[oauthProviders.claimMap]
-dn42 = "dn42"
-
-# CVCA realm login (maintainers applying for DV certificates).
+# Verification realm (maintainers applying for DV certificates).
 [[oauthProviders]]
 realm = "cvca"
 issuer = "https://auth.example.net"
@@ -258,11 +274,24 @@ enabled = true
 [oauthProviders.claimMap]
 dn42 = "dn42"
 
-# DV realm login (Document Verifier holders applying for terminal certificates).
+# Terminal realm (Document Verifier holders applying for terminal certificates).
 [[oauthProviders]]
 realm = "dv"
 issuer = "https://auth.example.net"
 clientId = "epass42-dv"
+clientSecret = "replace-me"
+alias = "auth"
+scopes = ["openid", "profile", "email", "dn42"]
+enabled = true
+
+[oauthProviders.claimMap]
+dn42 = "dn42"
+
+# Personalization realm (issuing organisations).
+[[oauthProviders]]
+realm = "dsc"
+issuer = "https://auth.example.net"
+clientId = "epass42-dsc"
 clientSecret = "replace-me"
 alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]
