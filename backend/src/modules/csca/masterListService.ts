@@ -12,6 +12,7 @@ import {
   createMasterListSigner,
   generateRsaKeyPair,
   parseCertificatePem,
+  type HashName,
 } from '@epass42/pki'
 
 import { cscaKey, dscCert, masterList } from '../../db/schema'
@@ -45,9 +46,13 @@ export class MasterListService {
     const { config, db, keks } = this.ctx
     const csca = await this.keys.ensure()
     if (!csca) throw new Error('no CSCA key available')
-    const cscaPair = await this.keys.loadKeyPair(csca)
+    const cscaPair = await this.keys.loadKeyPair(csca, config.csca.hash as HashName)
     const now = new Date()
-    const key = await generateRsaKeyPair({ modulusLength: config.csca.niaDsc.keyBits, pss: false })
+    const key = await generateRsaKeyPair({
+      modulusLength: config.csca.niaDsc.keyBits,
+      pss: false,
+      hash: config.csca.niaDsc.hash as HashName,
+    })
     const generated = await createMasterListSigner(
       {
         commonName: `${config.csca.commonName} ML Signer`,
@@ -58,10 +63,14 @@ export class MasterListService {
         notBefore: now,
         notAfter: addYears(now, config.csca.niaDsc.validityYears),
         crlDistributionPoints: config.csca.crlDistributionPoints,
-        pss: false,
+        hash: config.csca.niaDsc.hash as HashName,
       },
       key,
-      { certificate: parseCertificatePem(csca.certPem), key: cscaPair },
+      {
+        certificate: parseCertificatePem(csca.certPem),
+        key: cscaPair,
+        hash: config.csca.hash as HashName,
+      },
     )
     const result = db
       .insert(dscCert)
@@ -73,6 +82,7 @@ export class MasterListService {
         source: 'ml-signer',
         certPem: generated.pem,
         keyRef: sealPrivateKey(key.pkcs8, keks[0]!),
+        keyAlgorithm: 'RSASSA-PKCS1-v1_5',
         status: 'active',
         notBefore: generated.certificate.notBefore.toISOString(),
         notAfter: generated.certificate.notAfter.toISOString(),
@@ -95,7 +105,10 @@ export class MasterListService {
   async generate(): Promise<MasterListRow> {
     const { db } = this.ctx
     const signer = await this.ensureSigner()
-    const signerPair = await this.dscIssuance.loadDscKeyPair(signer)
+    const signerPair = await this.dscIssuance.loadDscKeyPair(
+      signer,
+      this.ctx.config.csca.niaDsc.hash as HashName,
+    )
     const cscaCertificates = db
       .select()
       .from(cscaKey)
@@ -105,6 +118,7 @@ export class MasterListService {
       cscaCertificates,
       signerCertificate: new Uint8Array(parseCertificatePem(signer.certPem).rawData),
       signerPrivateKey: signerPair.privateKey,
+      hash: this.ctx.config.csca.niaDsc.hash as HashName,
       signingTime: new Date(),
     })
     const result = db

@@ -27,6 +27,7 @@ interface RealmState {
 export const useAuthStore = defineStore('auth', () => {
   const realms = reactive<Record<Realm, RealmState>>({
     csca: { me: null, loading: false, loaded: false },
+    cvca: { me: null, loading: false, loaded: false },
     dsc: { me: null, loading: false, loaded: false },
   })
 

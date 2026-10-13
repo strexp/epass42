@@ -40,6 +40,10 @@ export default {
       'No approved Document Signer certificate is available for this organisation yet.',
     no_private_key: 'This certificate has no downloadable private key.',
     private_key_consumed: 'The private key has already been downloaded and deleted.',
+    dv_key_unavailable:
+      'This Document Verifier key is no longer held here, so terminal certificates cannot be issued.',
+    ta_requires_cvca:
+      'Terminal Authentication needs an ECDSA CVCA key. Enable the CVCA role or set cvca.algorithm = "ecdsa".',
     dg2_too_large: 'The photo is too large. Choose a smaller image or reduce its quality.',
     passport_not_active: 'This passport is not active.',
   },

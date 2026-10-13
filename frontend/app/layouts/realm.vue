@@ -4,7 +4,10 @@ import type { Realm } from '@epass42/shared'
 
 /** A realm-aware layout shared by the certificate and personalization pages. */
 const route = useRoute()
-const realm = computed<Realm>(() => (route.path.startsWith('/csca') ? 'csca' : 'dsc'))
+const realm = computed<Realm>(() => {
+  if (route.path.startsWith('/cvca')) return 'cvca'
+  return route.path.startsWith('/csca') ? 'csca' : 'dsc'
+})
 </script>
 
 <template>

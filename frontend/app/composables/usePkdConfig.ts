@@ -1,11 +1,11 @@
-import type { Role } from '@epass42/shared'
+import type { Realm, Role } from '@epass42/shared'
 
 /** The `/api/config` payload. */
 export interface PkdConfig {
   roles: Role[]
   countryAlpha2: string
   countryAlpha3: string
-  oauthProviders: Record<'csca' | 'dsc', { id: number; alias: string; issuer: string }[]>
+  oauthProviders: Record<Realm, { id: number; alias: string; issuer: string }[]>
 }
 
 let cached: PkdConfig | null = null

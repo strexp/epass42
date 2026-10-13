@@ -73,13 +73,12 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: DscRouteDeps)
               aa: z
                 .object({
                   enabled: z.boolean().optional(),
-                  algorithm: z.enum(['rsaSha1']).optional(),
+                  algorithm: z.enum(['rsaSha1', 'rsaSha256', 'ecdsa']).optional(),
                 })
                 .optional(),
               ca: z
                 .object({
                   enabled: z.boolean().optional(),
-                  algorithm: z.enum(['ecdh3des']).optional(),
                   keyId: z.number().int().min(0).max(255).optional(),
                 })
                 .optional(),

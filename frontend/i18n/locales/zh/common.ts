@@ -10,6 +10,7 @@ export default {
   nav: {
     home: '首页',
     csca: '签发证书',
+    cvca: '验证证书',
     dsc: '证件个性化',
     pkd: '目录查询',
     help: '使用指南',
@@ -76,6 +77,7 @@ export default {
   home: {
     intro: '国家移民管理局的官方证件签发服务。',
     cscaCard: '为您的机构申请文档签名证书。',
+    cvcaCard: '申请文档验证者（DV）证书，以授权读取或写入 LDS2 数据。',
     dscCard: '申请、审核并交付护照与身份证件的个性化文件。',
     pkdCard: '查询已发布的证书、吊销列表与吊销证件。',
     public: '公开',
@@ -85,6 +87,7 @@ export default {
   },
   auth: {
     realmCsca: '证书业务',
+    realmCvca: '验证业务',
     realmDsc: '证件个性化业务',
     signedInAs: '已登录：',
     activeMnt: '当前 MNT',

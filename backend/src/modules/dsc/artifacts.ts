@@ -16,6 +16,7 @@ import { artifact, dscCert, signRequest } from '../../db/schema'
 import { randomToken } from '../../crypto/secret'
 import { nowIso } from '../../util/time'
 import { currentNiaDsc, type CscaService } from '../csca/service'
+import type { CvcaService } from '../cvca/service'
 import { mntIncludes } from '../jurisdiction/whois'
 import {
   buildPersoSigning,
@@ -32,6 +33,7 @@ export class DscArtifactService {
     private readonly db: Db,
     private readonly config: AppConfig,
     private readonly csca: CscaService,
+    private readonly cvca: CvcaService,
     private readonly settings: DscSettingsService,
     private readonly requests: DscRequestService,
   ) {}
@@ -51,12 +53,20 @@ export class DscArtifactService {
           403,
         )
       }
-      return { certPem: cert.certPem, keyPair: await this.csca.loadDscKeyPair(cert) }
+      return {
+        certPem: cert.certPem,
+        keyPair: await this.csca.loadDscKeyPair(cert, this.config.csca.niaDsc.hash),
+        hash: this.config.csca.niaDsc.hash,
+      }
     }
     let nia = currentNiaDsc(this.db)
     if (!nia) nia = await this.csca.ensureNiaDsc()
     if (!nia) throw new AppError('certificate_not_found', 'no NIA DSC available', 500)
-    return { certPem: nia.certPem, keyPair: await this.csca.loadDscKeyPair(nia) }
+    return {
+      certPem: nia.certPem,
+      keyPair: await this.csca.loadDscKeyPair(nia, this.config.csca.niaDsc.hash),
+      hash: this.config.csca.niaDsc.hash,
+    }
   }
 
   /** Builds and stores the perso artifact for an approved request. */
@@ -67,7 +77,8 @@ export class DscArtifactService {
     const payload = JSON.parse(row.payloadJson) as SignRequest
     const profile = this.settings.issuingDefaults(overrides)
     const material = await this.selectSigningMaterial(row)
-    const built = await buildPersoSigning(payload, profile, material)
+    const trustAnchor = profile.security.ta.enabled ? this.cvca.trustAnchor() : undefined
+    const built = await buildPersoSigning(payload, profile, material, trustAnchor)
 
     // Self-check: re-verify the CMS signature and every data group hash.
     const check = await verifySod(

@@ -11,8 +11,8 @@ publicUrl = "http://localhost:3000"
 # same-origin deployment.
 frontendUrl = "http://localhost:3001"
 
-# Enabled roles: any subset of ["pkd", "csca", "dsc"].
-roles = ["pkd", "csca", "dsc"]
+# Enabled roles: any subset of ["pkd", "csca", "cvca", "dsc"].
+roles = ["pkd", "csca", "cvca", "dsc"]
 
 databasePath = "./data/epass42.db"
 runMigrations = true
@@ -52,6 +52,9 @@ commonName = "ePass 42 CSCA"
 organization = "ePass 42"
 # Optional organisational unit (OU) in the subject names; leave unset to omit.
 organizationalUnit = "ePass 42 PKI"
+# Key algorithm: "rsa" or "ecdsa" (Doc 9303-12 §4.1.5).  Curve for ecdsa.
+algorithm = "rsa"
+curve = "P-256"
 validityYears = 13
 privateKeyUsageYears = 4
 keyBits = 4096
@@ -63,10 +66,70 @@ crlDistributionPoints = ["ldap://epass42.local/c=XD"]
 [csca.niaDsc]
 commonName = "ePass 42 NIA DSC"
 documentTypes = ["P"]
+# The DSC key algorithm may differ from the CSCA's (Doc 9303-12 §4.1.5).
+algorithm = "rsa"
+curve = "P-256"
 validityYears = 10
 privateKeyUsageYears = 3
 keyBits = 2048
 pss = false
+hash = "SHA-256"
+
+# CVCA (M17, Doc 9303-12 §7.2): the LDS2 authorization-PKI trust anchor.  It
+# issues card-verifiable Document Verifier (DV) certificates and provides the
+# Terminal Authentication trust point.
+[cvca]
+commonName = "ePass 42 CVCA"
+# Holder mnemonic used in the CVCA Certificate Holder Reference (max 9 chars).
+holderMnemonic = "CVCA"
+# Key algorithm: "ecdsa" (P-256, required for Terminal Authentication) or "rsa".
+algorithm = "ecdsa"
+# CVCA public key validity in months (the profile caps it at 3 years).
+validityMonths = 36
+keyBits = 2048
+hash = "SHA-256"
+pss = false
+bootstrap = true
+
+# The authorization the CVCA grants (its certificate and the trust point).
+[cvca.authorization.epassport]
+dg3 = true
+dg4 = true
+
+[cvca.authorization.travel]
+read = true
+write = true
+
+[cvca.authorization.visa]
+read = true
+write = true
+
+[cvca.authorization.biometrics]
+read = true
+write = true
+
+[cvca.dv]
+# DV public key validity in days (the profile caps it at 3 months).
+validityDays = 90
+keyBits = 2048
+pss = false
+
+# Default authorization offered in the application form.
+[cvca.dv.defaultPermissions.epassport]
+dg3 = true
+dg4 = true
+
+[cvca.dv.defaultPermissions.travel]
+read = true
+write = false
+
+[cvca.dv.defaultPermissions.visa]
+read = true
+write = false
+
+[cvca.dv.defaultPermissions.biometrics]
+read = false
+write = false
 
 # CRL scheduling (M6).
 [crl]
@@ -98,15 +161,26 @@ ecdhGm3des = true
 ecdhGmAes128 = true
 
 [issuing.security.aa]
-# Active Authentication (LDS1 only); card42's card signs with SHA-1.
+# Active Authentication (LDS1 only).  Algorithms: rsaSha1 | rsaSha256 | ecdsa.
 enabled = false
 algorithm = "rsaSha1"
 
 [issuing.security.ca]
 # Chip Authentication shared by LDS1 and LDS2 (forced on when LDS2 is emitted).
+# card42 advertises both ECDH 3DES and AES-128; the terminal picks.
 enabled = false
-algorithm = "ecdh3des"
 keyId = 1
+
+[issuing.security.ta]
+# Terminal Authentication: personalize a CVCA trust point and advertise id-TA.
+# Requires a running CVCA with an "ecdsa" key (see [cvca]).
+enabled = false
+# ICC current date (YYMMDD); defaults to the personalization date.
+# currentDate = "240101"
+# Trust-point authorization; defaults to the CVCA's [cvca.authorization].
+# [issuing.security.ta.authorization.epassport]
+# dg3 = true
+# dg4 = true
 
 # dn42 whois used to resolve a client IP to its maintainer(s).  The endpoint
 # /dsc/jurisdiction looks up the IP's mnt-by to tell applicants whose
@@ -133,6 +207,7 @@ port = 3890
 # Administrator maintainers per realm (M4/T4.7).
 [adminMnts]
 csca = ["EXAMPLE-CSCA-MNT"]
+cvca = ["EXAMPLE-CVCA-MNT"]
 dsc = ["EXAMPLE-DSC-MNT"]
 # Also accept any MNT from the identity's `mnt_by`.
 adminIncludeMntBy = false
@@ -156,6 +231,19 @@ dn42 = "dn42"
 realm = "dsc"
 issuer = "https://auth.example.net"
 clientId = "epass42-dsc"
+clientSecret = "replace-me"
+alias = "auth"
+scopes = ["openid", "profile", "email", "dn42"]
+enabled = true
+
+[oauthProviders.claimMap]
+dn42 = "dn42"
+
+# CVCA realm login (maintainers applying for DV certificates).
+[[oauthProviders]]
+realm = "cvca"
+issuer = "https://auth.example.net"
+clientId = "epass42-cvca"
 clientSecret = "replace-me"
 alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]

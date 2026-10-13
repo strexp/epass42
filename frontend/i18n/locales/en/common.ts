@@ -11,6 +11,7 @@ export default {
   nav: {
     home: 'Home',
     csca: 'Signing certificates',
+    cvca: 'Verifying certificates',
     dsc: 'Personalization',
     pkd: 'Directory',
     help: 'Help',
@@ -77,6 +78,8 @@ export default {
   home: {
     intro: 'Official document-signing service of the National Immigration Agency.',
     cscaCard: 'Apply for a Document Signer certificate for your organisation.',
+    cvcaCard:
+      'Apply for a Document Verifier certificate to authorize reading or writing LDS2 data.',
     dscCard: 'Request, review and deliver personalization files for passports and identity cards.',
     pkdCard: 'Verify published certificates, revocation lists and revoked documents.',
     public: 'Public',
@@ -86,6 +89,7 @@ export default {
   },
   auth: {
     realmCsca: 'Certificate realm',
+    realmCvca: 'Verification realm',
     realmDsc: 'Personalization realm',
     signedInAs: 'Signed in as',
     activeMnt: 'Active MNT',

@@ -26,18 +26,41 @@ import {
   fromBase64,
   generateP256KeyPair,
   generateRsaKeyPair,
+  hash as hashBytes,
   pemToDer,
   renderEmrtdScript,
   sha256,
   validateDg2,
   wrapDg3,
   wrapDg4,
-  type RsaKeyPair,
+  type CertKeyPair,
+  type HashName,
 } from '@epass42/pki'
-import type { SecurityOptions, SignRequest } from '@epass42/shared'
-import { AppError } from '@epass42/shared'
+import {
+  AppError,
+  encodeAuthorization,
+  hasAnyPermission,
+  type DvPermissions,
+  type SecurityOptions,
+  type SignRequest,
+} from '@epass42/shared'
 
 import { isLds2Enabled, mergeSecurity, toSecurityOverlay } from './securityOptions'
+
+/** A CVCA trust anchor used for Terminal Authentication personalization. */
+export interface TaTrustAnchor {
+  /** Certification Authority Reference. */
+  car: string
+  /** Effective Date, `YYMMDD`. */
+  effective: string
+  /** The CVCA grant used when the profile does not set its own. */
+  authorization: DvPermissions
+  /** EC: uncompressed public point (`04 || X || Y`). */
+  publicKey?: Uint8Array
+  /** RSA-PSS: modulus and exponent. */
+  modulus?: Uint8Array
+  exponent?: Uint8Array
+}
 
 /** The LDS2 roles a document may emit (empty applications by default). */
 export type Lds2Role = 'travel' | 'visa' | 'biometrics'
@@ -66,7 +89,9 @@ export interface IssuingDefaults {
 /** The Document Signer material used to sign EF.SOD / EF.CardSecurity. */
 export interface SigningMaterial {
   certPem: string
-  keyPair: RsaKeyPair
+  keyPair: CertKeyPair
+  /** Hash for the SOD/CMS signature (defaults to SHA-256). */
+  hash?: HashName
 }
 
 /** The built personalization artifacts. */
@@ -98,6 +123,11 @@ export function personalizationTime(date = new Date()): string {
 /** Formats a date as `YYYYMMDD`. */
 export function compactDate(date = new Date()): string {
   return personalizationTime(date).slice(0, 8)
+}
+
+/** Formats a date as `YYMMDD` (CV-certificate dates). */
+export function yymmdd(date = new Date()): string {
+  return compactDate(date).slice(2)
 }
 
 /** Computes the MRZ document expiry (YYMMDD) from a validity in years. */
@@ -205,6 +235,7 @@ export async function buildPersoSigning(
   request: SignRequest,
   profile: IssuingDefaults,
   dsc: SigningMaterial,
+  trustAnchor?: TaTrustAnchor,
 ): Promise<PersoBuildResult> {
   const groups = buildDataGroups(request, profile)
   // Security mechanisms are administrator defaults the applicant does not see.
@@ -212,6 +243,18 @@ export async function buildPersoSigning(
 
   const lds2Enabled = isLds2Enabled(profile.lds2)
   const paceEnabled = security.pace.ecdhGm3des || security.pace.ecdhGmAes128
+  const taEnabled = security.ta.enabled
+  if (taEnabled && !trustAnchor) {
+    throw new AppError(
+      'ta_requires_cvca',
+      'Terminal Authentication needs an ECDSA CVCA trust anchor',
+      500,
+    )
+  }
+  const taAuthorization =
+    taEnabled && security.ta.authorization && hasAnyPermission(security.ta.authorization)
+      ? security.ta.authorization
+      : trustAnchor?.authorization
   // EF.CardAccess and EF.CardSecurity live in the master file (Doc 9303-10
   // §3.11.3/§3.11.4), so LDS1 and the LDS2 applications share one CA key pair
   // and one EF.CardSecurity.  Chip Authentication is emitted when the
@@ -230,24 +273,37 @@ export async function buildPersoSigning(
     throw new AppError('no_security_mechanism', 'at least one security mechanism is required', 400)
   }
 
-  // EF.CardAccess advertises the selected PACE mechanisms, AA (if enabled) and
-  // Chip Authentication (if enabled).
+  // EF.CardAccess advertises the selected PACE mechanisms, AA (only the ECDSA
+  // variant needs an ActiveAuthenticationInfo) and Chip Authentication.  Both CA
+  // profiles (ECDH 3DES and AES-128) are advertised, matching card42.
   const cardAccess = buildCardAccess({
     paceEcdhGm3des: security.pace.ecdhGm3des,
     paceEcdhGmAes128: security.pace.ecdhGmAes128,
     caEcdh3des: caEnabled,
-    caEcdhAes128: false,
+    caEcdhAes128: caEnabled,
     caKeyId: security.ca.keyId,
-    aa: security.aa.enabled,
-    aaSignatureAlgOid: AA_SIGNATURE_ALG_OIDS[security.aa.algorithm],
+    aa: security.aa.enabled && security.aa.algorithm === 'ecdsa',
+    ta: taEnabled,
+    aaSignatureAlgOid: AA_SIGNATURE_ALG_OIDS.ecdsaSha256,
   })
 
-  // Active Authentication: RSA-2048 key; only the public key is published.
+  // Active Authentication: RSA-2048 (ISO/IEC 9796-2, SHA-1 or SHA-256) or a
+  // P-256 ECDSA key.  Only the public key is published (DG15).
   let aaPrivateKey: Uint8Array | undefined
+  let aaEcKey: Uint8Array | undefined
+  let aaAlgorithm: 'sha1' | 'sha256' | 'ecdsa' | undefined
   if (security.aa.enabled) {
-    const aa = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
-    groups.push({ number: 15, bytes: buildDg15(aa.spki) })
-    aaPrivateKey = aaPrivateKeyValue(aa.modulus, aa.privateExponent)
+    if (security.aa.algorithm === 'ecdsa') {
+      const aa = generateP256KeyPair()
+      groups.push({ number: 15, bytes: buildDg15(aa.spki) })
+      aaEcKey = aa.scalar
+      aaAlgorithm = 'ecdsa'
+    } else {
+      const aa = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+      groups.push({ number: 15, bytes: buildDg15(aa.spki) })
+      aaPrivateKey = aaPrivateKeyValue(aa.modulus, aa.privateExponent)
+      aaAlgorithm = security.aa.algorithm === 'rsaSha256' ? 'sha256' : 'sha1'
+    }
   }
 
   // Chip Authentication: one P-256 key pair shared by every role.  The private
@@ -266,6 +322,7 @@ export async function buildPersoSigning(
       caSecurityObject,
       pemToDer(dsc.certPem),
       dsc.keyPair.privateKey,
+      dsc.hash ?? 'SHA-256',
     )
   }
 
@@ -274,15 +331,20 @@ export async function buildPersoSigning(
   // Authentication it repeats the EF.CardSecurity eContent verbatim, i.e. the
   // EF.CardAccess SecurityInfos plus the chip's static CA public key; with only
   // Active Authentication there is no CA public key, so it repeats EF.CardAccess.
-  if (caEnabled || security.aa.enabled) {
+  if (caEnabled || security.aa.enabled || taEnabled) {
     groups.push({ number: 14, bytes: buildDg14(caSecurityObject ?? cardAccess) })
   }
 
   groups.sort((a, b) => a.number - b.number)
 
-  // EF.SOD over the SHA-256 hashes of every DG.
-  const hashes = groups.map((group) => ({ number: group.number, hash: sha256(group.bytes) }))
-  const sod = await buildSod(hashes, pemToDer(dsc.certPem), dsc.keyPair.privateKey)
+  // EF.SOD over the data-group hashes (the LDS Security Object digest algorithm
+  // matches the SOD signature hash).
+  const sodHash = dsc.hash ?? 'SHA-256'
+  const hashes = groups.map((group) => ({
+    number: group.number,
+    hash: hashBytes(sodHash, group.bytes),
+  }))
+  const sod = await buildSod(hashes, pemToDer(dsc.certPem), dsc.keyPair.privateKey, sodHash)
 
   const sections: Parameters<typeof renderEmrtdScript>[0] = [
     {
@@ -296,9 +358,27 @@ export async function buildPersoSigning(
       dataGroups: groups,
       sod,
       aaPrivateKey,
+      aaEcKey,
+      aaAlgorithm,
       caScalar,
       cardAccess,
       cardSecurity,
+      // Terminal Authentication: the ICC current date and the CVCA trust point
+      // (package-shared on the card, so personalizing LDS1 suffices).
+      taDate: taEnabled ? (security.ta.currentDate ?? yymmdd(new Date())) : undefined,
+      trustPoints:
+        taEnabled && trustAnchor
+          ? [
+              {
+                car: trustAnchor.car,
+                effective: trustAnchor.effective,
+                authorization: encodeAuthorization(taAuthorization ?? trustAnchor.authorization),
+                ...(trustAnchor.publicKey
+                  ? { publicKey: trustAnchor.publicKey }
+                  : { modulus: trustAnchor.modulus, exponent: trustAnchor.exponent }),
+              },
+            ]
+          : undefined,
     },
   ]
 

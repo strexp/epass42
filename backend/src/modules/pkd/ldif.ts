@@ -26,8 +26,9 @@ function wrap(value: string): string[] {
 function entryFor(config: AppConfig, object: PkdObject): string {
   const base = baseDn(config)
   const lines: string[] = []
-  if (object.kind === 'csca') {
-    lines.push(`dn: cn=${object.cn},ou=csca,${base}`)
+  if (object.kind === 'csca' || object.kind === 'cvca' || object.kind === 'dv') {
+    const ou = object.kind === 'csca' ? 'csca' : object.kind === 'cvca' ? 'cvca' : 'dv'
+    lines.push(`dn: cn=${object.cn},ou=${ou},${base}`)
     lines.push(
       'objectClass: top',
       'objectClass: person',
@@ -75,6 +76,16 @@ export function buildLdif(db: Db, config: AppConfig): string {
     'objectClass: top',
     'objectClass: organizationalUnit',
     'ou: masterlist',
+    '',
+    `dn: ou=cvca,${base}`,
+    'objectClass: top',
+    'objectClass: organizationalUnit',
+    'ou: cvca',
+    '',
+    `dn: ou=dv,${base}`,
+    'objectClass: top',
+    'objectClass: organizationalUnit',
+    'ou: dv',
     '',
   ]
   const entries = listObjects(db, config).map(entryFor.bind(null, config))

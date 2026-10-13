@@ -23,7 +23,7 @@ export const oauthProvider = sqliteTable(
   'oauth_provider',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    realm: text('realm', { enum: ['csca', 'dsc'] }).notNull(),
+    realm: text('realm', { enum: ['csca', 'cvca', 'dsc'] }).notNull(),
     issuer: text('issuer').notNull(),
     clientId: text('client_id').notNull(),
     scopes: text('scopes'),
@@ -144,6 +144,8 @@ export const dscCert = sqliteTable('dsc_cert', {
   source: text('source').notNull(),
   certPem: text('cert_pem').notNull(),
   keyRef: text('key_ref'),
+  /** Stored key algorithm/curve of the subject key (e.g. `ECDSA-P256`). */
+  keyAlgorithm: text('key_algorithm'),
   /** `nia_generated` (system key) or `user_uploaded` (no stored key). */
   keyMode: text('key_mode'),
   issuancePolicy: text('issuance_policy'),
@@ -153,6 +155,112 @@ export const dscCert = sqliteTable('dsc_cert', {
   notAfter: text('not_after'),
   revokedAt: text('revoked_at'),
   revokeReason: text('revoke_reason'),
+  createdAt: text('created_at').notNull(),
+})
+
+/* ------------------------------------------------------------------ *
+ * CVCA (LDS2 authorization PKI, Doc 9303-12 §7.2)
+ * ------------------------------------------------------------------ */
+
+export const cvcaKey = sqliteTable('cvca_key', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  /**
+   * The 16-character Certificate Holder Reference (CHR).  Not unique: a CVCA
+   * link certificate and the self-signed root it chains to certify the same
+   * key, so they share a CHR.  The DER fingerprint is the unique identity.
+   */
+  holderReference: text('holder_reference').notNull(),
+  /** SHA-256 fingerprint of the DER certificate (unique per certificate). */
+  fingerprintSha256: text('fingerprint_sha256').notNull().unique(),
+  /** The Certification Authority Reference (CAR) that signed this key. */
+  authorityReference: text('authority_reference').notNull(),
+  subjectCn: text('subject_cn'),
+  keyAlgorithm: text('key_algorithm').notNull(),
+  /** The DER-encoded card-verifiable certificate (`7F21`). */
+  certDer: blob('cert_der', { mode: 'buffer' }).notNull(),
+  keyRef: text('key_ref').notNull(),
+  /** `current`, `link` or `retired`. */
+  status: text('status').notNull().default('current'),
+  isCurrent: integer('is_current', { mode: 'boolean' }).notNull().default(false),
+  notBefore: text('not_before'),
+  notAfter: text('not_after'),
+  createdAt: text('created_at').notNull(),
+})
+
+export const dvApplication = sqliteTable('dv_application', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  mnt: text('mnt'),
+  applicantAccountId: integer('applicant_account_id').references(() => account.id),
+  ip: text('ip'),
+  keyMode: text('key_mode').notNull(),
+  subjectCn: text('subject_cn'),
+  holderMnemonic: text('holder_mnemonic'),
+  csrPem: text('csr_pem'),
+  publicKeyPem: text('public_key_pem'),
+  /** The requested DV trust class: `domestic` or `foreign`. */
+  dvClass: text('dv_class').notNull().default('domestic'),
+  /** The requested LDS2 read/write permissions (JSON). */
+  permissionsJson: text('permissions_json'),
+  validityDays: integer('validity_days'),
+  applicationUrl: text('application_url'),
+  notes: text('notes'),
+  status: text('status').notNull().default('submitted'),
+  /** The administrator's permission override applied at approval (JSON). */
+  overridePermissionsJson: text('override_permissions_json'),
+  /** The administrator's DV-class override applied at approval. */
+  overrideDvClass: text('override_dv_class'),
+  reviewedBy: integer('reviewed_by'),
+  reviewedAt: text('reviewed_at'),
+  rejectReason: text('reject_reason'),
+  createdAt: text('created_at').notNull(),
+})
+
+export const dvCert = sqliteTable('dv_cert', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  cvcaKeyId: integer('cvca_key_id').references(() => cvcaKey.id),
+  /** The 16-character Certificate Holder Reference (CHR), unique per DV. */
+  holderReference: text('holder_reference').notNull().unique(),
+  authorityReference: text('authority_reference').notNull(),
+  subjectCn: text('subject_cn'),
+  mnt: text('mnt'),
+  source: text('source').notNull(),
+  /** The DER-encoded card-verifiable certificate (`7F21`). */
+  certDer: blob('cert_der', { mode: 'buffer' }).notNull(),
+  keyRef: text('key_ref'),
+  /** `nia_generated` (system key) or `user_uploaded` (no stored key). */
+  keyMode: text('key_mode'),
+  /** The DV trust class: `domestic` or `foreign`. */
+  dvClass: text('dv_class').notNull().default('domestic'),
+  /** The granted LDS2 read/write permissions (JSON). */
+  permissionsJson: text('permissions_json'),
+  applicationUrl: text('application_url'),
+  status: text('status').notNull().default('active'),
+  notBefore: text('not_before'),
+  notAfter: text('not_after'),
+  createdAt: text('created_at').notNull(),
+})
+
+/**
+ * Terminal (Inspection System) certificates issued by a DV for Terminal
+ * Authentication (Doc 9303-11 §7.1).  Signed by the DV certificate's key.
+ */
+export const terminalCert = sqliteTable('terminal_cert', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  dvCertId: integer('dv_cert_id').references(() => dvCert.id),
+  /** The 16-character Certificate Holder Reference (CHR), unique per terminal. */
+  holderReference: text('holder_reference').notNull().unique(),
+  authorityReference: text('authority_reference').notNull(),
+  subjectCn: text('subject_cn'),
+  mnt: text('mnt'),
+  source: text('source').notNull(),
+  /** The DER-encoded card-verifiable certificate (`7F21`). */
+  certDer: blob('cert_der', { mode: 'buffer' }).notNull(),
+  keyRef: text('key_ref'),
+  keyMode: text('key_mode'),
+  permissionsJson: text('permissions_json'),
+  status: text('status').notNull().default('active'),
+  notBefore: text('not_before'),
+  notAfter: text('not_after'),
   createdAt: text('created_at').notNull(),
 })
 

@@ -89,6 +89,7 @@ epass42/
 | M14    | 测试与交叉验证                                                                             | 进行中 |
 | M15    | 部署、文档、发布                                                                           | 待办   |
 | M16    | UX 与标识重构（公众提示/降技术细节、路由化、审核详情页、DSC 去数字 ID、隐藏 review queue） | 完成   |
+| M17    | CVCA 角色（LDS2 授权 PKI：CV 证书 / DV 申请/审核/签发、权限覆盖、PKD CVCA/DV 列表）        | 完成   |
 
 ---
 
@@ -240,29 +241,69 @@ epass42/
 
 ---
 
+## 19. M17 — CVCA（LDS2 授权 PKI）
+
+> 依据 Doc 9303-12 §3.2/§4.2/§7.2：CVCA 是 LDS2 授权 PKI 的信任锚，签发卡片可验证
+> （ISO/IEC 7816 CV）DV 证书；DV 再向终端签发证书。CVCA 与 CSCA 必须使用不同密钥对。
+
+- [x] T17.1 `packages/pki/src/cvc/`：CV 证书（`7F21`/`7F4E`/`7F4C`/`5F20`/`42`/`5F25`/`5F24`）
+      的构造与解析、RSA 公钥数据对象（`7F49`）、CHAT 相对授权（角色位 `C0`=CVCA、`80`=DV，LDS2 读写位）、
+      签名（对证书体 DER 签名）、自签 CVCA、CVCA 链接证书、DV 证书。
+- [x] T17.2 新 realm `cvca` 与新角色 `cvca`（OAuth 登录、`adminMnts.cvca`、PKD 角色、前端导航/首页/`/cvca` 页面）。
+- [x] T17.3 数据表 `cvca_key`、`dv_application`、`dv_cert`（`cert_der` 存 CV 证书；DV 类别 + 权限 JSON）。
+- [x] T17.4 后端 `/cvca`（仿 CSCA）：DV 申请/审核/签发（`POST /cvca/applications/:id/approve` 可带
+      `permissions` 与 `dvClass` 覆盖申请人请求）、CVCA 密钥轮换（`POST /cvca/keys/rollover`，链接证书）、一次性私钥导出；CV
+      证书**无吊销机制**（规范如此）；CVCA 证书列表经 PKD 查询（不设 `/cvca/keys`）。
+- [x] T17.5 PKD：`/pkd/cvca`、`/pkd/dvs`、`/pkd/objects/:id.<der|pem>`、LDIF/LDAP 的 `ou=cvca`、`ou=dv`。
+- [x] T17.6 前端：DV 类别（国内/国外）与权限编辑器（travel/visa/biometrics × 读/写）、申请向导、审核（可覆盖类别与权限）、DV 证书列表；PKD 标签页（签发 CA / 验证 CA / 文档验证者）。
+- [x] T17.7 测试：`packages/pki/src/cvc/cvc.spec.ts`、`backend/src/modules/cvca/cvca.spec.ts`。
+- [x] T17.8 同步 card42 最新 TA（Doc 9303-11 §7.1）：`SecurityInfo` 的 ChipAuthenticationInfo version=1、
+      EF.CardAccess 宣告 `id-TA`；CV 证书支持 ECDSA-SHA-256（tag 86 公钥、TR-03111 plain r||s 签名）与
+      CHAT（`id-IS` OID、角色位、ePassport b1/b2）+ LDS2 授权扩展（`2.23.136.1.1.9.{1,2,3}.3`）；
+      perso 脚本新增 `@ta-date`（DGI FF08）与 `@cvca <W> <CAR> <YYMMDD> <auth>`（DGI FF07/FF09）。
+- [x] T17.9 CVCA 默认使用 ECDSA P-256 密钥并暴露信任锚；DV 证书为 ECDSA；`POST /cvca/certificates/:id/terminals`
+      由 DV 密钥签发终端（IS）证书（授权自动收敛到 DV 授权）；`[issuing.security.ta]` 或 DSC 设置页可启用 TA。
+- [x] T17.10（同步 card42 `9c3dd1e`）算法组合：
+      CA 同时宣告 ECDH 3DES + AES-128（去掉 CA 算法选择）；AA 支持 RSA-SHA1/RSA-SHA256/ECDSA-SHA256
+      （`@aa`/`@aa-ec`/`@aa-alg`，DG15 EC SPKI，CardAccess 仅 ECDSA 宣告 `ActiveAuthenticationInfo`）；
+      TA 支持 EC（`@cvca`）与 RSA-PSS（`@cvca-rsa`，DGI FF0B/FF0C）信任点，CVCA 为 RSA 时不再报错。
+- [x] T17.11（Phase 2）X.509 侧算法：`@epass42/pki` 支持 ECDSA（P-256/P-384，named curve）CSCA/DSC/ML/CRL；`[csca]`/`[csca.niaDsc]`
+      增加 `algorithm`/`curve`/`hash`（hash 为 SHA-256/384/512；SHA-224 可解析但 Node WebCrypto 不能签名，故不作为可选项）；
+      CSCA/DSC 密钥算法属于建库决策，仅配置项（不进每申请设置页）。
+
+> 说明：CHAT 权限位采用 BSI TR-03110 的角色位布局（`C0`=CVCA、`80`=国内 DV、`40`=国外 DV、`00`=终端），
+> ePassport 使用 byte0 的 b1/b2（DG3/DG4），LDS2 应用授权使用 `65{73{06,53}}` 扩展（Doc 9303-10 Table 99）。
+> CVCA 支持 `POST /cvca/keys/rollover` 轮换并发布链接证书。平台不可能项（PACE DH-GM/IM、AES-192/256、DH-CA）
+> 与低价值项（TA 其它签名变体、Brainpool）按 card42 `algorithm-support.md` §3/§4 不做。
+
+---
+
 ## 附录 A — OID 常量表
 
-| 名称                                              | OID                          |
-| ------------------------------------------------- | ---------------------------- |
-| id-icao                                           | 2.23.136                     |
-| id-icao-mrtd                                      | 2.23.136.1                   |
-| id-icao-mrtd-security                             | 2.23.136.1.1                 |
-| LDS Security Object                               | 2.23.136.1.1.1               |
-| id-icao-cscaMasterList                            | 2.23.136.1.1.2               |
-| id-icao-cscaMasterListSigningKey（ML Signer EKU） | 2.23.136.1.1.3               |
-| id-icao-mrtd-security-extensions                  | 2.23.136.1.1.6               |
-| NameChange                                        | 2.23.136.1.1.6.1             |
-| DocumentTypeList                                  | 2.23.136.1.1.6.2             |
-| id-icao-DeviationList                             | 2.23.136.1.1.7               |
-| DeviationListSigningKey（DL Signer EKU）          | 2.23.136.1.1.8               |
-| id-icao-lds2                                      | 2.23.136.1.1.9               |
-| id-icao-lds2Signer                                | 2.23.136.1.1.9.8             |
-| LDS2-TS / LDS2-V / LDS2-B Signer                  | 2.23.136.1.1.9.8.1 / .2 / .3 |
-| id-icao-vds / vdsSigner                           | 2.23.136.1.1.11 / .11.1      |
-| securityObject（EF.CardSecurity）                 | 0.4.0.127.0.7.3.2.1          |
-| CMS signedData                                    | 1.2.840.113549.1.7.2         |
-| CMS contentType / messageDigest                   | 1.2.840.113549.1.9.3 / .9.4  |
-| SHA-256                                           | 2.16.840.1.101.3.4.2.1       |
+| 名称                                              | OID                            |
+| ------------------------------------------------- | ------------------------------ |
+| id-icao                                           | 2.23.136                       |
+| id-icao-mrtd                                      | 2.23.136.1                     |
+| id-icao-mrtd-security                             | 2.23.136.1.1                   |
+| LDS Security Object                               | 2.23.136.1.1.1                 |
+| id-icao-cscaMasterList                            | 2.23.136.1.1.2                 |
+| id-icao-cscaMasterListSigningKey（ML Signer EKU） | 2.23.136.1.1.3                 |
+| id-icao-mrtd-security-extensions                  | 2.23.136.1.1.6                 |
+| NameChange                                        | 2.23.136.1.1.6.1               |
+| DocumentTypeList                                  | 2.23.136.1.1.6.2               |
+| id-icao-DeviationList                             | 2.23.136.1.1.7                 |
+| DeviationListSigningKey（DL Signer EKU）          | 2.23.136.1.1.8                 |
+| id-icao-lds2                                      | 2.23.136.1.1.9                 |
+| id-icao-lds2Signer                                | 2.23.136.1.1.9.8               |
+| LDS2-TS / LDS2-V / LDS2-B Signer                  | 2.23.136.1.1.9.8.1 / .2 / .3   |
+| id-icao-vds / vdsSigner                           | 2.23.136.1.1.11 / .11.1        |
+| securityObject（EF.CardSecurity）                 | 0.4.0.127.0.7.3.2.1            |
+| id-CHAT（CV 证书持有者授权模板）                  | 0.4.0.127.0.7.3.1.1            |
+| id-IS / id-AT / id-ST（终端类型）                 | 0.4.0.127.0.7.3.1.2 / .3 / .4  |
+| id-TA-RSA-v1.5-SHA-256 / -PSS-SHA-256             | 0.4.0.127.0.7.2.2.1.2 / .2.2.2 |
+| CMS signedData                                    | 1.2.840.113549.1.7.2           |
+| CMS contentType / messageDigest                   | 1.2.840.113549.1.9.3 / .9.4    |
+| SHA-256                                           | 2.16.840.1.101.3.4.2.1         |
 
 ---
 

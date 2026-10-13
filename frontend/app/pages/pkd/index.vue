@@ -15,10 +15,11 @@ import {
   NText,
 } from 'naive-ui'
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { COUNTRY_ALPHA3 } from '@epass42/shared'
+import { COUNTRY_ALPHA3, type DvPermissions } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
 import { documentTypeValues } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
+import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 
 interface PkdCertificate {
   id: string
@@ -29,6 +30,18 @@ interface PkdCertificate {
 interface PkdCrl {
   id: string
   crlNumber: number
+}
+interface PkdDv {
+  id: string
+  holderReference: string
+  authorityReference: string
+  name: string | null
+  mnt: string | null
+  status: string
+  dvClass: string
+  permissions: DvPermissions
+  notBefore: string | null
+  notAfter: string | null
 }
 interface PkdDsc {
   id: number
@@ -57,6 +70,8 @@ const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
 const masterlists = ref<{ id: string }[]>([])
 const dscs = ref<PkdDsc[]>([])
+const cvca = ref<PkdCertificate[]>([])
+const dvs = ref<PkdDv[]>([])
 const revoked = ref<RevokedDocument[]>([])
 const loading = ref(false)
 
@@ -115,6 +130,52 @@ const mlColumns = computed(() => [
   { title: '', key: 'download', render: (row: { id: string }) => downloadLinks(row.id) },
 ])
 
+const cvcaColumns = computed(() => [
+  { title: t('common.cn'), key: 'cn' },
+  { title: t('common.subject'), key: 'subject' },
+  { title: t('common.status'), key: 'status' },
+  { title: '', key: 'download', render: (row: PkdCertificate) => downloadLinks(row.id) },
+])
+
+const dvColumns = computed(() => [
+  { title: t('pkd.name'), key: 'name', ellipsis: { tooltip: true } },
+  {
+    title: t('pkd.holderReference'),
+    key: 'holderReference',
+    render: (row: PkdDv) => h('span', { class: 'epass42-mono' }, row.holderReference),
+  },
+  { title: t('common.mnt'), key: 'mnt' },
+  {
+    title: t('cvca.dvClass'),
+    key: 'dvClass',
+    render: (row: PkdDv) =>
+      h(
+        NTag,
+        { size: 'small' },
+        {
+          default: () =>
+            row.dvClass === 'foreign' ? t('cvca.dvClassForeign') : t('cvca.dvClassDomestic'),
+        },
+      ),
+  },
+  {
+    title: t('pkd.permissions'),
+    key: 'permissions',
+    render: (row: PkdDv) => h(PermissionsEditor, { modelValue: row.permissions, readonly: true }),
+  },
+  {
+    title: t('pkd.validity'),
+    key: 'validity',
+    render: (row: PkdDv) => `${row.notBefore ?? '—'} → ${row.notAfter ?? '—'}`,
+  },
+  {
+    title: t('pkd.status'),
+    key: 'status',
+    render: (row: PkdDv) => h(NTag, { size: 'small' }, () => row.status),
+  },
+  { title: '', key: 'download', render: (row: PkdDv) => downloadLinks(row.id) },
+])
+
 const dscColumns = computed(() => [
   { title: t('pkd.name'), key: 'name', ellipsis: { tooltip: true } },
   { title: t('common.mnt'), key: 'mnt' },
@@ -170,6 +231,8 @@ onMounted(async () => {
     crls.value = (await api<{ items: PkdCrl[] }>('/pkd/crls')).items
     masterlists.value = (await api<{ items: { id: string }[] }>('/pkd/masterlists')).items
     dscs.value = (await api<{ items: PkdDsc[] }>('/pkd/dscs')).items
+    cvca.value = (await api<{ items: PkdCertificate[] }>('/pkd/cvca')).items
+    dvs.value = (await api<{ items: PkdDv[] }>('/pkd/dvs')).items
     revoked.value = (await api<{ items: RevokedDocument[] }>('/pkd/revoked')).items
   } finally {
     loading.value = false
@@ -188,6 +251,20 @@ onMounted(async () => {
             <NDataTable
               :columns="certColumns"
               :data="certificates"
+              :loading="loading"
+              :pagination="pagination"
+              size="small"
+            />
+          </div>
+        </NCard>
+      </NTabPane>
+      <NTabPane name="cvca" :tab="$t('pkd.cvca')">
+        <NCard size="small">
+          <p>{{ $t('pkd.cvcaHint') }}</p>
+          <div role="region" :aria-label="$t('pkd.cvca')">
+            <NDataTable
+              :columns="cvcaColumns"
+              :data="cvca"
               :loading="loading"
               :pagination="pagination"
               size="small"
@@ -216,6 +293,20 @@ onMounted(async () => {
             size="small"
           />
         </div>
+      </NTabPane>
+      <NTabPane name="dvs" :tab="$t('pkd.dvs')">
+        <NCard size="small">
+          <p>{{ $t('pkd.dvsHint') }}</p>
+          <div role="region" :aria-label="$t('pkd.dvs')">
+            <NDataTable
+              :columns="dvColumns"
+              :data="dvs"
+              :loading="loading"
+              :pagination="pagination"
+              size="small"
+            />
+          </div>
+        </NCard>
       </NTabPane>
       <NTabPane name="dscs" :tab="$t('pkd.dscs')">
         <NCard size="small">

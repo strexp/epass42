@@ -31,6 +31,23 @@ export interface PersoFile {
   bytes: Bytes
 }
 
+/** A CVCA Terminal Authentication trust point (DGI FF07/FF09 or FF0B/FF0C). */
+export interface CvTrustPoint {
+  /** Certification Authority Reference (ISO 8859-1). */
+  car: string
+  /** Effective Date, `YYMMDD`. */
+  effective: string
+  /** 4-byte relative authorization `[ePassport, Travel, Visa, Biometrics]`. */
+  authorization: Bytes
+  /** The secondary trust point slot. */
+  secondary?: boolean
+  /** EC: uncompressed public point (`04 || X || Y`). */
+  publicKey?: Bytes
+  /** RSA-PSS: modulus and exponent. */
+  modulus?: Bytes
+  exponent?: Bytes
+}
+
 /** One personalization section. */
 export interface PersoSection {
   role: PersoRole
@@ -51,12 +68,20 @@ export interface PersoSection {
   sod?: Bytes
   /** Active Authentication private key value (DGI FF02). */
   aaPrivateKey?: Bytes
+  /** Active Authentication ECDSA P-256 private scalar (DGI FF0D). */
+  aaEcKey?: Bytes
+  /** Active Authentication algorithm (DGI FF0A); default `sha1` on the card. */
+  aaAlgorithm?: 'sha1' | 'sha256' | 'ecdsa'
   /** Chip Authentication P-256 private scalar (DGI FF03). */
   caScalar?: Bytes
   /** EF.CardAccess content. */
   cardAccess?: Bytes
   /** EF.CardSecurity content. */
   cardSecurity?: Bytes
+  /** ICC current date (DGI FF08), `YYMMDD`. */
+  taDate?: string
+  /** CVCA trust points (DGI FF07/FF09). */
+  trustPoints?: CvTrustPoint[]
   records?: PersoFile[]
   transparent?: PersoFile[]
 }
@@ -74,7 +99,14 @@ function header(): string[] {
     '#   @dg <n> <hex>                EF.DG<n> content (DG1 mandatory)',
     '#   @sod <hex>                   EF.SOD content',
     '#   @aa <hex>                    AA private key (modLen || modulus || expLen || exponent)',
+    '#   @aa-ec <hex>                 AA ECDSA P-256 private scalar (DGI FF0D)',
+    '#   @aa-alg sha1|sha256|ecdsa    AA signature algorithm (DGI FF0A)',
     '#   @ca <hex>                    Chip Authentication P-256 private scalar (DGI FF03)',
+    '#   @ta-date <YYMMDD>            ICC current date (DGI FF08)',
+    '#   @cvca <W-hex> <CAR> <YYMMDD> <auth-hex> [secondary]',
+    '#                                EC CVCA trust point (DGI FF07, or FF09 with "secondary")',
+    '#   @cvca-rsa <n-hex> <e-hex> <CAR> <YYMMDD> <auth-hex> [secondary]',
+    '#                                RSA-PSS CVCA trust point (DGI FF0B, or FF0C)',
     '#   @lds2 <role>                 LDS2 role: travel | visa | biometrics',
     '#   @cardaccess <hex>            EF.CardAccess content',
     '#   @cardsecurity <hex>          EF.CardSecurity content',
@@ -100,9 +132,24 @@ function renderSection(section: PersoSection): string[] {
   }
   if (section.sod) lines.push(`@sod ${bytesToHex(section.sod)}`)
   if (section.aaPrivateKey) lines.push(`@aa ${bytesToHex(section.aaPrivateKey)}`)
+  if (section.aaEcKey) lines.push(`@aa-ec ${bytesToHex(section.aaEcKey)}`)
+  if (section.aaAlgorithm) lines.push(`@aa-alg ${section.aaAlgorithm}`)
   if (section.caScalar) lines.push(`@ca ${bytesToHex(section.caScalar)}`)
   if (section.cardAccess) lines.push(`@cardaccess ${bytesToHex(section.cardAccess)}`)
   if (section.cardSecurity) lines.push(`@cardsecurity ${bytesToHex(section.cardSecurity)}`)
+  if (section.taDate) lines.push(`@ta-date ${section.taDate}`)
+  for (const trustPoint of section.trustPoints ?? []) {
+    const suffix = trustPoint.secondary ? ' secondary' : ''
+    if (trustPoint.publicKey) {
+      lines.push(
+        `@cvca ${bytesToHex(trustPoint.publicKey)} ${trustPoint.car} ${trustPoint.effective} ${bytesToHex(trustPoint.authorization)}${suffix}`,
+      )
+    } else if (trustPoint.modulus && trustPoint.exponent) {
+      lines.push(
+        `@cvca-rsa ${bytesToHex(trustPoint.modulus)} ${bytesToHex(trustPoint.exponent)} ${trustPoint.car} ${trustPoint.effective} ${bytesToHex(trustPoint.authorization)}${suffix}`,
+      )
+    }
+  }
   for (const record of section.records ?? []) {
     lines.push(`@record ${record.fid.toUpperCase()} ${bytesToHex(record.bytes)}`)
   }

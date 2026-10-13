@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NGi, NGrid, NIcon, NSpace, NTag, NText } from 'naive-ui'
-import { FileBadge, FolderTree, ShieldCheck } from '@lucide/vue'
+import { BadgeCheck, FileBadge, FolderTree, ShieldCheck } from '@lucide/vue'
 
 const { t } = useI18n()
 usePageTitle(() => t('nav.home'))
@@ -13,6 +13,15 @@ const cards = [
     icon: ShieldCheck,
     title: 'nav.csca',
     body: 'home.cscaCard',
+    cta: 'home.ctaApply',
+    public: false,
+  },
+  {
+    key: 'cvca',
+    to: '/cvca',
+    icon: BadgeCheck,
+    title: 'nav.cvca',
+    body: 'home.cvcaCard',
     cta: 'home.ctaApply',
     public: false,
   },

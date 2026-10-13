@@ -7,9 +7,9 @@
  * extensions.
  */
 import { bytesToHex, hexToBytes } from '../codec/hex'
-import { sha256, type HashName, type RsaKeyPair } from '../crypto/crypto'
+import { sha256, type HashName } from '../crypto/crypto'
 import { derInteger, derSequence, derTlv, parseTlv, type TlvNode } from '../codec/der'
-import { rsaSigningAlgorithm } from './x509'
+import { certificateSigningAlgorithm, type CertKeyPair } from './x509'
 import { toArrayBuffer } from '../codec/bytes'
 import * as x509 from './x509lib'
 import { OIDS } from '@epass42/shared'
@@ -25,14 +25,13 @@ export interface CrlParams {
   /** The issuing CSCA certificate (its subject is the CRL issuer). */
   issuerCertificate: x509.X509Certificate
   /** The current CSCA signing key. */
-  signingKey: RsaKeyPair
+  signingKey: CertKeyPair
   /** Monotonically increasing CRL number. */
   crlNumber: number | bigint
   thisUpdate: Date
   nextUpdate: Date
   entries: RevokedEntry[]
   hash?: HashName
-  pss?: boolean
 }
 
 /** The DER/PEM of a generated CRL. */
@@ -71,7 +70,6 @@ function crlNumberExtension(crlNumber: number | bigint): x509.Extension {
  */
 export async function createCrl(params: CrlParams): Promise<GeneratedCrl> {
   const hash = params.hash ?? 'SHA-256'
-  const pss = params.pss ?? params.signingKey.pss
   const keyId = certificateKeyId(params.issuerCertificate)
   const extensions: x509.Extension[] = [crlNumberExtension(params.crlNumber)]
   if (keyId) extensions.unshift(authorityKeyIdentifierFromKeyId(keyId))
@@ -80,7 +78,7 @@ export async function createCrl(params: CrlParams): Promise<GeneratedCrl> {
     issuer: params.issuerCertificate.subjectName,
     thisUpdate: params.thisUpdate,
     nextUpdate: params.nextUpdate,
-    signingAlgorithm: rsaSigningAlgorithm(hash, pss),
+    signingAlgorithm: certificateSigningAlgorithm(params.signingKey, hash),
     signingKey: params.signingKey.privateKey,
     extensions,
     entries: params.entries.map((entry) => ({

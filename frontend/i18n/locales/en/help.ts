@@ -34,6 +34,11 @@ export default {
       name: 'Certificate authority admin',
       tagline: 'Approve applications, issue and revoke certificates and publish the CRL.',
     },
+    cvca: {
+      name: 'Document Verifier / CVCA',
+      tagline:
+        'Apply for, review and issue Document Verifier certificates for the LDS2 authorization PKI.',
+    },
     selfHosted: {
       name: 'Run your own service',
       tagline: 'Sign documents with your maintainer’s own certificate in a DSC-only deployment.',
@@ -168,6 +173,32 @@ export default {
         },
       },
     },
+    cvca: {
+      summary:
+        'A Document Verifier certificate authorizes an organisation to read or write LDS2 data on eMRTDs. The CVCA issues it as a card-verifiable certificate.',
+      steps: {
+        s1: {
+          title: 'Sign in',
+          body: 'Sign in to the verification realm with your dn42 account.',
+        },
+        s2: {
+          title: 'Apply for a DV certificate',
+          body: 'Choose a name, a key mode and the LDS2 read and write authorization your organisation needs.',
+        },
+        s3: {
+          title: 'Review',
+          body: 'An administrator reviews the request and may adjust the requested authorization before approving.',
+        },
+        s4: {
+          title: 'Collect the certificate',
+          body: 'Approval issues a card-verifiable DV certificate signed by the CVCA. A CVCA-generated private key can be downloaded once.',
+        },
+        s5: {
+          title: 'Publish',
+          body: 'The CVCA and DV certificates appear in the PKD so terminals can build the authorization trust chain.',
+        },
+      },
+    },
     selfHosted: {
       summary:
         'A maintainer may run its own personalization service using its own Document Signer certificate, while the NIA service remains authoritative for the PKD and CSCA.',
@@ -292,6 +323,10 @@ export default {
     certAdmin: {
       certificates: 'Certificate registry',
       audit: 'Audit log',
+    },
+    cvca: {
+      apply: 'Apply for a DV certificate',
+      certificates: 'DV certificates',
     },
     selfHosted: {
       certApply: 'Apply for a DSC',

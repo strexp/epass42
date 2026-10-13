@@ -1,17 +1,18 @@
 /**
  * PKD directory aggregation (M9/T9.1).
  *
- * Publishes the CSCA certificates (root and link), CRLs and Master Lists as
- * opaque DER objects with stable ids, plus the LDAP DN layout used by the REST,
- * LDIF and read-only LDAP surfaces.
+ * Publishes the CSCA certificates (root and link), CRLs and Master Lists, and
+ * the authorization-PKI CVCA and DV certificates (Doc 9303-12 §7.2), as opaque
+ * DER objects with stable ids, plus the LDAP DN layout used by the REST, LDIF
+ * and read-only LDAP surfaces.
  */
 import { parseCertificatePem } from '@epass42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { crl, cscaKey, masterList } from '../../db/schema'
+import { crl, cscaKey, cvcaKey, dvCert, masterList } from '../../db/schema'
 
 /** The kinds of published object. */
-export type PkdObjectKind = 'csca' | 'crl' | 'ml'
+export type PkdObjectKind = 'csca' | 'crl' | 'ml' | 'cvca' | 'dv'
 
 /** A published object. */
 export interface PkdObject {
@@ -91,5 +92,33 @@ export function listObjects(db: Db, config: AppConfig): PkdObject[] {
       der: new Uint8Array(row.der),
     })
   }
+  for (const row of db.select().from(cvcaKey).all()) {
+    objects.push({
+      id: `cvca-${row.id}`,
+      kind: 'cvca',
+      cn: compactReference(row.holderReference),
+      subject: row.subjectCn ?? row.holderReference,
+      status: row.status,
+      der: new Uint8Array(row.certDer),
+    })
+  }
+  for (const row of db.select().from(dvCert).all()) {
+    objects.push({
+      id: `dv-${row.id}`,
+      kind: 'dv',
+      cn: compactReference(row.holderReference),
+      subject: row.subjectCn ?? row.holderReference,
+      status: row.status,
+      der: new Uint8Array(row.certDer),
+    })
+  }
   return objects
+}
+
+/**
+ * Renders a Certificate Holder Reference as a DN-safe value (no padding
+ * spaces), used for the LDAP `cn` of a CVCA/DV entry.
+ */
+export function compactReference(reference: string): string {
+  return reference.replace(/\s+/g, '')
 }

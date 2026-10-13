@@ -17,6 +17,29 @@ export const OIDS = {
   /** DocumentType extension. */
   idIcaoDocumentType: '2.23.136.1.1.6.2',
 
+  // Authorization PKI (Doc 9303-12 §7.2), BSI TR-03110.
+  /** Certificate Holder Authorization Template OID arc. */
+  idChat: '0.4.0.127.0.7.3.1.1',
+  /** `id-IS` CHAT template OID for the passport profile (BSI TR-03110-4 §2.1.3.2). */
+  idIsChat: '0.4.0.127.0.7.3.1.2.1',
+  /** Terminal types: Inspection System / Authentication / Signature. */
+  idIs: '0.4.0.127.0.7.3.1.2',
+  idAt: '0.4.0.127.0.7.3.1.3',
+  idSt: '0.4.0.127.0.7.3.1.4',
+  /** `id-TA` terminal-authentication protocol arc (Doc 9303-11 §9.2.8). */
+  idTa: '0.4.0.127.0.7.2.2.2',
+  /** `id-TA-ECDSA-SHA-256` CV public key / signature (BSI TR-03110-3 Table 27). */
+  idTaEcdsaSha256: '0.4.0.127.0.7.2.2.2.2.3',
+  /** `id-TA-RSA-PSS-SHA-256` CV public key / signature. */
+  idTaRsaPssSha256: '0.4.0.127.0.7.2.2.2.1.4',
+  /** DH / ECDH public key OIDs (Chip Authentication public key info). */
+  idPkDh: '0.4.0.127.0.7.2.2.1.1',
+  idPkEcdh: '0.4.0.127.0.7.2.2.1.2',
+  /** LDS2 application authorization extensions (Doc 9303-10 Table 99). */
+  lds2TravelAuth: '2.23.136.1.1.9.1.3',
+  lds2VisaAuth: '2.23.136.1.1.9.2.3',
+  lds2BiometricsAuth: '2.23.136.1.1.9.3.3',
+
   // EF.CardSecurity eContent (id-SecurityObject, BSI TR-03110).
   securityObject: '0.4.0.127.0.7.3.2.1',
 

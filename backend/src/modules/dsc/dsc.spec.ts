@@ -268,6 +268,102 @@ describe('M7 DSC signing service', () => {
     void reference
   })
 
+  it('personalises a CVCA trust point and id-TA when Terminal Authentication is enabled', async () => {
+    const { app, oidc, dsc } = await harness({
+      cvca: { bootstrap: true },
+      issuing: { security: { ta: { enabled: true } } },
+    })
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const reference = await submit(app, oidc, 'TA1111111')
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(200)
+
+    const text = artifactText(dsc, reference)
+    expect(text).toMatch(/^@ta-date \d{6}$/m)
+    expect(text).toMatch(/^@cvca 04[0-9A-F]+ \S+ \d{6} [0-9A-F]{8}$/m)
+
+    // DG14 advertises TerminalAuthenticationInfo (id-TA version 1).
+    const dg14 = parsePerso(text).dataGroups.get(14)!
+    const idTa = derOid('0.4.0.127.0.7.2.2.2')
+    expect(Buffer.from(dg14).includes(Buffer.from(idTa))).toBe(true)
+  })
+
+  it('personalises an RSA-PSS CVCA trust point when the CVCA is RSA', async () => {
+    const { app, oidc, dsc } = await harness({
+      cvca: { bootstrap: true, algorithm: 'rsa' },
+      issuing: { security: { ta: { enabled: true } } },
+    })
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const reference = await submit(app, oidc, 'TARSA111')
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(200)
+    const text = artifactText(dsc, reference)
+    expect(text).toMatch(/^@cvca-rsa [0-9A-F]+ [0-9A-F]+ \S+ \d{6} [0-9A-F]{8}$/m)
+    expect(text).not.toMatch(/^@cvca 04/m)
+  })
+
+  it('personalises the ECDSA AA variant and the CA AES-128 profile', async () => {
+    const { app, oidc, dsc } = await harness()
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const reference = await submit(app, oidc, 'AAE11111', {
+      security: { aa: { enabled: true, algorithm: 'ecdsa' }, ca: { enabled: true } },
+    })
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(200)
+
+    const text = artifactText(dsc, reference)
+    expect(text).toMatch(/^@aa-alg ecdsa$/m)
+    expect(text).toMatch(/^@aa-ec [0-9A-F]{64}$/m)
+    expect(text).not.toMatch(/^@aa [0-9A-F]+$/m)
+
+    // EF.CardAccess advertises both CA profiles and the ECDSA AA OID.
+    const cardAccess = hexToBytes(/^@cardaccess ([0-9A-F]+)$/m.exec(text)![1])
+    expect(
+      Buffer.from(cardAccess).includes(Buffer.from(derOid(SECURITY_INFO_OIDS.caEcdhAes128))),
+    ).toBe(true)
+    expect(Buffer.from(cardAccess).includes(Buffer.from(derOid('0.4.0.127.0.7.1.1.4.1.3')))).toBe(
+      true,
+    )
+    // DG15 is an EC SubjectPublicKeyInfo (RFC 5480).
+    const dg15 = parsePerso(text).dataGroups.get(15)!
+    expect(Buffer.from(dg15).includes(Buffer.from(derOid('1.2.840.10045.2.1')))).toBe(true)
+  })
+
+  it('signs the SOD with an ECDSA DSC under an ECDSA CSCA', async () => {
+    const { app, oidc, dsc, cscaPem } = await harness({
+      csca: { bootstrap: true, algorithm: 'ecdsa', niaDsc: { algorithm: 'ecdsa' } },
+    })
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const reference = await submit(app, oidc, 'ECDSA111')
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(200)
+
+    const perso = parsePerso(artifactText(dsc, reference))
+    const result = await verifySod(perso.sod!, perso.dataGroups, [parseCertificatePem(cscaPem)])
+    expect(result.errors).toEqual([])
+    expect(result.valid).toBe(true)
+  })
+
   it('personalises the optional PACE Card Access Number (CAN) for LDS1 only', async () => {
     const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)

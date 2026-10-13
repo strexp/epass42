@@ -9,12 +9,17 @@ import { AppError } from '@epass42/shared'
 import {
   createDsc,
   derToPem,
+  ecPointFromSpki,
+  generateEcKeyPair,
   generateRsaKeyPair,
+  importEcKeyPair,
   importRsaKeyPair,
   parseCertificatePem,
   pemToDer,
   toArrayBuffer,
-  type RsaKeyPair,
+  type CertKeyPair,
+  type EcCurve,
+  type HashName,
   type SubjectPublicKey,
 } from '@epass42/pki'
 
@@ -52,7 +57,7 @@ export class DscIssuanceService {
     if (existing) return existing
     const csca = await this.keys.ensure()
     if (!csca) return undefined
-    const cscaPair = await this.keys.loadKeyPair(csca)
+    const cscaPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
     return this.issueDsc({
       csca,
       cscaPair,
@@ -60,8 +65,6 @@ export class DscIssuanceService {
       documentTypes: this.ctx.config.csca.niaDsc.documentTypes,
       validityYears: this.ctx.config.csca.niaDsc.validityYears,
       privateKeyUsageYears: this.ctx.config.csca.niaDsc.privateKeyUsageYears,
-      keyBits: this.ctx.config.csca.niaDsc.keyBits,
-      pss: this.ctx.config.csca.niaDsc.pss,
       source: 'nia',
       mnt: null,
       keyMode: 'nia_generated',
@@ -71,7 +74,7 @@ export class DscIssuanceService {
   /** Issues a DSC signed by the given CSCA key. */
   async issueDsc(params: {
     csca: CscaKeyRow
-    cscaPair: RsaKeyPair
+    cscaPair: CertKeyPair
     commonName: string
     /** Applicant-chosen subject names; fall back to the CSCA profile. */
     organization?: string | null
@@ -79,8 +82,6 @@ export class DscIssuanceService {
     documentTypes: string[]
     validityYears: number
     privateKeyUsageYears: number
-    keyBits: number
-    pss: boolean
     source: 'nia' | 'owned'
     mnt: string | null
     keyMode: 'nia_generated' | 'user_uploaded'
@@ -91,20 +92,31 @@ export class DscIssuanceService {
     const { config, db, keks } = this.ctx
     const now = new Date()
     const issuerCert = parseCertificatePem(params.csca.certPem)
+    const nia = config.csca.niaDsc
 
     let subject: SubjectPublicKey
     let sealedKey: string | null = null
+    let keyAlgorithm: string
     if (params.keyMode === 'nia_generated') {
-      const key = await generateRsaKeyPair({
-        modulusLength: params.keyBits,
-        pss: params.pss,
-        hash: 'SHA-256',
-      })
-      subject = key
-      sealedKey = sealPrivateKey(key.pkcs8, keks[0]!)
+      if (nia.algorithm === 'ecdsa') {
+        const key = await generateEcKeyPair(nia.curve)
+        subject = { publicKey: key.publicKey }
+        sealedKey = sealPrivateKey(key.pkcs8, keks[0]!)
+        keyAlgorithm = `ECDSA-${key.curve.replace('-', '')}`
+      } else {
+        const key = await generateRsaKeyPair({
+          modulusLength: nia.keyBits,
+          pss: nia.pss,
+          hash: nia.hash as HashName,
+        })
+        subject = key
+        sealedKey = sealPrivateKey(key.pkcs8, keks[0]!)
+        keyAlgorithm = key.pss ? 'RSASSA-PSS' : 'RSASSA-PKCS1-v1_5'
+      }
     } else {
       if (!params.subjectPublicKey) throw new Error('subject public key is required')
       subject = params.subjectPublicKey
+      keyAlgorithm = 'external'
     }
 
     const generated = await createDsc(
@@ -119,10 +131,10 @@ export class DscIssuanceService {
         privateKeyNotAfter: addYears(now, params.privateKeyUsageYears),
         crlDistributionPoints: config.csca.crlDistributionPoints,
         issuancePolicy: params.issuancePolicy ?? undefined,
-        pss: params.pss,
+        hash: nia.hash as HashName,
       },
       subject,
-      { certificate: issuerCert, key: params.cscaPair },
+      { certificate: issuerCert, key: params.cscaPair, hash: config.csca.hash as HashName },
     )
 
     const result = db
@@ -135,6 +147,7 @@ export class DscIssuanceService {
         source: params.source,
         certPem: generated.pem,
         keyRef: sealedKey,
+        keyAlgorithm,
         keyMode: params.keyMode,
         issuancePolicy: params.issuancePolicy ?? null,
         applicationUrl: params.applicationUrl ?? null,
@@ -152,10 +165,21 @@ export class DscIssuanceService {
   }
 
   /** Opens the sealed private key of an NIA/owned system-generated DSC. */
-  async loadDscKeyPair(row: DscCertRow, pss = false): Promise<RsaKeyPair> {
+  async loadDscKeyPair(row: DscCertRow, hash?: HashName): Promise<CertKeyPair> {
     if (!row.keyRef) throw new Error('DSC has no stored private key')
     const pkcs8 = openPrivateKey(row.keyRef, this.ctx.keks)
-    return importRsaKeyPair(pkcs8, pss)
+    const algorithm = row.keyAlgorithm ?? 'RSASSA-PKCS1-v1_5'
+    if (algorithm.startsWith('ECDSA')) {
+      const curve: EcCurve = algorithm.includes('P384') ? 'P-384' : 'P-256'
+      const cert = parseCertificatePem(row.certPem)
+      const point = await ecPointFromSpki(new Uint8Array(cert.publicKey.rawData), curve)
+      return importEcKeyPair(pkcs8, point, curve)
+    }
+    return importRsaKeyPair(
+      pkcs8,
+      algorithm === 'RSASSA-PSS',
+      hash ?? (this.ctx.config.csca.niaDsc.hash as HashName),
+    )
   }
 
   /** Exports the sealed DSC private key as an unencrypted PKCS#8 PEM. */
@@ -172,7 +196,7 @@ export class DscIssuanceService {
   ): Promise<DscCertRow> {
     const csca = await this.keys.ensure()
     if (!csca) throw new Error('no CSCA key available')
-    const cscaPair = await this.keys.loadKeyPair(csca)
+    const cscaPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
     const keyMode = application.keyMode === 'user_uploaded' ? 'user_uploaded' : 'nia_generated'
     const subjectPublicKey =
       keyMode === 'user_uploaded' ? await publicKeyFromApplication(application) : undefined
@@ -186,8 +210,6 @@ export class DscIssuanceService {
       documentTypes: [application.documentType ?? 'P'],
       validityYears: Math.max(1, Math.round((application.validityDays ?? 3650) / 365)),
       privateKeyUsageYears: 1,
-      keyBits: this.ctx.config.csca.niaDsc.keyBits,
-      pss: this.ctx.config.csca.niaDsc.pss,
       source: 'owned',
       mnt: application.mnt,
       keyMode,
@@ -231,22 +253,35 @@ export class DscIssuanceService {
   }
 }
 
-/** Imports the RSA public key from an application's CSR or SPKI PEM. */
+/** Imports the public key (EC or RSA) from an application's CSR or SPKI PEM. */
 export async function publicKeyFromApplication(
   application: DscApplicationRow,
 ): Promise<SubjectPublicKey> {
   if (application.csrPem) {
     const csr = pkijs.CertificationRequest.fromBER(toArrayBuffer(pemToDer(application.csrPem)))
     const spki = csr.subjectPublicKeyInfo.toSchema().toBER(false)
-    return { publicKey: await importRsaPublicKey(new Uint8Array(spki)) }
+    return { publicKey: await importPublicKey(new Uint8Array(spki)) }
   }
   if (application.publicKeyPem) {
-    return { publicKey: await importRsaPublicKey(pemToDer(application.publicKeyPem)) }
+    return { publicKey: await importPublicKey(pemToDer(application.publicKeyPem)) }
   }
   throw new Error('application has no CSR or public key')
 }
 
-async function importRsaPublicKey(spki: Uint8Array): Promise<CryptoKey> {
+async function importPublicKey(spki: Uint8Array): Promise<CryptoKey> {
+  for (const namedCurve of ['P-256', 'P-384'] as const) {
+    try {
+      return await crypto.subtle.importKey(
+        'spki',
+        toArrayBuffer(spki),
+        { name: 'ECDSA', namedCurve },
+        true,
+        ['verify'],
+      )
+    } catch {
+      /* try the next curve / RSA */
+    }
+  }
   return crypto.subtle.importKey(
     'spki',
     toArrayBuffer(spki),

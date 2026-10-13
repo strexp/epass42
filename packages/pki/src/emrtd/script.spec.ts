@@ -2,47 +2,62 @@ import { describe, expect, it } from 'vitest'
 
 import { renderEmrtdScript } from './script'
 
-describe('perso script writer', () => {
-  it('renders an LDS1 section with the expected directives', () => {
+describe('eMRTD perso script', () => {
+  it('renders the Terminal Authentication directives', () => {
     const script = renderEmrtdScript([
       {
         role: 'lds1',
         documentNumber: 'L898902C<',
         dateOfBirth: '690806',
         dateOfExpiry: '940623',
-        can: '123456',
-        dataGroups: [
-          { number: 1, bytes: new Uint8Array([0x61, 0x01, 0x00]) },
-          { number: 2, bytes: new Uint8Array([0x75, 0x01, 0x00]) },
+        dataGroups: [],
+        taDate: '240101',
+        trustPoints: [
+          {
+            publicKey: new Uint8Array([0x04, ...new Array(64).fill(0x11)]),
+            car: 'UTCVCA0000000001',
+            effective: '240101',
+            authorization: new Uint8Array([0x03, 0x0f, 0x0f, 0x0f]),
+          },
+          {
+            publicKey: new Uint8Array([0x04, ...new Array(64).fill(0x22)]),
+            car: 'UTCVCA0000000002',
+            effective: '240201',
+            authorization: new Uint8Array([0x00, 0x0f, 0x00, 0x00]),
+            secondary: true,
+          },
         ],
-        cardAccess: new Uint8Array([0x31, 0x00]),
-        sod: new Uint8Array([0x77, 0x01, 0x00]),
       },
     ])
-    expect(script).toContain('@instance A0000002471001')
-    expect(script).toContain('@doc L898902C<')
-    expect(script).toContain('@can 123456')
-    expect(script).toContain('@dg 1 610100')
-    expect(script).toContain('@dg 2 750100')
-    expect(script).toContain('@cardaccess 3100')
-    expect(script).toContain('@sod 770100')
+    expect(script).toContain('@ta-date 240101')
+    expect(script).toContain('@cvca 04')
+    expect(script).toContain('UTCVCA0000000001 240101 030F0F0F')
+    expect(script).toContain('UTCVCA0000000002 240201 000F0000 secondary')
   })
 
-  it('renders an LDS2 section with records and transparent files', () => {
+  it('renders the AA algorithm and RSA-PSS trust-point directives', () => {
     const script = renderEmrtdScript([
       {
-        role: 'travel',
+        role: 'lds1',
         documentNumber: 'L898902C<',
         dateOfBirth: '690806',
         dateOfExpiry: '940623',
         dataGroups: [],
-        records: [{ fid: '0101', bytes: new Uint8Array([0x5f, 0x44, 0x03, 0x55, 0x53, 0x41]) }],
-        transparent: [{ fid: '0201', bytes: new Uint8Array([0x7f, 0x61, 0x01, 0x00]) }],
+        aaEcKey: new Uint8Array(32).fill(0xaa),
+        aaAlgorithm: 'ecdsa',
+        trustPoints: [
+          {
+            modulus: new Uint8Array([0x00, 0x81, 0x02]),
+            exponent: new Uint8Array([0x01, 0x00, 0x01]),
+            car: 'XDRSADV000000001',
+            effective: '240301',
+            authorization: new Uint8Array([0x00, 0x00, 0x00, 0x00]),
+          },
+        ],
       },
     ])
-    expect(script).toContain('@instance A0000002472001')
-    expect(script).toContain('@lds2 travel')
-    expect(script).toContain('@record 0101 5F4403555341')
-    expect(script).toContain('@transparent 0201 7F610100')
+    expect(script).toContain(`@aa-ec ${'AA'.repeat(32)}`)
+    expect(script).toContain('@aa-alg ecdsa')
+    expect(script).toMatch(/^@cvca-rsa 008102 010001 XDRSADV000000001 240301 00000000$/m)
   })
 })

@@ -7,18 +7,34 @@ import { eq } from 'drizzle-orm'
 import {
   createCscaLink,
   createCscaRoot,
+  ecPointFromSpki,
+  generateEcKeyPair,
   generateRsaKeyPair,
+  importEcKeyPair,
   importRsaKeyPair,
+  isEcCertKey,
   parseCertificatePem,
+  type CertKeyPair,
+  type EcCurve,
   type GeneratedCertificate,
   type HashName,
-  type RsaKeyPair,
 } from '@epass42/pki'
 
 import { cscaKey } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
 import { addYears, type CscaContext, type CscaKeyRow } from './context'
+
+/** The stored `key_algorithm` value for a key pair. */
+function keyAlgorithmOf(key: CertKeyPair): string {
+  if (isEcCertKey(key)) return `ECDSA-${key.curve.replace('-', '')}`
+  return key.pss ? 'RSASSA-PSS' : 'RSASSA-PKCS1-v1_5'
+}
+
+/** The curve encoded in a stored `key_algorithm` value. */
+function curveOf(keyAlgorithm: string): EcCurve {
+  return keyAlgorithm.includes('P384') ? 'P-384' : 'P-256'
+}
 
 /** The current (active) CSCA key row, or undefined. */
 export function currentCscaKey(db: CscaContext['db']): CscaKeyRow | undefined {
@@ -37,15 +53,22 @@ export class CscaKeyService {
     return this.bootstrap()
   }
 
-  /** Generates and stores a new self-signed CSCA root. */
-  async bootstrap(): Promise<CscaKeyRow> {
+  /** Generates the configured CSCA key pair (RSA or ECDSA). */
+  private generate(): Promise<CertKeyPair> {
     const { config } = this.ctx
-    const now = new Date()
-    const key = await generateRsaKeyPair({
+    if (config.csca.algorithm === 'ecdsa') return generateEcKeyPair(config.csca.curve)
+    return generateRsaKeyPair({
       modulusLength: config.csca.keyBits,
       pss: config.csca.pss,
       hash: config.csca.hash as HashName,
     })
+  }
+
+  /** Generates and stores a new self-signed CSCA root. */
+  async bootstrap(): Promise<CscaKeyRow> {
+    const { config } = this.ctx
+    const now = new Date()
+    const key = await this.generate()
     const generated = await createCscaRoot(
       {
         commonName: config.csca.commonName,
@@ -57,7 +80,6 @@ export class CscaKeyService {
         notAfter: addYears(now, config.csca.validityYears),
         privateKeyNotAfter: addYears(now, config.csca.privateKeyUsageYears),
         crlDistributionPoints: config.csca.crlDistributionPoints,
-        pss: config.csca.pss,
         hash: config.csca.hash as HashName,
       },
       key,
@@ -65,7 +87,7 @@ export class CscaKeyService {
     return this.store(generated, key, true)
   }
 
-  private store(generated: GeneratedCertificate, key: RsaKeyPair, current: boolean): CscaKeyRow {
+  private store(generated: GeneratedCertificate, key: CertKeyPair, current: boolean): CscaKeyRow {
     const { db, keks } = this.ctx
     if (current) db.update(cscaKey).set({ isCurrent: false }).run()
     const result = db
@@ -73,7 +95,7 @@ export class CscaKeyService {
       .values({
         serial: generated.serialHex,
         subjectDn: generated.certificate.subject,
-        keyAlgorithm: key.pss ? 'RSASSA-PSS' : 'RSASSA-PKCS1-v1_5',
+        keyAlgorithm: keyAlgorithmOf(key),
         notBefore: generated.certificate.notBefore.toISOString(),
         notAfter: generated.certificate.notAfter.toISOString(),
         certPem: generated.pem,
@@ -90,10 +112,20 @@ export class CscaKeyService {
       .get() as CscaKeyRow
   }
 
-  /** Opens the CSCA private key for signing. */
-  async loadKeyPair(row: CscaKeyRow): Promise<RsaKeyPair> {
+  /** Opens the CSCA private key for signing with the given hash (RSA). */
+  async loadKeyPair(row: CscaKeyRow, hash?: HashName): Promise<CertKeyPair> {
     const pkcs8 = openPrivateKey(row.keyRef, this.ctx.keks)
-    return importRsaKeyPair(pkcs8, row.keyAlgorithm === 'RSASSA-PSS')
+    if (row.keyAlgorithm.startsWith('ECDSA')) {
+      const curve = curveOf(row.keyAlgorithm)
+      const cert = parseCertificatePem(row.certPem)
+      const point = await ecPointFromSpki(new Uint8Array(cert.publicKey.rawData), curve)
+      return importEcKeyPair(pkcs8, point, curve)
+    }
+    return importRsaKeyPair(
+      pkcs8,
+      row.keyAlgorithm === 'RSASSA-PSS',
+      hash ?? (this.ctx.config.csca.hash as HashName),
+    )
   }
 
   /** Loads the current CSCA key pair, throwing on a KEK mismatch. */
@@ -121,11 +153,7 @@ export class CscaKeyService {
     const previousCert = parseCertificatePem(previous.certPem)
 
     const now = new Date()
-    const newPair = await generateRsaKeyPair({
-      modulusLength: config.csca.keyBits,
-      pss: config.csca.pss,
-      hash: config.csca.hash as HashName,
-    })
+    const newPair = await this.generate()
     const link = await createCscaLink(
       previousCert,
       previousPair,
@@ -139,11 +167,10 @@ export class CscaKeyService {
         notAfter: addYears(now, config.csca.validityYears),
         privateKeyNotAfter: addYears(now, config.csca.privateKeyUsageYears),
         crlDistributionPoints: config.csca.crlDistributionPoints,
-        pss: config.csca.pss,
         hash: config.csca.hash as HashName,
       },
       newPair.publicKey,
-      newPair.pss,
+      isEcCertKey(newPair) ? false : newPair.pss,
     )
 
     // Retire the old key, store the link certificate (non-current), then make

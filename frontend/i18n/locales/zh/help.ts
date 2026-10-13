@@ -31,6 +31,10 @@ export default {
       name: '证书管理员',
       tagline: '审批申请、签发与吊销证书，并发布吊销列表（CRL）。',
     },
+    cvca: {
+      name: '文档验证者 / CVCA',
+      tagline: '为 LDS2 授权 PKI 申请、审核并签发文档验证者（DV）证书。',
+    },
     selfHosted: {
       name: '自建签发服务',
       tagline: '以 DSC-only 模式部署自有服务，使用本维护者自己的证书签署证件。',
@@ -162,6 +166,32 @@ export default {
         },
       },
     },
+    cvca: {
+      summary:
+        '文档验证者（DV）证书授权机构读取或写入 eMRTD 上的 LDS2 数据。它由 CVCA 签发为卡片可验证证书。',
+      steps: {
+        s1: {
+          title: '登录',
+          body: '使用 dn42 账号登录验证业务。',
+        },
+        s2: {
+          title: '申请 DV 证书',
+          body: '填写名称、选择密钥方式，并选择机构所需的 LDS2 读写授权。',
+        },
+        s3: {
+          title: '审核',
+          body: '管理员审核申请，并可在批准前调整所申请的授权。',
+        },
+        s4: {
+          title: '领取证书',
+          body: '批准后即签发由 CVCA 签署的卡片可验证 DV 证书。由 CVCA 生成的私钥仅可下载一次。',
+        },
+        s5: {
+          title: '发布',
+          body: 'CVCA 与 DV 证书会出现在 PKD 中，供终端构建授权信任链。',
+        },
+      },
+    },
     selfHosted: {
       summary:
         '维护者可以使用自己的文档签名证书运行自有签发服务，而 NIA 服务仍作为 PKD 与 CSCA 的权威。',
@@ -285,6 +315,10 @@ export default {
     certAdmin: {
       certificates: '证书登记',
       audit: '审计日志',
+    },
+    cvca: {
+      apply: '申请 DV 证书',
+      certificates: 'DV 证书',
     },
     selfHosted: {
       certApply: '申请 DSC 证书',

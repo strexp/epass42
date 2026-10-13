@@ -5,7 +5,7 @@
  * List — behind the single entry point consumed by the routes and the DSC
  * signing service.
  */
-import type { RsaKeyPair } from '@epass42/pki'
+import type { CertKeyPair, HashName } from '@epass42/pki'
 
 import type {
   CscaContext,
@@ -47,8 +47,8 @@ export class CscaService {
     return this.keys.bootstrap()
   }
 
-  loadKeyPair(row: CscaKeyRow): Promise<RsaKeyPair> {
-    return this.keys.loadKeyPair(row)
+  loadKeyPair(row: CscaKeyRow, hash?: HashName): Promise<CertKeyPair> {
+    return this.keys.loadKeyPair(row, hash)
   }
 
   validateCurrentKey(): Promise<void> {
@@ -79,8 +79,8 @@ export class CscaService {
     return this.dscIssuance.issueDsc(params)
   }
 
-  loadDscKeyPair(row: DscCertRow, pss = false): Promise<RsaKeyPair> {
-    return this.dscIssuance.loadDscKeyPair(row, pss)
+  loadDscKeyPair(row: DscCertRow, hash?: HashName): Promise<CertKeyPair> {
+    return this.dscIssuance.loadDscKeyPair(row, hash)
   }
 
   exportDscPrivateKey(row: DscCertRow): string {

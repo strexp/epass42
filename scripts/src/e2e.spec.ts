@@ -126,7 +126,6 @@ describe('M2 scripts end to end', () => {
       thisUpdate: now,
       nextUpdate: new Date('2026-11-08T00:00:00Z'),
       entries: [{ serialHex: dsc.serialHex, revocationDate: now }],
-      pss: false,
     })
     const crlPath = join(dir, 'csca.crl.der')
     writeFileSync(crlPath, crl.der)

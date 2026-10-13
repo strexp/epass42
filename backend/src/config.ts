@@ -9,10 +9,10 @@ import { resolve } from 'node:path'
 import { parse as parseToml } from 'smol-toml'
 import { z } from 'zod'
 
-import { COUNTRY_ALPHA2, COUNTRY_ALPHA3 } from '@epass42/shared'
+import { COUNTRY_ALPHA2, COUNTRY_ALPHA3, dvPermissionsSchema } from '@epass42/shared'
 
-export const realmSchema = z.enum(['csca', 'dsc'])
-export const roleSchema = z.enum(['pkd', 'csca', 'dsc'])
+export const realmSchema = z.enum(['csca', 'cvca', 'dsc'])
+export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dsc'])
 
 /** The default (insecure) session secret used in development, also a legacy KEK. */
 export const DEV_SESSION_SECRET = 'dev-insecure-session-secret-change-me'
@@ -43,8 +43,12 @@ const niaDscSchema = z.object({
   documentTypes: z.array(z.string()).default(['P']),
   validityYears: z.number().int().min(1).default(10),
   privateKeyUsageYears: z.number().int().min(1).default(3),
+  /** DSC key algorithm; may differ from the CSCA (Doc 9303-12 §4.1.5). */
+  algorithm: z.enum(['rsa', 'ecdsa']).default('rsa'),
+  curve: z.enum(['P-256', 'P-384']).default('P-256'),
   keyBits: z.number().int().default(2048),
   pss: z.boolean().default(false),
+  hash: z.enum(['SHA-256', 'SHA-384', 'SHA-512']).default('SHA-256'),
 })
 
 const cscaSchema = z.object({
@@ -54,6 +58,9 @@ const cscaSchema = z.object({
   /** Optional organisational unit (`OU`) in the subject names. */
   organizationalUnit: z.string().optional(),
   locality: z.string().default(COUNTRY_ALPHA3),
+  /** CSCA key algorithm (Doc 9303-12 §4.1.5 allows RSA/DSA/ECDSA). */
+  algorithm: z.enum(['rsa', 'ecdsa']).default('rsa'),
+  curve: z.enum(['P-256', 'P-384']).default('P-256'),
   validityYears: z.number().int().min(1).default(13),
   privateKeyUsageYears: z.number().int().min(1).default(4),
   keyBits: z.number().int().default(4096),
@@ -63,6 +70,45 @@ const cscaSchema = z.object({
   /** Generate a CSCA key at startup when none exists. */
   bootstrap: z.boolean().default(true),
   niaDsc: niaDscSchema.prefault({}),
+})
+
+/**
+ * CVCA (Doc 9303-12 §3.2/§4.2): the authorization-PKI trust anchor.  It issues
+ * card-verifiable DV certificates and is bootstrapped as a self-signed root.
+ */
+const cvcaSchema = z.object({
+  commonName: z.string().default('ePass 42 CVCA'),
+  /** Holder mnemonic used in the CVCA Certificate Holder Reference (max 9). */
+  holderMnemonic: z.string().max(9).default('CVCA'),
+  /**
+   * CVCA key algorithm.  `ecdsa` (P-256) is required for Terminal
+   * Authentication trust points; `rsa` is kept for legacy use.
+   */
+  algorithm: z.enum(['ecdsa', 'rsa']).default('ecdsa'),
+  /** CVCA public key validity (months); the profile caps it at 3 years. */
+  validityMonths: z.number().int().min(1).max(36).default(36),
+  keyBits: z.number().int().default(2048),
+  hash: z.enum(['SHA-256', 'SHA-384', 'SHA-512']).default('SHA-256'),
+  pss: z.boolean().default(false),
+  /** Generate a CVCA key at startup when none exists. */
+  bootstrap: z.boolean().default(true),
+  /** The authorization the CVCA grants in its certificate and trust point. */
+  authorization: dvPermissionsSchema.default({
+    epassport: { dg3: true, dg4: true },
+    travel: { read: true, write: true },
+    visa: { read: true, write: true },
+    biometrics: { read: true, write: true },
+  }),
+  dv: z
+    .object({
+      /** DV public key validity (days); the profile caps it at 3 months. */
+      validityDays: z.number().int().min(1).max(92).default(90),
+      keyBits: z.number().int().default(2048),
+      pss: z.boolean().default(false),
+      /** Permissions pre-selected in the application form. */
+      defaultPermissions: dvPermissionsSchema,
+    })
+    .prefault({}),
 })
 
 const configSchema = z.object({
@@ -113,13 +159,15 @@ const configSchema = z.object({
   adminMnts: z
     .object({
       csca: z.array(z.string()).default([]),
+      cvca: z.array(z.string()).default([]),
       dsc: z.array(z.string()).default([]),
     })
-    .default({ csca: [], dsc: [] }),
+    .default({ csca: [], cvca: [], dsc: [] }),
   /** Also treat any `mnt_by` entry as an admin MNT. */
   adminIncludeMntBy: z.boolean().default(false),
   oauthProviders: z.array(oauthProviderSchema).default([]),
   csca: cscaSchema.prefault({}),
+  cvca: cvcaSchema.prefault({}),
   issuing: z
     .object({
       issuingState: z.string().length(3).default(COUNTRY_ALPHA3),
@@ -160,16 +208,29 @@ const configSchema = z.object({
           aa: z
             .object({
               enabled: z.boolean().default(false),
-              algorithm: z.enum(['rsaSha1']).default('rsaSha1'),
+              algorithm: z.enum(['rsaSha1', 'rsaSha256', 'ecdsa']).default('rsaSha1'),
             })
             .prefault({}),
           /** Chip Authentication (shared; forced on when LDS2 is emitted). */
           ca: z
             .object({
               enabled: z.boolean().default(false),
-              algorithm: z.enum(['ecdh3des']).default('ecdh3des'),
               /** Chip Authentication key id shared by LDS1 and the LDS2 applications. */
               keyId: z.number().int().min(0).max(255).default(1),
+            })
+            .prefault({}),
+          /**
+           * Terminal Authentication: personalize a CVCA trust point and advertise
+           * `id-TA` so terminals can authenticate (requires an ECDSA CVCA).
+           */
+          ta: z
+            .object({
+              enabled: z.boolean().default(false),
+              currentDate: z
+                .string()
+                .regex(/^\d{6}$/)
+                .optional(),
+              authorization: dvPermissionsSchema.optional(),
             })
             .prefault({}),
         })

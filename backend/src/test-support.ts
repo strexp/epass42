@@ -69,6 +69,12 @@ const PROVIDERS = [
     scopes: ['openid', 'email', 'dn42'],
   },
   {
+    realm: 'cvca',
+    issuer: 'https://cvca.idp.test',
+    clientId: 'cvca-client',
+    scopes: ['openid', 'email', 'dn42'],
+  },
+  {
     realm: 'dsc',
     issuer: 'https://dsc.idp.test',
     clientId: 'dsc-client',
@@ -80,9 +86,14 @@ const PROVIDERS = [
 const TEST_CONFIG: RawConfig = {
   cookieSecure: false,
   sessionSecret: 'test-session-secret-0123456789',
-  roles: ['pkd', 'csca', 'dsc'],
-  adminMnts: { csca: ['EXAMPLE-CSCA-MNT'], dsc: ['EXAMPLE-DSC-MNT'] },
+  roles: ['pkd', 'csca', 'cvca', 'dsc'],
+  adminMnts: {
+    csca: ['EXAMPLE-CSCA-MNT'],
+    cvca: ['EXAMPLE-CVCA-MNT'],
+    dsc: ['EXAMPLE-DSC-MNT'],
+  },
   csca: { bootstrap: false, keyBits: 2048 },
+  cvca: { bootstrap: false, keyBits: 2048 },
   oauthProviders: PROVIDERS,
 }
 

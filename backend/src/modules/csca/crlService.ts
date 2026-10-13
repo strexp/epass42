@@ -6,7 +6,7 @@
  */
 import { and, desc, eq } from 'drizzle-orm'
 
-import { createCrl, parseCertificatePem } from '@epass42/pki'
+import { createCrl, parseCertificatePem, type HashName } from '@epass42/pki'
 
 import { crl, dscCert } from '../../db/schema'
 import { nowIso } from '../../util/time'
@@ -62,7 +62,7 @@ export class CrlService {
     const { db } = this.ctx
     const csca = await this.keys.ensure()
     if (!csca) throw new Error('no CSCA key available')
-    const keyPair = await this.keys.loadKeyPair(csca)
+    const keyPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
     const issuerCertificate = parseCertificatePem(csca.certPem)
     const revoked = db
       .select()
@@ -85,7 +85,7 @@ export class CrlService {
           serialHex: row.serial,
           revocationDate: new Date(row.revokedAt as string),
         })),
-      pss: keyPair.pss,
+      hash: this.ctx.config.csca.hash as HashName,
     })
     const result = db
       .insert(crl)

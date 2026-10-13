@@ -40,6 +40,14 @@ export function buildEntries(db: Db, config: AppConfig): LdapEntry[] {
       dn: `ou=masterlist,${base}`,
       attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['masterlist'] },
     },
+    {
+      dn: `ou=cvca,${base}`,
+      attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['cvca'] },
+    },
+    {
+      dn: `ou=dv,${base}`,
+      attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['dv'] },
+    },
   ]
   for (const object of listObjects(db, config)) {
     entries.push(entryFor(base, object))
@@ -48,9 +56,10 @@ export function buildEntries(db: Db, config: AppConfig): LdapEntry[] {
 }
 
 function entryFor(base: string, object: PkdObject): LdapEntry {
-  if (object.kind === 'csca') {
+  if (object.kind === 'csca' || object.kind === 'cvca' || object.kind === 'dv') {
+    const ou = object.kind === 'csca' ? 'csca' : object.kind === 'cvca' ? 'cvca' : 'dv'
     return {
-      dn: `cn=${object.cn},ou=csca,${base}`,
+      dn: `cn=${object.cn},ou=${ou},${base}`,
       attributes: {
         objectclass: ['top', 'person', 'organizationalPerson', 'inetOrgPerson'],
         cn: [object.cn],

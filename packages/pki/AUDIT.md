@@ -114,13 +114,19 @@ tag number (`tag & 0x20`). For a tag such as `5F2B` the low byte `0x2B` has bit
 
 - PACE ECDH-GM 3DES/AES-128 (`0.4.0.127.0.7.2.2.4.2.1` / `…4.2.2`) with
   parameter id 12 (P-256): `securityInfo.buildCardAccess` — OK.
-- Chip Authentication ECDH 3DES/AES-128 with key id: OK. LDS1 and LDS2 share
-  one CA key pair and one master-file EF.CardAccess/EF.CardSecurity; the LDS1
-  private scalar is personalized as DGI FF03 and EF.CardSecurity as DGI FF05
-  (card42 `d386608`).
-- Active Authentication (`2.23.136.1.1.5`, version 1, `sha1WithRSAEncryption`):
-  the advertised algorithm matches card42's card, which signs with ISO/IEC
-  9796-2 Scheme 1 and SHA-1 (`EmrtdApplet` → `AaCrypto(2048, AA_SHA1)`).
+- Chip Authentication ECDH 3DES **and AES-128**, key id, version 1: both profiles
+  are advertised (`buildCardAccess({ caEcdh3des, caEcdhAes128 })`), matching
+  card42's exporter (card42 `1380594`). LDS1 and LDS2 share one CA key pair and
+  one master-file EF.CardAccess/EF.CardSecurity; the LDS1 private scalar is
+  personalized as DGI FF03 and EF.CardSecurity as DGI FF05.
+- Terminal Authentication (`id-TA` `0.4.0.127.0.7.2.2.2`, version 1) is advertised
+  when enabled; the CVCA trust point is personalized as an EC trust point
+  (`@cvca`, DGI FF07/FF09) or an RSA-PSS trust point (`@cvca-rsa`, DGI
+  FF0B/FF0C), and the ICC date as FF08 (`@ta-date`).
+- Active Authentication (`2.23.136.1.1.5`, version 1): RSA ISO/IEC 9796-2 Scheme 1
+  with SHA-1 (`1.2.840.113549.1.1.5`) or SHA-256 (`…1.1.11`), or ECDSA-SHA-256
+  (`0.4.0.127.0.7.1.1.4.1.3`). `ActiveAuthenticationInfo` is emitted only for the
+  ECDSA variant (card42 `8c0c9b5`).
 - EF.CardSecurity eContent (`id-SecurityObject`) = CardAccess set plus
   `ChipAuthenticationPublicKeyInfo`: OK.
 - EF.DG14 (`6E { SET OF SecurityInfo }`, Doc 9303-10 §4.7.14) reuses that same
@@ -134,8 +140,12 @@ tag number (`tag & 0x20`). For a tag such as `5F2B` the low byte `0x2B` has bit
 Verified against `host/emrtd/perso/LdsScript.java` and the sample:
 
 - `@instance`, `@doc`, `@dob`, `@doe`, `@can <6 digits>`, `@dg <n>`, `@sod`,
-  `@aa <modLen‖modulus‖expLen‖exponent>`, `@ca <scalar>`, `@cardaccess`,
-  `@cardsecurity`, `@record <fid>`, `@transparent <fid>`.
+  `@aa <modLen‖modulus‖expLen‖exponent>`, `@aa-ec <scalar>`, `@aa-alg sha1|sha256|ecdsa`,
+  `@ca <scalar>`, `@cardaccess`, `@cardsecurity`, `@record <fid>`,
+  `@transparent <fid>`, and — since card42's Terminal Authentication —
+  `@ta-date <YYMMDD>` (DGI FF08), `@cvca <W-hex> <CAR> <YYMMDD> <auth-hex> [secondary]`
+  (EC, DGI FF07/FF09) and `@cvca-rsa <n-hex> <e-hex> <CAR> <YYMMDD> <auth-hex> [secondary]`
+  (RSA-PSS, DGI FF0B/FF0C).
 - `@can` carries the raw CAN octets as DGI `FF06` (PACE password reference
   `0x02`); the card applies the KDF with counter 3 (card42 `7d9befa`).
 - `@aa` value layout matches the DGI `FF02` value built by
@@ -145,9 +155,10 @@ Verified against `host/emrtd/perso/LdsScript.java` and the sample:
 
 ## 7. Not yet implemented (tracked in TODO.md)
 
-- ECDSA (explicit ECParameters) certificate support: default remains RSA
-  (TODO T1.1.5 / risk E5).
+- ECDSA (P-256/P-384, named curve) certificates and CRLs are supported alongside
+  RSA; DSA is not (card42's host does not verify it either).
 - DG8/DG9/DG10 and LDS2 record/transparent writers beyond the script directives
   (TODO T7.5, T1.5.15).
 - `SecurityInfo` profile deviations other than the mechanisms above
-  (e.g. DH variants) are not exposed in the UI yet.
+  (e.g. DH Chip Authentication, PACE DH-GM/IM) are not exposed — card42 marks them
+  platform-impossible or low-value (`algorithm-support.md` §3/§4.3).

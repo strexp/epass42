@@ -14,6 +14,7 @@ export interface SecurityOptionsOverlay {
   pace?: Partial<SecurityOptions['pace']>
   aa?: Partial<SecurityOptions['aa']>
   ca?: Partial<SecurityOptions['ca']>
+  ta?: Partial<SecurityOptions['ta']>
 }
 
 /** Drops `undefined` entries so an overlay never erases an existing value. */
@@ -66,14 +67,21 @@ export function toSecurityOverlay(raw: unknown): SecurityOptionsOverlay {
   } else if (ca && typeof ca === 'object') {
     const value = ca as Record<string, unknown>
     if (typeof value.enabled === 'boolean') caOverlay.enabled = value.enabled
-    if (value.algorithm !== undefined) {
-      caOverlay.algorithm = value.algorithm as SecurityOptions['ca']['algorithm']
-    }
     if (typeof value.keyId === 'number') caOverlay.keyId = value.keyId
   }
   // Legacy profiles stored the CA key id at the top level.
   if (typeof source.caKeyId === 'number') caOverlay.keyId = source.caKeyId
   if (Object.keys(caOverlay).length > 0) overlay.ca = caOverlay
+
+  const ta = source.ta
+  if (ta && typeof ta === 'object') {
+    const value = ta as Record<string, unknown>
+    overlay.ta = defined({
+      enabled: value.enabled as boolean | undefined,
+      currentDate: value.currentDate as string | undefined,
+      authorization: value.authorization as SecurityOptions['ta']['authorization'],
+    })
+  }
 
   return overlay
 }
@@ -87,11 +95,13 @@ export function mergeSecurity(
     pace: { ...base.pace },
     aa: { ...base.aa },
     ca: { ...base.ca },
+    ta: { ...base.ta },
   }
   for (const overlay of overlays) {
     Object.assign(merged.pace, defined(overlay?.pace ?? {}))
     Object.assign(merged.aa, defined(overlay?.aa ?? {}))
     Object.assign(merged.ca, defined(overlay?.ca ?? {}))
+    Object.assign(merged.ta, defined(overlay?.ta ?? {}))
   }
   return merged
 }

@@ -9,6 +9,7 @@ import type { SignRequest } from '@epass42/shared'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { CscaService } from '../csca/service'
+import type { CvcaService } from '../cvca/service'
 import type { IssuingDefaults, PersoBuildResult, SigningMaterial } from './build'
 import { DscSettingsService, type IssuingDefaultsUpdate } from './settings'
 import {
@@ -34,10 +35,10 @@ export class DscService {
   readonly artifacts: DscArtifactService
   readonly delivery: DscDeliveryService
 
-  constructor(db: Db, config: AppConfig, csca: CscaService) {
+  constructor(db: Db, config: AppConfig, csca: CscaService, cvca: CvcaService) {
     this.settings = new DscSettingsService(db, config)
     this.requests = new DscRequestService(db, this.settings)
-    this.artifacts = new DscArtifactService(db, config, csca, this.settings, this.requests)
+    this.artifacts = new DscArtifactService(db, config, csca, cvca, this.settings, this.requests)
     this.delivery = new DscDeliveryService(db, this.requests, this.artifacts)
   }
 

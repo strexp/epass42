@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { NButton, NDropdown, NIcon, NMenu, NSpace } from 'naive-ui'
-import { BookUser, CircleHelp, FileBadge, FolderTree, Languages, ShieldCheck } from '@lucide/vue'
+import {
+  BookUser,
+  CircleHelp,
+  FileBadge,
+  FolderTree,
+  Languages,
+  ShieldCheck,
+  BadgeCheck,
+} from '@lucide/vue'
 import { computed, h } from 'vue'
 
 const { t, locales, setLocale } = useI18n()
@@ -11,6 +19,11 @@ const options = computed(() => [
     label: t('nav.csca'),
     key: '/csca',
     icon: () => h(NIcon, null, { default: () => h(ShieldCheck) }),
+  },
+  {
+    label: t('nav.cvca'),
+    key: '/cvca',
+    icon: () => h(NIcon, null, { default: () => h(BadgeCheck) }),
   },
   {
     label: t('nav.dsc'),

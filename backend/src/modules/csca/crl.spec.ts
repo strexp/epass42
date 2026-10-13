@@ -40,8 +40,6 @@ async function issueDsc(
     documentTypes: ['P'],
     validityYears: 5,
     privateKeyUsageYears: 1,
-    keyBits: 2048,
-    pss: false,
     source: 'owned',
     mnt: 'TEST-MNT',
     keyMode: 'nia_generated',

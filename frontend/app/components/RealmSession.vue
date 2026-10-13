@@ -13,8 +13,20 @@ const { t } = useI18n()
 const { config, load } = usePkdConfig()
 
 const me = computed(() => auth.realms[props.realm].me)
-const label = computed(() => (props.realm === 'csca' ? t('nav.csca') : t('nav.dsc')))
+const label = computed(
+  () =>
+    ({
+      csca: t('nav.csca'),
+      cvca: t('nav.cvca'),
+      dsc: t('nav.dsc'),
+    })[props.realm],
+)
 const providers = computed(() => config.value?.oauthProviders[props.realm] ?? [])
+/** The realm avatar colour. */
+const avatarColor = computed(() => {
+  if (!me.value) return '#767676'
+  return { csca: '#2080f0', cvca: '#7c3aed', dsc: '#18a058' }[props.realm]
+})
 /** Login-method options when more than one provider is configured. */
 const options = computed(() =>
   providers.value.map((provider) => ({ key: provider.id, label: provider.alias })),
@@ -39,11 +51,7 @@ async function logout(): Promise<void> {
     <NCard size="small" :bordered="false">
       <div class="realm-session-row">
         <div class="realm-session-info">
-          <NAvatar
-            round
-            size="small"
-            :style="{ background: me ? (realm === 'csca' ? '#2080f0' : '#18a058') : '#767676' }"
-          >
+          <NAvatar round size="small" :style="{ background: avatarColor }">
             <NIcon><ShieldCheck v-if="me" /><ShieldOff v-else /></NIcon>
           </NAvatar>
           <NText strong class="realm-session-label">{{ label }}</NText>

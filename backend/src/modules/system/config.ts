@@ -3,6 +3,7 @@
  */
 import type { FastifyInstance } from 'fastify'
 
+import type { Realm } from '@epass42/shared'
 import type { AppConfig } from '../../config'
 import type { AuthProviders } from '../auth/provider'
 
@@ -12,7 +13,7 @@ export function registerConfigRoutes(
   deps: { config: AppConfig; providers: AuthProviders },
 ): void {
   app.get('/api/config', async () => {
-    const providersFor = (realm: 'csca' | 'dsc'): { id: number; alias: string; issuer: string }[] =>
+    const providersFor = (realm: Realm): { id: number; alias: string; issuer: string }[] =>
       deps.providers.list(realm).map((record) => ({
         id: record.id,
         alias: deps.providers.aliasOf(record.id),
@@ -24,6 +25,7 @@ export function registerConfigRoutes(
       countryAlpha3: deps.config.countryAlpha3,
       oauthProviders: {
         csca: providersFor('csca'),
+        cvca: providersFor('cvca'),
         dsc: providersFor('dsc'),
       },
     }

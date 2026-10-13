@@ -17,12 +17,13 @@ describe('security option normalisation', () => {
     expect(mergeSecurity(defaults, overlay)).toEqual({
       pace: { ecdhGm3des: false, ecdhGmAes128: true },
       aa: { enabled: true, algorithm: 'rsaSha1' },
-      ca: { enabled: true, algorithm: 'ecdh3des', keyId: 7 },
+      ca: { enabled: true, keyId: 7 },
+      ta: defaults.ta,
     })
   })
 
   it('merges nested overlays without erasing untouched fields', () => {
     const merged = mergeSecurity(defaults, { ca: { enabled: true } }, { ca: { keyId: 3 } })
-    expect(merged.ca).toEqual({ enabled: true, algorithm: 'ecdh3des', keyId: 3 })
+    expect(merged.ca).toEqual({ enabled: true, keyId: 3 })
   })
 })

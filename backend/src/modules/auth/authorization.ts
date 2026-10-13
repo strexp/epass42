@@ -73,7 +73,7 @@ export function getAccount(db: Db, id: number): AccountRow | undefined {
 
 /** The set of administrator MNTs for a realm. */
 export function adminMnts(db: Db, config: AppConfig, realm: Realm): Set<string> {
-  const fromConfig = realm === 'csca' ? config.adminMnts.csca : config.adminMnts.dsc
+  const fromConfig = config.adminMnts[realm]
   const set = new Set(fromConfig)
   const rows = db
     .select()

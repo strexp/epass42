@@ -4,10 +4,17 @@
 export default {
   title: 'PKD directory',
   subtitle: 'Published certificates, revocation lists and revoked documents.',
-  certificates: 'Certificates',
+  certificates: 'Signing CA',
   certificatesHint: 'Download a certificate as DER or PEM and verify it with standard PKI tooling.',
   crls: 'Revocation lists',
   masterlists: 'Master lists',
+  cvca: 'Verifying CA',
+  cvcaHint:
+    'Country Verifying CA certificates: the authorization-PKI trust anchors for reading and writing LDS2 data.',
+  dvs: 'Document verifiers',
+  dvsHint: 'Issued Document Verifier certificates with their LDS2 read and write authorization.',
+  holderReference: 'Holder reference',
+  permissions: 'Authorization',
   dscs: 'Document signers',
   dscsHint:
     'Active and revoked Document Signer certificates, with policy, type, validity and application URL.',

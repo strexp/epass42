@@ -130,6 +130,17 @@ const roles: Role[] = [
     },
   },
   {
+    key: 'cvca',
+    icon: BadgeCheck,
+    flow: {
+      steps: buildSteps('cvca', ['system', 'system', 'system', 'system', 'system']),
+      links: [
+        { to: '/cvca/apply', labelKey: 'help.links.cvca.apply', icon: FilePlus2 },
+        { to: '/cvca/certificates', labelKey: 'help.links.cvca.certificates', icon: BadgeCheck },
+      ],
+    },
+  },
+  {
     key: 'selfHosted',
     icon: Server,
     flow: {

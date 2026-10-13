@@ -38,6 +38,9 @@ export default {
     no_active_dsc: '该机构尚无已批准的文档签名证书。',
     no_private_key: '该证书没有可下载的私钥。',
     private_key_consumed: '私钥已被下载并删除。',
+    dv_key_unavailable: '本服务不再持有该文档验证者私钥，无法在此签发终端证书。',
+    ta_requires_cvca:
+      '终端认证需要 ECDSA 的 CVCA 密钥：请启用 CVCA 角色或设置 cvca.algorithm = "ecdsa"。',
     dg2_too_large: '照片过大，请更换更小的图片或降低质量。',
     passport_not_active: '该护照不是有效状态。',
   },

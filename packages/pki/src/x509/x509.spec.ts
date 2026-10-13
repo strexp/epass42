@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { generateRsaKeyPair } from '../crypto/crypto'
+import { generateEcKeyPair, generateRsaKeyPair } from '../crypto/crypto'
 import { createCscaRoot, createDsc } from './x509'
 import { createCrl, readCrlNumber } from './crl'
 import { OIDS } from '@epass42/shared'
@@ -125,10 +125,56 @@ describe('CRL profile', () => {
       thisUpdate: new Date('2026-02-01T00:00:00Z'),
       nextUpdate: new Date('2026-03-01T00:00:00Z'),
       entries: [],
-      pss: false,
     })
     expect(readCrlNumber(generated.crl)).toBe(7n)
     expect(generated.crl.getExtension(OIDS.authorityKeyIdentifier)).toBeTruthy()
     expect(await generated.crl.verify({ publicKey: key.publicKey })).toBe(true)
+  })
+
+  it('builds an ECDSA CSCA, DSC and CRL', async () => {
+    const { notBefore, notAfter, keyNotAfter } = dates()
+    const cscaKey = await generateEcKeyPair('P-256')
+    const csca = await createCscaRoot(
+      {
+        commonName: 'ePass 42 EC CSCA',
+        notBefore,
+        notAfter,
+        privateKeyNotAfter: keyNotAfter,
+        crlDistributionPoints: CRL_DP,
+      },
+      cscaKey,
+    )
+    expect(csca.certificate.signatureAlgorithm.name).toBe('ECDSA')
+    expect(
+      await csca.certificate.verify({ publicKey: cscaKey.publicKey, signatureOnly: true }),
+    ).toBe(true)
+
+    const dscKey = await generateEcKeyPair('P-384')
+    const dsc = await createDsc(
+      {
+        commonName: 'ePass 42 EC DSC',
+        documentTypes: ['P'],
+        notBefore,
+        notAfter,
+        crlDistributionPoints: CRL_DP,
+      },
+      { publicKey: dscKey.publicKey },
+      { certificate: csca.certificate, key: cscaKey },
+    )
+    expect(dsc.certificate.signatureAlgorithm.name).toBe('ECDSA')
+    expect(
+      await dsc.certificate.verify({ publicKey: cscaKey.publicKey, signatureOnly: true }),
+    ).toBe(true)
+
+    const crl = await createCrl({
+      issuerCertificate: csca.certificate,
+      signingKey: cscaKey,
+      crlNumber: 9,
+      thisUpdate: new Date('2026-02-01T00:00:00Z'),
+      nextUpdate: new Date('2026-03-01T00:00:00Z'),
+      entries: [],
+    })
+    expect(readCrlNumber(crl.crl)).toBe(9n)
+    expect(await crl.crl.verify({ publicKey: cscaKey.publicKey })).toBe(true)
   })
 })

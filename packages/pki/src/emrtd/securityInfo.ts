@@ -4,6 +4,7 @@
  */
 import type { Bytes } from '../codec/bytes'
 import { derInteger, derOid, derSequence, derSet, parseTlv } from '../codec/der'
+import { OIDS } from '@epass42/shared'
 
 /** Protocol OIDs used in the SecurityInfo objects (card42's SecurityInfo). */
 export const SECURITY_INFO_OIDS = {
@@ -29,6 +30,8 @@ const PARAM_ID_P256 = 12
 export const AA_SIGNATURE_ALG_OIDS = {
   rsaSha1: '1.2.840.113549.1.1.5',
   rsaSha256: '1.2.840.113549.1.1.11',
+  /** id-ecdsa-plain-SHA256 (ICAO Doc 9303-11 §9.2.4). */
+  ecdsaSha256: '0.4.0.127.0.7.1.1.4.1.3',
 } as const
 
 /** The mechanism selection stored on a signing request. */
@@ -39,6 +42,8 @@ export interface SecurityInfoSelection {
   caEcdhAes128: boolean
   caKeyId: number
   aa: boolean
+  /** Terminal Authentication (advertise `id-TA`). */
+  ta?: boolean
   /** AA signature algorithm OID (default SHA-1, matching card42's card). */
   aaSignatureAlgOid?: string
 }
@@ -48,9 +53,14 @@ function paceInfo(oid: string): Bytes {
   return derSequence(derOid(oid), derInteger(2), derInteger(PARAM_ID_P256))
 }
 
-/** ChipAuthenticationInfo SEQUENCE { OID, version 2, keyId }. */
+/** ChipAuthenticationInfo SEQUENCE { OID, version 1, keyId } (ICAO Doc 9303-11 §9.2.5). */
 function chipAuthenticationInfo(oid: string, keyId: number): Bytes {
-  return derSequence(derOid(oid), derInteger(2), derInteger(keyId))
+  return derSequence(derOid(oid), derInteger(1), derInteger(keyId))
+}
+
+/** TerminalAuthenticationInfo SEQUENCE { id-TA, version 1 } (ICAO Doc 9303-11 §9.2.8). */
+function terminalAuthenticationInfo(): Bytes {
+  return derSequence(derOid(OIDS.idTa), derInteger(1))
 }
 
 /** ActiveAuthenticationInfo SEQUENCE { OID, version 1, signatureAlgorithm }. */
@@ -75,6 +85,9 @@ function securityInfoEntries(info: SecurityInfoSelection): Bytes[] {
   }
   if (info.aa) {
     entries.push(activeAuthenticationInfo(info.aaSignatureAlgOid ?? AA_SIGNATURE_ALG_OIDS.rsaSha1))
+  }
+  if (info.ta) {
+    entries.push(terminalAuthenticationInfo())
   }
   return entries
 }

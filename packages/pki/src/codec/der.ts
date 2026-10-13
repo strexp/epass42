@@ -138,12 +138,22 @@ export function rsaSpki(modulus: Bytes, publicExponent: Bytes): Bytes {
   )
 }
 
-/** DER SubjectPublicKeyInfo for a P-256 public point (uncompressed). */
-export function ecP256Spki(point: Bytes): Bytes {
+/** P-256 named-curve OID. */
+export const EC_P256_OID = '1.2.840.10045.3.1.7'
+/** P-384 named-curve OID. */
+export const EC_P384_OID = '1.3.132.0.34'
+
+/** DER SubjectPublicKeyInfo for an uncompressed EC public point. */
+export function ecSpki(point: Bytes, curve: 'P-256' | 'P-384' = 'P-256'): Bytes {
   return derSequence(
-    derSequence(derOid('1.2.840.10045.2.1'), derOid('1.2.840.10045.3.1.7')),
+    derSequence(derOid('1.2.840.10045.2.1'), derOid(curve === 'P-384' ? EC_P384_OID : EC_P256_OID)),
     derBitString(point),
   )
+}
+
+/** DER SubjectPublicKeyInfo for a P-256 public point (uncompressed). */
+export function ecP256Spki(point: Bytes): Bytes {
+  return ecSpki(point, 'P-256')
 }
 
 /** True when all characters are printable ASCII. */

@@ -7,7 +7,13 @@
  */
 import { toArrayBuffer } from '../codec/bytes'
 import { bytesToHex } from '../codec/hex'
-import { sha256, type HashName, type RsaKeyPair, randomSerial } from '../crypto/crypto'
+import {
+  sha256,
+  type EcKeyPair,
+  type HashName,
+  type RsaKeyPair,
+  randomSerial,
+} from '../crypto/crypto'
 import {
   authorityKeyIdentifier,
   basicConstraints,
@@ -49,6 +55,22 @@ export function rsaSigningAlgorithm(
   return pss
     ? { name: 'RSA-PSS', hash, saltLength: saltLength(hash) }
     : { name: 'RSASSA-PKCS1-v1_5', hash }
+}
+
+/** A certificate/CRL signing key: RSA or ECDSA. */
+export type CertKeyPair = RsaKeyPair | EcKeyPair
+
+/** True for an ECDSA key pair. */
+export function isEcCertKey(key: CertKeyPair): key is EcKeyPair {
+  return 'point' in key
+}
+
+/** The WebCrypto signature algorithm for a certificate/CRL signer. */
+export function certificateSigningAlgorithm(
+  key: CertKeyPair,
+  hash: HashName,
+): RsaPssParams | EcdsaParams | Algorithm {
+  return isEcCertKey(key) ? { name: 'ECDSA', hash } : rsaSigningAlgorithm(hash, key.pss)
 }
 
 /** Common parameters for a CSCA root or link certificate. */
@@ -142,10 +164,9 @@ export async function describeCertificate(
  */
 export async function createCscaRoot(
   profile: CscaProfile,
-  key: RsaKeyPair,
+  key: CertKeyPair,
 ): Promise<GeneratedCertificate> {
   const hash = profile.hash ?? 'SHA-256'
-  const pss = profile.pss ?? key.pss
   const extensions = [
     await subjectKeyIdentifier(key.publicKey),
     await authorityKeyIdentifier(key.publicKey),
@@ -167,7 +188,7 @@ export async function createCscaRoot(
     serialNumber: bytesToHex(profile.serial ?? randomSerial()),
     notBefore: profile.notBefore,
     notAfter: profile.notAfter,
-    signingAlgorithm: rsaSigningAlgorithm(hash, pss),
+    signingAlgorithm: certificateSigningAlgorithm(key, hash),
     extensions,
   })
   return describeCertificate(certificate)
@@ -188,10 +209,9 @@ export interface SubjectPublicKey {
 export async function createDsc(
   profile: DscProfile,
   subjectKey: SubjectPublicKey,
-  issuer: { certificate: x509.X509Certificate; key: RsaKeyPair },
+  issuer: { certificate: x509.X509Certificate; key: CertKeyPair; hash?: HashName },
 ): Promise<GeneratedCertificate> {
-  const hash = profile.hash ?? 'SHA-256'
-  const pss = profile.pss ?? subjectKey.pss ?? issuer.key.pss
+  const hash = issuer.hash ?? profile.hash ?? 'SHA-256'
   const extensions = [
     await authorityKeyIdentifier(issuer.key.publicKey),
     await subjectKeyIdentifier(subjectKey.publicKey),
@@ -216,7 +236,7 @@ export async function createDsc(
     serialNumber: bytesToHex(profile.serial ?? randomSerial()),
     notBefore: profile.notBefore,
     notAfter: profile.notAfter,
-    signingAlgorithm: rsaSigningAlgorithm(hash, pss),
+    signingAlgorithm: certificateSigningAlgorithm(issuer.key, hash),
     extensions,
   })
   return describeCertificate(certificate)
@@ -230,14 +250,14 @@ export async function createDsc(
  */
 export async function createCscaLink(
   oldCertificate: x509.X509Certificate,
-  oldKey: RsaKeyPair,
+  oldKey: CertKeyPair,
   newProfile: CscaProfile,
   newPublicKey: CryptoKey,
   newKeyPss: boolean,
   options: { hash?: HashName; serial?: Uint8Array } = {},
 ): Promise<GeneratedCertificate> {
+  void newKeyPss
   const hash = options.hash ?? 'SHA-256'
-  const pss = newProfile.pss ?? newKeyPss
   const nameChanged =
     oldCertificate.subjectName.getField('CN')[0] !== newProfile.commonName ||
     oldCertificate.subjectName.getField('C')[0] !== (newProfile.country ?? 'XD') ||
@@ -287,7 +307,7 @@ export async function createCscaLink(
     serialNumber: bytesToHex(options.serial ?? randomSerial()),
     notBefore: newProfile.notBefore,
     notAfter: newProfile.notAfter,
-    signingAlgorithm: rsaSigningAlgorithm(hash, pss),
+    signingAlgorithm: certificateSigningAlgorithm(oldKey, hash),
     extensions,
   })
   return describeCertificate(certificate)
@@ -296,11 +316,10 @@ export async function createCscaLink(
 /** Creates a Master List Signer certificate (EKU id-icao-cscaMasterListSigningKey). */
 export async function createMasterListSigner(
   profile: DscProfile,
-  subjectKey: RsaKeyPair,
-  issuer: { certificate: x509.X509Certificate; key: RsaKeyPair },
+  subjectKey: CertKeyPair,
+  issuer: { certificate: x509.X509Certificate; key: CertKeyPair; hash?: HashName },
 ): Promise<GeneratedCertificate> {
-  const hash = profile.hash ?? 'SHA-256'
-  const pss = profile.pss ?? subjectKey.pss
+  const hash = issuer.hash ?? profile.hash ?? 'SHA-256'
   const extensions = [
     await authorityKeyIdentifier(issuer.key.publicKey),
     await subjectKeyIdentifier(subjectKey.publicKey),
@@ -320,7 +339,7 @@ export async function createMasterListSigner(
     serialNumber: bytesToHex(profile.serial ?? randomSerial()),
     notBefore: profile.notBefore,
     notAfter: profile.notAfter,
-    signingAlgorithm: rsaSigningAlgorithm(hash, pss),
+    signingAlgorithm: certificateSigningAlgorithm(issuer.key, hash),
     extensions,
   })
   return describeCertificate(certificate)

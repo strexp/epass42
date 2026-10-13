@@ -40,6 +40,8 @@ import { registerAuthRoutes } from './modules/auth/routes'
 import { realmEnabled } from './modules/auth/middleware'
 import { CscaService } from './modules/csca/service'
 import { registerCscaRoutes } from './modules/csca/routes'
+import { CvcaService } from './modules/cvca/service'
+import { registerCvcaRoutes } from './modules/cvca/routes'
 import { DscService } from './modules/dsc/service'
 import { registerDscRoutes } from './modules/dsc/routes'
 import { registerPkdRoutes } from './modules/pkd/rest'
@@ -67,6 +69,7 @@ export interface BuiltApp {
   providers: AuthProviders
   sessions: SessionStore
   csca: CscaService
+  cvca: CvcaService
   dsc: DscService
 }
 
@@ -208,7 +211,21 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
       )
     }
   }
-  const dsc = new DscService(dbHandle.db, config, csca)
+  const cvca = new CvcaService({ db: dbHandle.db, config, keks })
+  if (realmEnabled(config, 'cvca') || config.issuing.security.ta.enabled) {
+    await cvca.ensureCvcaKey()
+    // Verify the stored key can be opened, so a KEK mismatch is reported at
+    // startup rather than when issuing a DV.
+    try {
+      await cvca.validateCurrentKey()
+    } catch (error) {
+      app.log.error(
+        { err: error },
+        'sealed CVCA key cannot be decrypted (KEK mismatch): set the same encryptionKek in config.toml used before, or remove the database to bootstrap a new CVCA',
+      )
+    }
+  }
+  const dsc = new DscService(dbHandle.db, config, csca, cvca)
 
   // Prepare the system NIA Document Signer certificate at startup so it is
   // always present in the certificate registry and the PKD directory.  Only
@@ -228,6 +245,9 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   if (realmEnabled(config, 'csca')) {
     registerCscaRoutes(app, { config, db: dbHandle.db, sessions, service: csca })
   }
+  if (realmEnabled(config, 'cvca')) {
+    registerCvcaRoutes(app, { config, db: dbHandle.db, sessions, service: cvca })
+  }
   if (realmEnabled(config, 'dsc')) {
     const mailer = createMailer(config, (message) => app.log.info(message))
     const resolver = options.mntResolver ?? new WhoisMntResolver(config.jurisdiction)
@@ -238,5 +258,5 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   }
 
   await app.ready()
-  return { app, config, dbHandle, providers, sessions, csca, dsc }
+  return { app, config, dbHandle, providers, sessions, csca, cvca, dsc }
 }

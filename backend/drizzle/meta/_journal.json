@@ -22,6 +22,34 @@
       "when": 1791642817373,
       "tag": "0002_curvy_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791690243015,
+      "tag": "0003_lonely_eternals",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791692220578,
+      "tag": "0004_glossy_triton",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791857236103,
+      "tag": "0005_bright_iron_fist",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791873080933,
+      "tag": "0006_cold_the_hood",
+      "breakpoints": true
     }
   ]
 }

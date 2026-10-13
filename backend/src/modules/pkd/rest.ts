@@ -11,12 +11,13 @@ import { z } from 'zod'
 import { derToPem } from '@epass42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { dscCert } from '../../db/schema'
+import { dscCert, dvCert } from '../../db/schema'
 import { writeAudit } from '../../audit/audit'
 import { requireAdmin, type AuthContext } from '../auth/middleware'
 import type { SessionStore } from '../auth/session'
 import { certMetadata } from '../csca/routeContext'
 import type { CscaService } from '../csca/service'
+import { parsePermissions } from '../cvca/service'
 import { listObjects } from './directory'
 import { buildLdif } from './ldif'
 import {
@@ -73,6 +74,42 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
     const items = listObjects(db, config)
       .filter((object) => object.kind === 'ml')
       .map((object) => ({ id: object.id }))
+    return { total: items.length, items }
+  })
+
+  // Authorization-PKI trust anchors (Doc 9303-12 §7.2): the CVCA certificates
+  // (root and link) and the issued Document Verifier certificates.
+  server.get('/pkd/cvca', async () => {
+    const items = listObjects(db, config)
+      .filter((object) => object.kind === 'cvca')
+      .map((object) => ({
+        id: object.id,
+        cn: object.cn,
+        subject: object.subject,
+        status: object.status,
+      }))
+    return { total: items.length, items }
+  })
+
+  server.get('/pkd/dvs', async () => {
+    const items = db
+      .select()
+      .from(dvCert)
+      .orderBy(desc(dvCert.id))
+      .all()
+      .map((row) => ({
+        id: `dv-${row.id}`,
+        holderReference: row.holderReference,
+        authorityReference: row.authorityReference,
+        name: row.subjectCn,
+        mnt: row.mnt,
+        status: row.status,
+        keyMode: row.keyMode,
+        dvClass: row.dvClass,
+        permissions: parsePermissions(row.permissionsJson),
+        notBefore: row.notBefore,
+        notAfter: row.notAfter,
+      }))
     return { total: items.length, items }
   })
 

@@ -68,26 +68,12 @@ const paceProfiles = computed<(string | number)[]>({
 
 const aaAlgorithmOptions = computed(() => [
   { label: t('dsc.securityAaSha1'), value: 'rsaSha1' },
-  {
-    label: `${t('dsc.securityAaSha256')} (${t('dsc.securityPlanned')})`,
-    value: 'rsaSha256',
-    disabled: true,
-  },
-])
-const caAlgorithmOptions = computed(() => [
-  { label: t('dsc.securityCaEcdh3des'), value: 'ecdh3des' },
-  {
-    label: `${t('dsc.securityCaEcdhAes128')} (${t('dsc.securityPlanned')})`,
-    value: 'ecdhAes128',
-    disabled: true,
-  },
+  { label: t('dsc.securityAaSha256'), value: 'rsaSha256' },
+  { label: t('dsc.securityAaEcdsa'), value: 'ecdsa' },
 ])
 
 function setAaAlgorithm(value: string): void {
   model.value.aa.algorithm = value as SecurityOptions['aa']['algorithm']
-}
-function setCaAlgorithm(value: string): void {
-  model.value.ca.algorithm = value as SecurityOptions['ca']['algorithm']
 }
 </script>
 
@@ -146,13 +132,7 @@ function setCaAlgorithm(value: string): void {
               {{ $t('dsc.securityRequired') }}
             </NTag>
           </NSpace>
-          <NSelect
-            :value="model.ca.algorithm"
-            :options="caAlgorithmOptions"
-            :disabled="!model.ca.enabled"
-            size="small"
-            @update:value="setCaAlgorithm"
-          />
+          <NText depth="3" style="font-size: 12px">{{ $t('dsc.securityCaProfiles') }}</NText>
           <NInputNumber
             v-model:value="model.ca.keyId"
             :min="0"
@@ -162,6 +142,13 @@ function setCaAlgorithm(value: string): void {
           >
             <template #prefix>{{ $t('dsc.caKeyId') }}</template>
           </NInputNumber>
+        </NSpace>
+      </NFormItem>
+
+      <NFormItem :label="$t('dsc.securityTa')">
+        <NSpace vertical :size="6">
+          <NSwitch v-model:value="model.ta.enabled" />
+          <NText depth="3" style="font-size: 12px">{{ $t('dsc.securityTaHint') }}</NText>
         </NSpace>
       </NFormItem>
     </div>
@@ -192,12 +179,7 @@ function setCaAlgorithm(value: string): void {
             <NSwitch :value="true" disabled />
             <NTag size="small" :bordered="false">{{ $t('dsc.securityRequired') }}</NTag>
           </NSpace>
-          <NSelect
-            :value="model.ca.algorithm"
-            :options="caAlgorithmOptions"
-            disabled
-            size="small"
-          />
+          <NText depth="3" style="font-size: 12px">{{ $t('dsc.securityCaProfiles') }}</NText>
           <NInputNumber :value="model.ca.keyId" disabled size="small">
             <template #prefix>{{ $t('dsc.caKeyId') }}</template>
           </NInputNumber>

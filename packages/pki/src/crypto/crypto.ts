@@ -16,7 +16,7 @@ import {
 import * as pkijs from 'pkijs'
 
 import { concat, toArrayBuffer, trimLeadingZeros, type Bytes } from '../codec/bytes'
-import { ecP256Spki, rsaSpki } from '../codec/der'
+import { ecP256Spki, ecSpki, rsaSpki } from '../codec/der'
 
 /** Supported hash algorithm names. */
 export type HashName = 'SHA-1' | 'SHA-224' | 'SHA-256' | 'SHA-384' | 'SHA-512'
@@ -219,3 +219,85 @@ export function generateP256KeyPair(): P256KeyPair {
   const point = p256.getPublicKey(scalar, false)
   return { scalar, spki: ecP256Spki(point) }
 }
+
+/* ------------------------------------------------------------------ *
+ * ECDSA P-256 / P-384 (X.509, CV certificates / Terminal Authentication)
+ * ------------------------------------------------------------------ */
+
+/** The supported NIST curves. */
+export type EcCurve = 'P-256' | 'P-384'
+
+/** An ECDSA key pair. */
+export interface EcKeyPair {
+  publicKey: CryptoKey
+  privateKey: CryptoKey
+  /** Uncompressed public point (`04 || X || Y`). */
+  point: Bytes
+  curve: EcCurve
+  /** DER PKCS#8 private key. */
+  pkcs8: Bytes
+  /** DER SubjectPublicKeyInfo. */
+  spki: Bytes
+}
+
+/** The WebCrypto algorithm for a curve. */
+function ecAlgorithm(curve: EcCurve): EcKeyAlgorithm {
+  return { name: 'ECDSA', namedCurve: curve }
+}
+
+/** Imports an uncompressed EC point as an ECDSA verification key. */
+export function importEcPublicKey(point: Bytes, curve: EcCurve = 'P-256'): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'spki',
+    toArrayBuffer(ecSpki(point, curve)),
+    ecAlgorithm(curve),
+    true,
+    ['verify'],
+  )
+}
+
+/** Reads the uncompressed point of a DER SubjectPublicKeyInfo. */
+export async function ecPointFromSpki(spki: Bytes, curve: EcCurve): Promise<Bytes> {
+  const key = await crypto.subtle.importKey('spki', toArrayBuffer(spki), ecAlgorithm(curve), true, [
+    'verify',
+  ])
+  return new Uint8Array(await crypto.subtle.exportKey('raw', key))
+}
+
+/** Generates a fresh ECDSA key pair (for CVCA/DV/terminal/CSCA/DSC keys). */
+export async function generateEcKeyPair(curve: EcCurve = 'P-256'): Promise<EcKeyPair> {
+  const keyPair = (await crypto.subtle.generateKey(ecAlgorithm(curve), true, [
+    'sign',
+    'verify',
+  ])) as CryptoKeyPair
+  const point = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey))
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', keyPair.privateKey))
+  return {
+    publicKey: keyPair.publicKey,
+    privateKey: keyPair.privateKey,
+    point,
+    curve,
+    pkcs8,
+    spki: ecSpki(point, curve),
+  }
+}
+
+/** Imports a PKCS#8 ECDSA key pair and its uncompressed public point. */
+export async function importEcKeyPair(
+  pkcs8: Bytes,
+  point: Bytes,
+  curve: EcCurve = 'P-256',
+): Promise<EcKeyPair> {
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    toArrayBuffer(pkcs8),
+    ecAlgorithm(curve),
+    true,
+    ['sign'],
+  )
+  const publicKey = await importEcPublicKey(point, curve)
+  return { publicKey, privateKey, point, curve, pkcs8, spki: ecSpki(point, curve) }
+}
+
+/** ECDSA P-256 with SHA-256 (TR-03111 plain `r||s` signatures). */
+export const ECDSA_P256_SHA256: EcdsaParams = { name: 'ECDSA', hash: 'SHA-256' }

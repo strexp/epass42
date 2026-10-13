@@ -38,7 +38,8 @@ const profile = ref({
   security: {
     pace: { ecdhGm3des: true, ecdhGmAes128: true },
     aa: { enabled: false, algorithm: 'rsaSha1' as const },
-    ca: { enabled: false, algorithm: 'ecdh3des' as const, keyId: 1 },
+    ca: { enabled: false, keyId: 1 },
+    ta: { enabled: false },
   },
 })
 

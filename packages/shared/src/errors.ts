@@ -32,6 +32,9 @@ export const ERROR_CODES = [
   'reveal_not_allowed',
   'token_invalid',
   'token_expired',
+  // CVCA / Terminal Authentication
+  'dv_key_unavailable',
+  'ta_requires_cvca',
   // PKI
   'signature_invalid',
 ] as const
