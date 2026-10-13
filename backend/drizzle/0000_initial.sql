@@ -64,6 +64,23 @@ CREATE TABLE `csca_key` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `csca_key_serial_unique` ON `csca_key` (`serial`);--> statement-breakpoint
+CREATE TABLE `cvca_key` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`holder_reference` text NOT NULL,
+	`fingerprint_sha256` text NOT NULL,
+	`authority_reference` text NOT NULL,
+	`subject_cn` text,
+	`key_algorithm` text NOT NULL,
+	`cert_der` blob NOT NULL,
+	`key_ref` text NOT NULL,
+	`status` text DEFAULT 'current' NOT NULL,
+	`is_current` integer DEFAULT false NOT NULL,
+	`not_before` text,
+	`not_after` text,
+	`created_at` text NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `cvca_key_fingerprint_sha256_unique` ON `cvca_key` (`fingerprint_sha256`);--> statement-breakpoint
 CREATE TABLE `dsc_application` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`mnt` text,
@@ -71,6 +88,8 @@ CREATE TABLE `dsc_application` (
 	`ip` text,
 	`key_mode` text NOT NULL,
 	`subject_cn` text,
+	`subject_o` text,
+	`subject_ou` text,
 	`csr_pem` text,
 	`public_key_pem` text,
 	`document_type` text,
@@ -95,6 +114,7 @@ CREATE TABLE `dsc_cert` (
 	`source` text NOT NULL,
 	`cert_pem` text NOT NULL,
 	`key_ref` text,
+	`key_algorithm` text,
 	`key_mode` text,
 	`issuance_policy` text,
 	`application_url` text,
@@ -108,6 +128,53 @@ CREATE TABLE `dsc_cert` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `dsc_cert_serial_unique` ON `dsc_cert` (`serial`);--> statement-breakpoint
+CREATE TABLE `dv_application` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`mnt` text,
+	`applicant_account_id` integer,
+	`ip` text,
+	`key_mode` text NOT NULL,
+	`subject_cn` text,
+	`holder_mnemonic` text,
+	`csr_pem` text,
+	`public_key_pem` text,
+	`dv_class` text DEFAULT 'domestic' NOT NULL,
+	`permissions_json` text,
+	`validity_days` integer,
+	`application_url` text,
+	`notes` text,
+	`status` text DEFAULT 'submitted' NOT NULL,
+	`override_permissions_json` text,
+	`override_dv_class` text,
+	`reviewed_by` integer,
+	`reviewed_at` text,
+	`reject_reason` text,
+	`created_at` text NOT NULL,
+	FOREIGN KEY (`applicant_account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE TABLE `dv_cert` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`cvca_key_id` integer,
+	`holder_reference` text NOT NULL,
+	`authority_reference` text NOT NULL,
+	`subject_cn` text,
+	`mnt` text,
+	`source` text NOT NULL,
+	`cert_der` blob NOT NULL,
+	`key_ref` text,
+	`key_mode` text,
+	`dv_class` text DEFAULT 'domestic' NOT NULL,
+	`permissions_json` text,
+	`application_url` text,
+	`status` text DEFAULT 'active' NOT NULL,
+	`not_before` text,
+	`not_after` text,
+	`created_at` text NOT NULL,
+	FOREIGN KEY (`cvca_key_id`) REFERENCES `cvca_key`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `dv_cert_holder_reference_unique` ON `dv_cert` (`holder_reference`);--> statement-breakpoint
 CREATE TABLE `issuing_profile` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`issuing_state` text DEFAULT 'UDN' NOT NULL,
@@ -148,7 +215,8 @@ CREATE TABLE `master_list` (
 --> statement-breakpoint
 CREATE TABLE `mnt_config` (
 	`mnt` text PRIMARY KEY NOT NULL,
-	`use_nia_dsc` integer DEFAULT false NOT NULL,
+	`use_nia_dsc` integer DEFAULT true NOT NULL,
+	`use_nia_dv` integer DEFAULT true NOT NULL,
 	`updated_by` integer,
 	`updated_at` text NOT NULL
 );
@@ -217,6 +285,8 @@ CREATE TABLE `sign_request` (
 	`consumed_by` integer,
 	`consumed_channel` text,
 	`regenerated_from` text,
+	`revoked_at` text,
+	`revoke_reason` text,
 	`created_at` text NOT NULL,
 	`expires_at` text,
 	FOREIGN KEY (`requester_account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE no action,
@@ -224,6 +294,7 @@ CREATE TABLE `sign_request` (
 	FOREIGN KEY (`result_artifact_id`) REFERENCES `artifact`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `ux_sign_request_mrz` ON `sign_request` (`mnt`, json_extract(`payload_json`, '$.mrz.documentNumber'));--> statement-breakpoint
 CREATE TABLE `system_setting` (
 	`key` text PRIMARY KEY NOT NULL,
 	`value` text NOT NULL,
@@ -231,6 +302,24 @@ CREATE TABLE `system_setting` (
 	`updated_at` text NOT NULL,
 	FOREIGN KEY (`updated_by`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE no action
 );
-
 --> statement-breakpoint
-CREATE UNIQUE INDEX `ux_sign_request_mrz` ON `sign_request` (`mnt`, json_extract(`payload_json`, '$.mrz.documentNumber'));
+CREATE TABLE `terminal_cert` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`dv_cert_id` integer,
+	`holder_reference` text NOT NULL,
+	`authority_reference` text NOT NULL,
+	`subject_cn` text,
+	`mnt` text,
+	`source` text NOT NULL,
+	`cert_der` blob NOT NULL,
+	`key_ref` text,
+	`key_mode` text,
+	`permissions_json` text,
+	`status` text DEFAULT 'active' NOT NULL,
+	`not_before` text,
+	`not_after` text,
+	`created_at` text NOT NULL,
+	FOREIGN KEY (`dv_cert_id`) REFERENCES `dv_cert`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `terminal_cert_holder_reference_unique` ON `terminal_cert` (`holder_reference`);

@@ -273,7 +273,7 @@ epass42/
 - [x] T17.12 DV 证书委派（仿 CSCA）：CVCA 启动时签发默认（`system`）DV（`cvca.dv.defaultDv`），`mnt_config.use_nia_dv`
       按 MNT 切换「默认 DV / 自有 DV」，`GET/PUT /cvca/settings/mnt` 与 `/cvca` 页委派卡片；`POST /cvca/terminals`
       按委派选择签发终端证书，为后续终端证书申请系统铺路。密钥生成模式 `nia_generated` 统一更名为
-      `remote_generated`（数据迁移 `0007`）；CSCA 密钥生成文案统一为「由 CSCA 生成」，DV 证书列表的授权改为紧凑概览（hover 展开）。
+      `remote_generated`（基线迁移直接采用新值）；CSCA 密钥生成文案统一为「由 CSCA 生成」，DV 证书列表的授权改为紧凑概览（hover 展开）。
 
 > 说明：CHAT 权限位采用 BSI TR-03110 的角色位布局（`C0`=CVCA、`80`=国内 DV、`40`=国外 DV、`00`=终端），
 > ePassport 使用 byte0 的 b1/b2（DG3/DG4），LDS2 应用授权使用 `65{73{06,53}}` 扩展（Doc 9303-10 Table 99）。

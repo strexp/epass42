@@ -5,64 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1791598976918,
-      "tag": "0000_sweet_sleeper",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1791633600497,
-      "tag": "0001_shiny_black_panther",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1791642817373,
-      "tag": "0002_curvy_snowbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1791690243015,
-      "tag": "0003_lonely_eternals",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1791692220578,
-      "tag": "0004_glossy_triton",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1791857236103,
-      "tag": "0005_bright_iron_fist",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1791873080933,
-      "tag": "0006_cold_the_hood",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": 6,
-      "when": 1791876142308,
-      "tag": "0007_remote_generated",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "6",
-      "when": 1791876691664,
-      "tag": "0008_thankful_captain_marvel",
+      "when": 1791877346668,
+      "tag": "0000_initial",
       "breakpoints": true
     }
   ]
