@@ -438,8 +438,9 @@ CREATE TABLE system_setting (
   updated_at TEXT NOT NULL);
 
 -- 签发字段默认值（DSC 管理员可编辑；审批可单请求覆盖）
+-- 签发国/国籍不使用独立字段，始终取配置的 countryAlpha3
 CREATE TABLE issuing_profile (
-  id INTEGER PRIMARY KEY, issuing_state TEXT NOT NULL DEFAULT 'XDN',
+  id INTEGER PRIMARY KEY,
   issuing_authority TEXT, personalization_device TEXT, dg13_policy TEXT,
   endorsements_json TEXT, defaults_json TEXT,
   updated_by INTEGER REFERENCES account(id), updated_at TEXT NOT NULL);

@@ -107,7 +107,7 @@ describe('M5 CSCA role', () => {
     expect(csca.subject).toContain('C=ZZ')
     const san = csca.getExtension(OIDS.subjectAltName)!
     expect(Buffer.from(san.value).includes(Buffer.from('ZZZ'))).toBe(true)
-    expect(built.config.issuing.issuingState).toBe('ZZZ')
+    expect(built.config.countryAlpha3).toBe('ZZZ')
   })
 
   it('bootstraps a CSCA key and issues a DSC via an approved application', async () => {

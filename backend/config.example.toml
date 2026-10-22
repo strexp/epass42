@@ -196,8 +196,6 @@ holderMnemonic = "NIADV"
 # Server-filled issuing fields (M7/M8), editable by NIA DSC admins.  Enable
 # with `roles = [..., "dsc"]`.
 [issuing]
-# Issuing state defaults to countryAlpha3; uncomment to override.
-# issuingState = "XDN"
 issuingAuthority = "NIA"
 personalizationDevice = "EPASS42"
 dg13Policy = "utf8-text"

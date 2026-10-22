@@ -131,8 +131,8 @@ export class DscRequestService {
       mrz: {
         ...payload.mrz,
         // Issuing state, nationality and expiry are server-owned.
-        issuingState: profile.issuingState,
-        nationality: profile.issuingState,
+        issuingState: profile.countryAlpha3,
+        nationality: profile.countryAlpha3,
         dateOfExpiry: mrzExpiry(profile.validityYears),
       },
     }

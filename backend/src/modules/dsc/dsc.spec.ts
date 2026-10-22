@@ -983,6 +983,31 @@ describe('M7 DSC signing service', () => {
     expect(stored.mrz.nationality).toBe('XDN')
   })
 
+  it('takes the issuing state and DG1 nationality from countryAlpha3', async () => {
+    const { app, oidc, dsc } = await harness({ countryAlpha3: 'ZZZ' })
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const reference = await submit(app, oidc, 'CTRY111')
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(200)
+
+    // The stored payload and the DG1 MRZ both carry the configured country.
+    const row = dsc.getByReference(reference)!
+    const stored = JSON.parse(row.payloadJson) as {
+      mrz: { issuingState: string; nationality: string }
+    }
+    expect(stored.mrz.issuingState).toBe('ZZZ')
+    expect(stored.mrz.nationality).toBe('ZZZ')
+
+    const dg1 = parseTlv(parsePerso(artifactText(dsc, reference)).dataGroups.get(1)!)
+    const mrzLine1 = Buffer.from(dg1.children[0]!.value).toString('latin1').slice(0, 44)
+    expect(mrzLine1.slice(2, 5)).toBe('ZZZ')
+  })
+
   it('reports maintainer jurisdiction from whois and settings', async () => {
     const { app, db, oidc } = await harness(
       {},

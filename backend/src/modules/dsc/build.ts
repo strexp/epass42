@@ -67,7 +67,12 @@ export type Lds2Role = 'travel' | 'visa' | 'biometrics'
 
 /** Server-filled issuing fields (defaults + admin overrides). */
 export interface IssuingDefaults {
-  issuingState: string
+  /**
+   * The ICAO alpha-3 country code from the configuration (`countryAlpha3`).
+   * The MRZ issuing state and nationality are always this value; it is not a
+   * per-deployment issuing-profile setting.
+   */
+  countryAlpha3: string
   issuingAuthority: string
   personalizationDevice: string
   dg13Policy: string
@@ -151,8 +156,8 @@ function buildDataGroups(
     number: 1,
     bytes: buildDg1({
       ...request.mrz,
-      issuingState: profile.issuingState,
-      nationality: profile.issuingState,
+      issuingState: profile.countryAlpha3,
+      nationality: profile.countryAlpha3,
       dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
     }),
   })

@@ -49,7 +49,6 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: DscRouteDeps)
     {
       schema: {
         body: z.object({
-          issuingState: z.string().length(3).optional(),
           issuingAuthority: z.string().max(70).optional(),
           personalizationDevice: z.string().max(70).optional(),
           dg13Policy: z.string().max(70).optional(),

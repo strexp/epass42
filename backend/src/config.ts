@@ -188,7 +188,6 @@ const configSchema = z.object({
   cvca: cvcaSchema.prefault({}),
   issuing: z
     .object({
-      issuingState: z.string().length(3).default(COUNTRY_ALPHA3),
       issuingAuthority: z.string().default('NIA'),
       personalizationDevice: z.string().default('EPASS42'),
       dg13Policy: z.string().default('utf8-text'),
@@ -351,16 +350,12 @@ function rawObject(value: unknown): Record<string, unknown> | undefined {
 export function parseConfig(raw: RawConfig): AppConfig {
   const parsed = configSchema.parse(raw)
   // The shared country codes are the single source of truth for the CSCA SAN
-  // locality, the default issuing state and the default CRL distribution point.
-  // Explicit nested values still win.
+  // locality and the default CRL distribution point; the MRZ issuing state and
+  // nationality are always `countryAlpha3`.  Explicit nested values still win.
   const rawCsca = rawObject(raw.csca)
   if (rawCsca?.locality === undefined) parsed.csca.locality = parsed.countryAlpha3
   if (rawCsca?.crlDistributionPoints === undefined) {
     parsed.csca.crlDistributionPoints = [`ldap://epass42.local/c=${parsed.countryAlpha2}`]
-  }
-  const rawIssuing = rawObject(raw.issuing)
-  if (rawIssuing?.issuingState === undefined) {
-    parsed.issuing.issuingState = parsed.countryAlpha3
   }
   // In development the Nuxt dev server runs on :3001 by default.
   if (parsed.frontendUrl === '' && parsed.env === 'development') {

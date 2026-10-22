@@ -11,7 +11,9 @@ import type { IssuingDefaults } from './build'
 import { mergeSecurity, toSecurityOverlay, type SecurityOptionsOverlay } from './securityOptions'
 
 /** A partial update to the issuing defaults (nested objects may be partial). */
-export type IssuingDefaultsUpdate = Partial<Omit<IssuingDefaults, 'security' | 'lds2'>> & {
+export type IssuingDefaultsUpdate = Partial<
+  Omit<IssuingDefaults, 'security' | 'lds2' | 'countryAlpha3'>
+> & {
   security?: SecurityOptionsOverlay
   lds2?: { enabled?: boolean; roles?: IssuingDefaults['lds2']['roles'] }
 }
@@ -32,7 +34,7 @@ export class DscSettingsService {
     // Older profiles stored the Chip Authentication key id under `lds2`.
     const legacyLds2CaKeyId = (extra.lds2 as unknown as { caKeyId?: number } | undefined)?.caKeyId
     return {
-      issuingState: overrides.issuingState ?? row?.issuingState ?? this.config.issuing.issuingState,
+      countryAlpha3: this.config.countryAlpha3,
       issuingAuthority:
         overrides.issuingAuthority ?? row?.issuingAuthority ?? this.config.issuing.issuingAuthority,
       personalizationDevice:
@@ -98,7 +100,6 @@ export class DscSettingsService {
     const merged = this.issuingDefaults(values)
     const row = this.db.select().from(issuingProfile).orderBy(desc(issuingProfile.id)).get()
     const record = {
-      issuingState: merged.issuingState,
       issuingAuthority: merged.issuingAuthority,
       personalizationDevice: merged.personalizationDevice,
       dg13Policy: merged.dg13Policy,

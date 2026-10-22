@@ -1,0 +1,1 @@
+ALTER TABLE `issuing_profile` DROP COLUMN `issuing_state`;
