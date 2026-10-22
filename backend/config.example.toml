@@ -206,7 +206,10 @@ dg2MaxBytes = 16384
 
 # LDS2 applications: disabled by default (empty when enabled).  Chip
 # Authentication material lives in the master file and is shared by LDS1 and
-# the LDS2 applications.
+# the LDS2 applications.  Every emitted application also gets its read/write
+# authorization opened on the CVCA trust point (DGI FF07): the card ANDs the
+# trust point with the terminal certificate, so zero bits make it unreadable
+# (6982) no matter what the terminal certificate carries.
 [issuing.lds2]
 enabled = false
 roles = ["travel", "visa", "biometrics"]
@@ -229,11 +232,14 @@ keyId = 1
 
 [issuing.security.ta]
 # Terminal Authentication: personalize a CVCA trust point and advertise id-TA.
-# Requires a running CVCA with an "ecdsa" key (see [cvca]).
+# Requires a running CVCA with an "ecdsa" key (see [cvca]).  The ICC current
+# date (DGI FF08) is always the personalization date.
 enabled = false
-# ICC current date (YYMMDD); defaults to the personalization date.
-# currentDate = "240101"
-# Trust-point authorization; defaults to the CVCA's [cvca.authorization].
+# Base trust-point authorization; defaults to the CVCA's [cvca.authorization].
+# Applications emitted through [issuing.lds2] are always authorized here, even
+# when this section (or the CVCA grant) leaves them at zero.  Its unique effect
+# is the LDS1 ePassport byte (DG3/DG4), which the card also gates on the trust
+# point.
 # [issuing.security.ta.authorization]
 # epassport = { dg3 = true, dg4 = true }
 

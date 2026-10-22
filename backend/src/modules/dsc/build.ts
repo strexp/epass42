@@ -40,6 +40,7 @@ import {
   AppError,
   encodeAuthorization,
   hasAnyPermission,
+  withLds2Access,
   type DvPermissions,
   type SecurityOptions,
   type SignRequest,
@@ -256,10 +257,18 @@ export async function buildPersoSigning(
       500,
     )
   }
-  const taAuthorization =
+  const taBase =
     taEnabled && security.ta.authorization && hasAnyPermission(security.ta.authorization)
       ? security.ta.authorization
       : trustAnchor?.authorization
+  // Every emitted LDS2 application also needs its bits in the trust point: the
+  // card ANDs the trust-point authorization (DGI FF07) with the terminal
+  // certificate's application extension, so an application personalized with
+  // zero bits stays unreadable (6982) even with a correctly extended terminal
+  // certificate.  Enabling an LDS2 application therefore enables its
+  // authorization on the trust point.
+  const taAuthorization =
+    taBase && lds2Enabled ? withLds2Access(taBase, profile.lds2.roles) : taBase
   // EF.CardAccess and EF.CardSecurity live in the master file (Doc 9303-10
   // §3.11.3/§3.11.4), so LDS1 and the LDS2 applications share one CA key pair
   // and one EF.CardSecurity.  Chip Authentication is emitted when the
@@ -368,9 +377,10 @@ export async function buildPersoSigning(
       caScalar,
       cardAccess,
       cardSecurity,
-      // Terminal Authentication: the ICC current date and the CVCA trust point
-      // (package-shared on the card, so personalizing LDS1 suffices).
-      taDate: taEnabled ? (security.ta.currentDate ?? yymmdd(new Date())) : undefined,
+      // Terminal Authentication: the ICC current date (the personalization
+      // date) and the CVCA trust point (package-shared on the card, so
+      // personalizing LDS1 suffices).
+      taDate: taEnabled ? yymmdd(new Date()) : undefined,
       trustPoints:
         taEnabled && trustAnchor
           ? [

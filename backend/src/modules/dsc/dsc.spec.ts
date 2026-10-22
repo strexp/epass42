@@ -402,6 +402,109 @@ describe('M7 DSC signing service', () => {
     expect(text).not.toMatch(/^@cvca 04/m)
   })
 
+  it('authorizes every emitted LDS2 application on the CVCA trust point', async () => {
+    const { app, oidc, dsc } = await harness({
+      // The CVCA grant itself only covers the ePassport biometric DGs.  The
+      // trust point must still open the LDS2 applications the document emits,
+      // otherwise card42 gates every LDS2 read on the trust point and returns
+      // 6982 regardless of the terminal certificate (Doc 9303-10 §5.4.2).
+      cvca: {
+        bootstrap: true,
+        authorization: {
+          epassport: { dg3: true, dg4: true },
+          travel: { read: false, write: false },
+          visa: { read: false, write: false },
+          biometrics: { read: false, write: false },
+        },
+      },
+      issuing: { security: { ta: { enabled: true } } },
+    })
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const travelOnly = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { lds2: { enabled: true, roles: ['travel'] } },
+    })
+    expect(travelOnly.statusCode).toBe(200)
+
+    const travelRef = await submit(app, oidc, 'H7777777')
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${travelRef}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(artifactText(dsc, travelRef)).toMatch(/^@cvca [0-9A-F]+ \S+ \d{6} 030F0000$/m)
+
+    const everything = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { lds2: { enabled: true, roles: ['travel', 'visa', 'biometrics'] } },
+    })
+    expect(everything.statusCode).toBe(200)
+
+    const allRef = await submit(app, oidc, 'H8888888')
+    await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${allRef}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(artifactText(dsc, allRef)).toMatch(/^@cvca [0-9A-F]+ \S+ \d{6} 030F0F0F$/m)
+  })
+
+  it('keeps the profile trust-point authorization for the ePassport byte', async () => {
+    const { app, oidc, dsc } = await harness({
+      cvca: { bootstrap: true },
+      issuing: {
+        security: {
+          ta: {
+            enabled: true,
+            // Withhold DG4 (and every LDS2 bit) even though the CVCA grant is
+            // all-open: the profile value seeds the trust point, so the CVCA
+            // grant is not copied verbatim.  card42 gates DG3/DG4 reads on
+            // this byte (`requireLds1ChatAccess`, Doc 9303-10 §5.4.2).
+            authorization: { epassport: { dg3: true, dg4: false } },
+          },
+        },
+      },
+    })
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const lds1Ref = await submit(app, oidc, 'H9999999')
+    const lds1Approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${lds1Ref}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(lds1Approve.statusCode).toBe(200)
+    expect(artifactText(dsc, lds1Ref)).toMatch(/^@cvca [0-9A-F]+ \S+ \d{6} 01000000$/m)
+
+    // An emitted LDS2 application is still authorized on top of that base,
+    // even though the profile leaves all LDS2 bits at zero.
+    const update = await app.inject({
+      method: 'PUT',
+      url: '/dsc/settings/issuing-profile',
+      headers: { cookie: admin },
+      payload: { lds2: { enabled: true, roles: ['travel'] } },
+    })
+    expect(update.statusCode).toBe(200)
+
+    const travelRef = await submit(app, oidc, 'HAAAAAAA')
+    const travelApprove = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${travelRef}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(travelApprove.statusCode).toBe(200)
+    expect(artifactText(dsc, travelRef)).toMatch(/^@cvca [0-9A-F]+ \S+ \d{6} 010F0000$/m)
+  })
+
   it('personalises the ECDSA AA variant and the CA AES-128 profile', async () => {
     const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)

@@ -243,10 +243,13 @@ const configSchema = z.object({
           ta: z
             .object({
               enabled: z.boolean().default(false),
-              currentDate: z
-                .string()
-                .regex(/^\d{6}$/)
-                .optional(),
+              /**
+               * The base trust-point authorization (DGI FF07); defaults to the
+               * CVCA grant.  Applications emitted through `issuing.lds2` always
+               * have their bits enabled on top of this, so the value cannot
+               * under-authorize them.  Its remaining unique effect is the LDS1
+               * ePassport byte (DG3/DG4).
+               */
               authorization: dvPermissionsSchema.optional(),
             })
             .prefault({}),

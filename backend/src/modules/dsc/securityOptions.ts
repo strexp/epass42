@@ -78,7 +78,6 @@ export function toSecurityOverlay(raw: unknown): SecurityOptionsOverlay {
     const value = ta as Record<string, unknown>
     overlay.ta = defined({
       enabled: value.enabled as boolean | undefined,
-      currentDate: value.currentDate as string | undefined,
       authorization: value.authorization as SecurityOptions['ta']['authorization'],
     })
   }

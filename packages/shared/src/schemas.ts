@@ -191,12 +191,14 @@ export const securityOptionsSchema = z.object({
   ta: z
     .object({
       enabled: z.boolean().default(false),
-      /** ICC current date (YYMMDD); defaults to the personalization date. */
-      currentDate: z
-        .string()
-        .regex(/^\d{6}$/)
-        .optional(),
-      /** The authorization the CVCA trust point grants (DGI FF07). */
+      /**
+       * The base authorization written to the CVCA trust point (DGI FF07);
+       * defaults to the CVCA grant.  Every LDS2 application the document emits
+       * always has its read/append bits enabled on top of this, so the value
+       * cannot under-authorize an application the card carries.  Its remaining
+       * unique effect is the LDS1 ePassport CHAT byte (DG3/DG4), which card42
+       * also gates on the trust point.
+       */
       authorization: dvPermissionsSchema.optional(),
     })
     .prefault({}),
@@ -254,6 +256,34 @@ export function encodeAuthorization(permissions: DvPermissions): Uint8Array {
 /** The all-false authorization. */
 export function emptyPermissions(): DvPermissions {
   return dvPermissionsSchema.parse({})
+}
+
+/**
+ * Enables read and append (relative-authorization b1..b4) for the given LDS2
+ * applications.
+ *
+ * The card grants an LDS2 application only when the CVCA trust point authorizes
+ * it: card42's `requireLds2Access()` ANDs the trust-point authorization (DGI
+ * FF07) with the terminal certificate's application extension.  An application
+ * personalized with zero bits therefore fails every LDS2 read with `6982`,
+ * whatever the terminal certificate carries (a certificate cannot widen the
+ * trust point).  The personalization pipeline calls this for every application
+ * it emits so that the trust point and the application agree
+ * (Doc 9303-10 §5.4.2, Doc 9303-12 §7.2.2.4).
+ */
+export function withLds2Access(
+  permissions: DvPermissions,
+  roles: readonly Lds2Role[],
+): DvPermissions {
+  if (roles.length === 0) return permissions
+  const next: DvPermissions = {
+    epassport: { ...permissions.epassport },
+    travel: { ...permissions.travel },
+    visa: { ...permissions.visa },
+    biometrics: { ...permissions.biometrics },
+  }
+  for (const role of roles) next[role] = { read: true, write: true }
+  return next
 }
 
 /**
