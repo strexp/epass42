@@ -8,7 +8,7 @@
 export const COUNTRY_ALPHA2 = 'XD' as const
 
 /** ICAO Doc 9303 three-letter code used in the MRZ and `localityName`. */
-export const COUNTRY_ALPHA3 = 'UDN' as const
+export const COUNTRY_ALPHA3 = 'XDN' as const
 
 /** The available service roles; a deployment may enable a subset. */
 export const ROLES = ['pkd', 'csca', 'cvca', 'dv', 'dsc'] as const

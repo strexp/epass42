@@ -23,7 +23,7 @@ export const base64 = z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/, 'invalid base64
  */
 export const mrzFieldsSchema = z.object({
   documentCode: documentIssueTypeSchema.default('P'),
-  issuingState: z.literal(COUNTRY_ALPHA3).default(COUNTRY_ALPHA3),
+  issuingState: z.string().length(3).default(COUNTRY_ALPHA3),
   surname: z.string().min(1).max(39),
   givenNames: z.string().max(39).default(''),
   documentNumber: z.string().min(1).max(9),

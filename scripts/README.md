@@ -22,7 +22,7 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts --help
 pnpm --filter @epass42/scripts exec tsx src/gen-csca.ts \
   --out ./csca \
   --cn "Example CSCA" \
-  --country XD --locality UDN \
+  --country XD --locality XDN \
   --validity-years 13 --private-key-usage-years 4 \
   --key-rsa-bits 4096 --hash sha256 \
   --crl-dp ldap://epass42.local/c=XD \

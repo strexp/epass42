@@ -20,13 +20,23 @@ import {
   parseSingleTlv,
   type TlvNode,
 } from '../codec/der'
-import { OIDS, documentTypeCovers, normalizeDocumentType } from '@epass42/shared'
+import {
+  COUNTRY_ALPHA2,
+  COUNTRY_ALPHA3,
+  OIDS,
+  documentTypeCovers,
+  normalizeDocumentType,
+} from '@epass42/shared'
 
 /** The certificate profile being built or validated. */
 export type CertKind = 'csca' | 'dsc' | 'ml-signer' | 'link'
 
-/** Locality value required by the CSCA SAN (`localityName=UDN`). */
-export const CSCA_LOCALITY = 'UDN'
+/**
+ * Default CSCA SAN locality (`localityName`).  It only seeds the default: the
+ * service always passes `config.csca.locality`, which derives from
+ * `countryAlpha3`, so a deployment's country code is the single source of truth.
+ */
+export const CSCA_LOCALITY: string = COUNTRY_ALPHA3
 
 /** OIDs of the name attributes used by the directoryName SAN. */
 const AT_LOCALITY_NAME = '2.5.4.7'
@@ -56,7 +66,7 @@ export function directoryNameGeneralName(locality: string, state?: string): Byte
 /**
  * SubjectAltName / IssuerAltName extension value: `GeneralNames ::= SEQUENCE OF
  * GeneralName`.  For a CSCA this is a single `directoryName` with
- * `localityName=UDN`.
+ * `localityName=countryAlpha3`.
  */
 export function cscaAltNameValue(locality = CSCA_LOCALITY, state?: string): Bytes {
   return derSequence(directoryNameGeneralName(locality, state))
@@ -259,7 +269,7 @@ export function extendedKeyUsage(oids: string[], critical = false): x509.Extensi
 /** The ASN.1 Name (RDNSequence) for a `C`/`O`/`OU`/`CN` subject. */
 export function simpleNameValue(
   commonName: string,
-  country = 'XD',
+  country: string = COUNTRY_ALPHA2,
   organization?: string,
   organizationalUnit?: string,
 ): Bytes {

@@ -17,6 +17,7 @@ import {
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { COUNTRY_ALPHA3, type DvPermissions } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
+import { usePkdConfig } from '~/composables/usePkdConfig'
 import { documentTypeLabel, documentTypesLabel, documentTypeValues } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
@@ -76,9 +77,15 @@ const cvca = ref<PkdCertificate[]>([])
 const dvs = ref<PkdDv[]>([])
 const revoked = ref<RevokedDocument[]>([])
 const loading = ref(false)
+const { load: loadPkdConfig } = usePkdConfig()
 
 /** The MRZ fields a visitor reads from a document to check revocation. */
-const lookup = reactive({
+const lookup = reactive<{
+  documentCode: string
+  issuingState: string
+  documentNumber: string
+  dateOfBirth: string
+}>({
   documentCode: 'P',
   issuingState: COUNTRY_ALPHA3,
   documentNumber: '',
@@ -239,6 +246,12 @@ const pagination = { pageSize: 10 }
 
 onMounted(async () => {
   loading.value = true
+  try {
+    const runtime = await loadPkdConfig()
+    lookup.issuingState = runtime.countryAlpha3
+  } catch {
+    // Keep the shared country default when the public config is unavailable.
+  }
   try {
     certificates.value = (await api<{ items: PkdCertificate[] }>('/pkd/certificates')).items
     crls.value = (await api<{ items: PkdCrl[] }>('/pkd/crls')).items

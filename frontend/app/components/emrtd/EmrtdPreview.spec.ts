@@ -5,11 +5,11 @@ import type { MrzFields } from '@epass42/shared'
 
 const mrz: MrzFields = {
   documentCode: 'P',
-  issuingState: 'UDN',
+  issuingState: 'XDN',
   surname: 'DOE',
   givenNames: 'JANE',
   documentNumber: 'X1234567',
-  nationality: 'UDN',
+  nationality: 'XDN',
   dateOfBirth: '900101',
   sex: 'F',
   dateOfExpiry: '300101',

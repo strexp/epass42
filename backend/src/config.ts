@@ -340,9 +340,28 @@ export function mergeConfig(base: RawConfig, overlay: RawConfig): RawConfig {
   return result
 }
 
+/** Reads a plain object from raw configuration (arrays and null are ignored). */
+function rawObject(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
 /** Validates a raw configuration object and applies development defaults. */
 export function parseConfig(raw: RawConfig): AppConfig {
   const parsed = configSchema.parse(raw)
+  // The shared country codes are the single source of truth for the CSCA SAN
+  // locality, the default issuing state and the default CRL distribution point.
+  // Explicit nested values still win.
+  const rawCsca = rawObject(raw.csca)
+  if (rawCsca?.locality === undefined) parsed.csca.locality = parsed.countryAlpha3
+  if (rawCsca?.crlDistributionPoints === undefined) {
+    parsed.csca.crlDistributionPoints = [`ldap://epass42.local/c=${parsed.countryAlpha2}`]
+  }
+  const rawIssuing = rawObject(raw.issuing)
+  if (rawIssuing?.issuingState === undefined) {
+    parsed.issuing.issuingState = parsed.countryAlpha3
+  }
   // In development the Nuxt dev server runs on :3001 by default.
   if (parsed.frontendUrl === '' && parsed.env === 'development') {
     parsed.frontendUrl = 'http://localhost:3001'

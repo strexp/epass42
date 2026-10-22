@@ -26,6 +26,11 @@ publicUrl = "http://localhost:3000"
 # same-origin deployment.
 frontendUrl = "http://localhost:3001"
 
+# Country codes: alpha-2 for DN/PKD paths and alpha-3 for the MRZ and the
+# CSCA SAN locality.  These are the single source of truth for the country.
+countryAlpha2 = "XD"
+countryAlpha3 = "XDN"
+
 # Enabled roles: any subset of ["pkd", "csca", "cvca", "dv", "dsc"].
 roles = ["pkd", "csca", "cvca", "dv", "dsc"]
 
@@ -191,7 +196,8 @@ holderMnemonic = "NIADV"
 # Server-filled issuing fields (M7/M8), editable by NIA DSC admins.  Enable
 # with `roles = [..., "dsc"]`.
 [issuing]
-issuingState = "UDN"
+# Issuing state defaults to countryAlpha3; uncomment to override.
+# issuingState = "XDN"
 issuingAuthority = "NIA"
 personalizationDevice = "EPASS42"
 dg13Policy = "utf8-text"

@@ -79,7 +79,7 @@ describe('M9 PKD REST and LDIF', () => {
     const { app, db } = await setup()
     const document = {
       documentCode: 'P',
-      issuingState: 'UDN',
+      issuingState: 'XDN',
       documentNumber: 'R1234567',
       dateOfBirth: '900101',
     }
@@ -90,7 +90,7 @@ describe('M9 PKD REST and LDIF', () => {
         reference: 'revoked-0001',
         dscSelection: 'nia',
         payloadJson: JSON.stringify({
-          mrz: { ...document, nationality: 'UDN', surname: 'Doe', sex: '<' },
+          mrz: { ...document, nationality: 'XDN', surname: 'Doe', sex: '<' },
           dg2: { jpeg: '', width: 1, height: 1 },
         }),
         status: 'revoked',

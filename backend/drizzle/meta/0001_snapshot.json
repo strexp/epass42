@@ -1258,7 +1258,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'UDN'"
+          "default": "'XDN'"
         },
         "issuing_authority": {
           "name": "issuing_authority",

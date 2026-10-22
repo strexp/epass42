@@ -29,7 +29,7 @@ import {
   subjectKeyIdentifier,
 } from './profile'
 import * as x509 from './x509lib'
-import { OIDS } from '@epass42/shared'
+import { COUNTRY_ALPHA2, OIDS } from '@epass42/shared'
 
 /** Maps a hash name to its signature salt length (RSA-PSS). */
 function saltLength(hash: HashName): number {
@@ -81,7 +81,7 @@ export interface CscaProfile {
   organization?: string
   /** Optional organisational unit (encoded as an `OU` attribute). */
   organizationalUnit?: string
-  /** Locality used in the SAN directoryName (profiled as `UDN`). */
+  /** Locality used in the SAN directoryName (profiled as the configured `countryAlpha3`). */
   locality?: string
   /** Optional state/province when the locality alone is not unique. */
   state?: string
@@ -131,7 +131,7 @@ export interface GeneratedCertificate {
 /** Encodes a name string (`CN=...,OU=...,O=...,C=...`). */
 function nameOf(
   commonName: string,
-  country = 'XD',
+  country: string = COUNTRY_ALPHA2,
   organization?: string,
   organizationalUnit?: string,
 ): x509.Name {
@@ -161,7 +161,7 @@ export async function describeCertificate(
  * Creates a self-signed CSCA root certificate (Doc 9303-12 §7.1.1 Table 6).
  *
  * Required: SKI(nc), KeyUsage(c, keyCertSign+cRLSign), PrivateKeyUsagePeriod(nc),
- * BasicConstraints(c, cA=TRUE, pathlen=0), SAN(nc, localityName=UDN),
+ * BasicConstraints(c, cA=TRUE, pathlen=0), SAN(nc, localityName=countryAlpha3),
  * IssuerAltName(nc, identical to SAN), CRLDistributionPoints(nc).
  * Optional: AKI(nc, includes at least the keyid for a self-signed root).
  */
@@ -263,7 +263,7 @@ export async function createCscaLink(
   const hash = options.hash ?? 'SHA-256'
   const nameChanged =
     oldCertificate.subjectName.getField('CN')[0] !== newProfile.commonName ||
-    oldCertificate.subjectName.getField('C')[0] !== (newProfile.country ?? 'XD') ||
+    oldCertificate.subjectName.getField('C')[0] !== (newProfile.country ?? COUNTRY_ALPHA2) ||
     oldCertificate.subjectName.getField('O')[0] !== newProfile.organization ||
     oldCertificate.subjectName.getField('OU')[0] !== newProfile.organizationalUnit
   const extensions = [
@@ -274,7 +274,7 @@ export async function createCscaLink(
           nameChangeExtension(
             simpleNameValue(
               '',
-              newProfile.country ?? 'XD',
+              newProfile.country ?? COUNTRY_ALPHA2,
               newProfile.organization,
               newProfile.organizationalUnit,
             ),

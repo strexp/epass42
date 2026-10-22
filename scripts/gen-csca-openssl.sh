@@ -16,7 +16,7 @@ OUTDIR="${2:-.}"
 
 CN="${CN:-ePass 42 OpenSSL CSCA}"
 COUNTRY="${COUNTRY:-XD}"
-LOCALITY="${LOCALITY:-UDN}"
+LOCALITY="${LOCALITY:-XDN}"
 VALIDITY_DAYS="${VALIDITY_DAYS:-4745}"   # ~13 years
 CRL_DP="${CRL_DP:-ldap://epass42.local/c=XD}"
 

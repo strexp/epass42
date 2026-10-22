@@ -38,7 +38,7 @@ describe('M3 backend skeleton', () => {
     const body = response.json()
     expect(body.roles).toEqual(['pkd', 'csca', 'cvca', 'dv', 'dsc'])
     expect(body.countryAlpha2).toBe('XD')
-    expect(body.countryAlpha3).toBe('UDN')
+    expect(body.countryAlpha3).toBe('XDN')
     expect(body.oauthProviders.csca).toHaveLength(1)
     expect(body.oauthProviders.dsc).toHaveLength(1)
   })

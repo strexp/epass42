@@ -27,11 +27,11 @@ function payload(
   return {
     mrz: {
       documentCode: 'P',
-      issuingState: 'UDN',
+      issuingState: 'XDN',
       surname: 'DOE',
       givenNames: 'JANE',
       documentNumber,
-      nationality: 'UDN',
+      nationality: 'XDN',
       dateOfBirth: '900101',
       sex: 'F',
       dateOfExpiry: '300101',

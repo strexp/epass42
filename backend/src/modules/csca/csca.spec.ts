@@ -10,6 +10,7 @@ import {
   parseCertificatePem,
   verifyDscAgainstCsca,
 } from '@epass42/pki'
+import { OIDS } from '@epass42/shared'
 import type { Db } from '../../db/client'
 import { dscCert } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
@@ -96,6 +97,19 @@ async function loginAs(
 }
 
 describe('M5 CSCA role', () => {
+  it('takes the CSCA country and SAN locality from the configured country codes', async () => {
+    const built = await makeTestApp(new FakeOidc(), {
+      countryAlpha2: 'ZZ',
+      countryAlpha3: 'ZZZ',
+      csca: { bootstrap: true },
+    })
+    const csca = parseCertificatePem(currentCscaKey(built.dbHandle.db)!.certPem)
+    expect(csca.subject).toContain('C=ZZ')
+    const san = csca.getExtension(OIDS.subjectAltName)!
+    expect(Buffer.from(san.value).includes(Buffer.from('ZZZ'))).toBe(true)
+    expect(built.config.issuing.issuingState).toBe('ZZZ')
+  })
+
   it('bootstraps a CSCA key and issues a DSC via an approved application', async () => {
     const { app, cscaCookie, cscaPem } = await harness()
 

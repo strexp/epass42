@@ -177,7 +177,7 @@ CREATE TABLE `dv_cert` (
 CREATE UNIQUE INDEX `dv_cert_holder_reference_unique` ON `dv_cert` (`holder_reference`);--> statement-breakpoint
 CREATE TABLE `issuing_profile` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`issuing_state` text DEFAULT 'UDN' NOT NULL,
+	`issuing_state` text DEFAULT 'XDN' NOT NULL,
 	`issuing_authority` text,
 	`personalization_device` text,
 	`dg13_policy` text,

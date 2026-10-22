@@ -75,8 +75,10 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
 
 ## Design notes
 
-- Country codes used by the project: ICAO three-letter `UDN`
-  (MRZ/`localityName`) and alpha-2 `XD` (`C=XD`, PKD paths).
+- Country codes are configured once (`countryAlpha2`, `countryAlpha3`; defaults
+  `XD`/`XDN`) and drive every derived value: the MRZ issuing state, the CSCA SAN
+  locality, the default CRL distribution point and `GET /api/config` for the
+  front end.
 - **CSCA private keys are online** in this design (encrypted at rest; M13),
   which is what lets the service issue DSC certificates and CRLs automatically.
 - The PKD directory is served by the backend's **built-in read-only LDAP**

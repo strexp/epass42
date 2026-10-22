@@ -398,7 +398,8 @@ export const systemSetting = sqliteTable('system_setting', {
 
 export const issuingProfile = sqliteTable('issuing_profile', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  issuingState: text('issuing_state').notNull().default('UDN'),
+  /** Always written from the configured country code (`issuing.issuingState`). */
+  issuingState: text('issuing_state').notNull(),
   issuingAuthority: text('issuing_authority'),
   personalizationDevice: text('personalization_device'),
   dg13Policy: text('dg13_policy'),

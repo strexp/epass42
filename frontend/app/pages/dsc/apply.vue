@@ -30,6 +30,7 @@ import { COUNTRY_ALPHA3 } from '@epass42/shared'
 import type { EncodedFile } from '~/components/common/FileField.vue'
 import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
+import { usePkdConfig } from '~/composables/usePkdConfig'
 import { useRealm } from '~/composables/useRealm'
 import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
 import { documentTypeLabel, documentTypeValues } from '~/utils/documentTypes'
@@ -42,6 +43,7 @@ usePageTitle(() => t('dsc.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
 const { auth, state, ensureLoaded } = useRealm('dsc')
+const { load: loadPkdConfig } = usePkdConfig()
 
 const signedIn = computed(() => state.value.me !== null)
 
@@ -292,6 +294,13 @@ async function submit(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  try {
+    const runtime = await loadPkdConfig()
+    mrz.issuingState = runtime.countryAlpha3
+    mrz.nationality = runtime.countryAlpha3
+  } catch {
+    // Keep the shared country default when the public config is unavailable.
+  }
   await loadActivePassport()
   if (!signedIn.value) return
   try {

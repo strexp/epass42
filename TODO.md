@@ -7,7 +7,7 @@
 >
 > - 代码注释、变量名、API 文档、提交信息使用**英文**；本文使用中文。
 > - 前端 i18n 仅提供英语（`en`），但所有文案必须走 i18n key，不硬编码。
-> - 国家码：MRZ/ICAO 三字母码 **`UDN`**；DN/PKD 路径 alpha-2 码 **`XD`**。
+> - 国家码：在配置中统一设置 `countryAlpha3`（MRZ/ICAO 三字母，默认 **`XDN`**）与 `countryAlpha2`（DN/PKD 路径，默认 **`XD`**）；MRZ 签发国、CSCA SAN locality 与默认 CRL DP 均由此派生。
 > - 数据库：**SQLite**（不用 PostgreSQL）。
 > - CSCA 私钥：**在线签发**（后端持有并自动签 DSC/CRL）。
 > - PKD 角色：**REST + LDIF + 只读 LDAP**（不实现 LDAP 写入协议，上传走应用 API）。
@@ -100,7 +100,7 @@ epass42/
 ### M0 仓库脚手架
 
 - pnpm workspace（`packages/*`、`backend`、`scripts`、`frontend`）、ESLint flat + Prettier、TS 5.9、CI（`pnpm check` = format + lint + typecheck + test）。
-- `packages/shared`：`COUNTRY_ALPHA2='XD'`/`COUNTRY_ALPHA3='UDN'`、OID 表、错误码、zod schema（MRZ/DG/security/signRequest/claim 等）。
+- `packages/shared`：国家码默认常量 `COUNTRY_ALPHA2='XD'`/`COUNTRY_ALPHA3='XDN'`（配置可覆盖）、OID 表、错误码、zod schema（MRZ/DG/security/signRequest/claim 等）。
 
 ### M1 `packages/pki`
 
@@ -332,7 +332,7 @@ epass42/
 
 ### B.1 CSCA Self-Signed Root（§7.1.1）
 
-- 必须：v3；serial 唯一；UTCTime/GeneralizedTime+Z+秒；C 大写、CN；SKI(nc)、KeyUsage(c, keyCertSign+cRLSign)、PrivateKeyUsagePeriod(nc)、BasicConstraints(c, cA=TRUE, pathlen=0)、SAN(nc, locality=UDN)、IAN(nc, 同 SAN)、CRLDP(nc)。
+- 必须：v3；serial 唯一；UTCTime/GeneralizedTime+Z+秒；C 大写、CN；SKI(nc)、KeyUsage(c, keyCertSign+cRLSign)、PrivateKeyUsagePeriod(nc)、BasicConstraints(c, cA=TRUE, pathlen=0)、SAN(nc, locality=countryAlpha3)、IAN(nc, 同 SAN)、CRLDP(nc)。
 - 可选：AKI(nc)、CertificatePolicies、NameChange。
 - 禁止：EKU、其他 CA 扩展、Netscape、NameConstraints/PolicyConstraints/InhibitAnyPolicy/FreshestCRL。
 
@@ -439,7 +439,7 @@ CREATE TABLE system_setting (
 
 -- 签发字段默认值（DSC 管理员可编辑；审批可单请求覆盖）
 CREATE TABLE issuing_profile (
-  id INTEGER PRIMARY KEY, issuing_state TEXT NOT NULL DEFAULT 'UDN',
+  id INTEGER PRIMARY KEY, issuing_state TEXT NOT NULL DEFAULT 'XDN',
   issuing_authority TEXT, personalization_device TEXT, dg13_policy TEXT,
   endorsements_json TEXT, defaults_json TEXT,
   updated_by INTEGER REFERENCES account(id), updated_at TEXT NOT NULL);
@@ -519,7 +519,7 @@ CREATE TABLE reveal_token (
 | --- | ------------------------------ | ------ | --------------------------------------------------------------------------------------------------- |
 | E1  | DSC 签名输入契约               | 已定   | 结构化字段；前端编码 DG2/DG5/DG7；DG3/DG4 上传已编码 BLOB；AA/CA 服务端生成                         |
 | E2  | `mnt_config` 由维护者配置      | 已定   | 前端提供配置页（DSC realm 登录后）                                                                  |
-| E3  | 国家码 `UDN` / `XD`            | 已定   | 全局常量                                                                                            |
+| E3  | 国家码 `XDN` / `XD`            | 已定   | 配置 `countryAlpha2`/`countryAlpha3`（默认 `XD`/`XDN`），其余值派生                                 |
 | E4  | CSCA 在线私钥                  | 已定   | 信封加密 + 二次确认 + 审计；预留 HSM 适配                                                           |
 | E5  | ECDSA 显式参数                 | 待定   | 默认 RSA；需要时再实现                                                                              |
 | E6  | LDAP 只读实现（ldapjs 维护度） | 待定   | 以 LDIF+OpenLDAP 为主，只读 LDAP 为兼容层                                                           |

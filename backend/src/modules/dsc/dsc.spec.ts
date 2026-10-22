@@ -41,11 +41,11 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6]).toString('b
 function mrz(documentNumber: string): Record<string, unknown> {
   return {
     documentCode: 'P',
-    issuingState: 'UDN',
+    issuingState: 'XDN',
     surname: 'DOE',
     givenNames: 'JANE',
     documentNumber,
-    nationality: 'UDN',
+    nationality: 'XDN',
     dateOfBirth: '900101',
     sex: 'F',
     personalNumber: '',
@@ -980,7 +980,7 @@ describe('M7 DSC signing service', () => {
     expect(response.statusCode).toBe(201)
     const row = dsc.getByReference(response.json().reference as string)!
     const stored = JSON.parse(row.payloadJson) as { mrz: { nationality: string } }
-    expect(stored.mrz.nationality).toBe('UDN')
+    expect(stored.mrz.nationality).toBe('XDN')
   })
 
   it('reports maintainer jurisdiction from whois and settings', async () => {
