@@ -39,6 +39,14 @@ export const OIDS = {
   lds2TravelAuth: '2.23.136.1.1.9.1.3',
   lds2VisaAuth: '2.23.136.1.1.9.2.3',
   lds2BiometricsAuth: '2.23.136.1.1.9.3.3',
+  /** LDS2 Signer EKU arc (`id-icao-lds2Signer`, Doc 9303-12 §7.1.2 Table 7). */
+  lds2Signer: '2.23.136.1.1.9.8',
+  /** LDS2 Travel Stamp Signer EKU (`id-icao-tsSigner`). */
+  lds2TsSigner: '2.23.136.1.1.9.8.1',
+  /** LDS2 Electronic Visa Signer EKU (`id-icao-vSigner`). */
+  lds2VisaSigner: '2.23.136.1.1.9.8.2',
+  /** LDS2 Additional Biometrics Signer EKU (`id-icao-bSigner`). */
+  lds2BiometricsSigner: '2.23.136.1.1.9.8.3',
 
   // EF.CardSecurity eContent (id-SecurityObject, BSI TR-03110).
   securityObject: '0.4.0.127.0.7.3.2.1',
@@ -68,3 +76,27 @@ export const OIDS = {
   sha384: '2.16.840.1.101.3.4.2.2',
   sha512: '2.16.840.1.101.3.4.2.3',
 } as const
+
+/**
+ * The three LDS2 signer roles a CSCA may authorize (Doc 9303-12 §7.1.2):
+ * Travel Stamp (`ts`), Electronic Visa (`v`) and Additional Biometrics (`b`).
+ * One certificate may carry several of them in its ExtendedKeyUsage.
+ */
+export const LDS2_SIGNER_TYPES = ['ts', 'v', 'b'] as const
+export type Lds2SignerType = (typeof LDS2_SIGNER_TYPES)[number]
+
+/** The certificate types the CSCA issues: Document Signer or LDS2 Signer. */
+export const SIGNER_CERTIFICATE_TYPES = ['dsc', 'lds2'] as const
+export type SignerCertificateType = (typeof SIGNER_CERTIFICATE_TYPES)[number]
+
+/** Maps an LDS2 signer role to its ExtendedKeyUsage OID. */
+export const LDS2_SIGNER_OIDS: Record<Lds2SignerType, string> = {
+  ts: OIDS.lds2TsSigner,
+  v: OIDS.lds2VisaSigner,
+  b: OIDS.lds2BiometricsSigner,
+}
+
+/** The signer roles authorized by a list of ExtendedKeyUsage OIDs. */
+export function lds2SignerTypesFromOids(oids: readonly string[]): Lds2SignerType[] {
+  return LDS2_SIGNER_TYPES.filter((type) => oids.includes(LDS2_SIGNER_OIDS[type]))
+}

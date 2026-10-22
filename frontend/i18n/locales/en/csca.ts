@@ -2,10 +2,23 @@
  * English messages for the certificate (CSCA) realm.
  */
 export default {
-  applyTitle: 'Apply for a Document Signer certificate',
+  applyTitle: 'Apply for a signing certificate',
   stepApplication: 'Application',
   stepReview: 'Review and submit',
   reviewSummary: 'Review the application before submitting it for approval.',
+  certificateType: 'Certificate type',
+  certificateTypeHint:
+    'A Document Signer signs passports and identity cards. An LDS2 Signer signs LDS2 data such as travel stamps, electronic visas or additional biometrics.',
+  certificateTypeDsc: 'Document Signer (DSC)',
+  certificateTypeLds2: 'LDS2 Signer',
+  lds2Type: 'LDS2 role',
+  lds2TypeHint:
+    'Select one or more roles. A single certificate may authorize several LDS2 data types.',
+  lds2TypeRule: 'Select at least one LDS2 role.',
+  lds2CnHint: 'The common name of an LDS2 Signer is limited to 9 characters.',
+  lds2KeyHint: ' LDS2 Signer subject keys must be ECDSA (P-256 or P-384).',
+  lds2ValidityHint:
+    'LDS2 Signer certificates default to 10 years and 3 months (Doc 9303-12 Table 1).',
   subjectCn: 'Certificate common name',
   subjectO: 'Organisation (O)',
   subjectOu: 'Organisational unit (OU)',
@@ -30,13 +43,13 @@ export default {
   reviewHint: 'Review the details before approving or rejecting.',
   issuedCertificate: 'Issued certificate',
   publicHint:
-    'A Document Signer certificate is what your organization uses to sign documents. Complete the form and an administrator will review it.',
+    'A signing certificate is what your organization uses to sign documents or LDS2 data. Complete the form and an administrator will review it.',
   myApplications: 'My applications',
   empty: 'No applications yet.',
-  adminTitle: 'Document Signer applications',
+  adminTitle: 'Signing certificate applications',
   approve: 'Approve and issue',
   rejectReason: 'Rejection reason',
-  certificatesTitle: 'Document Signer certificates',
+  certificatesTitle: 'Issued certificates',
   revoked: 'Revoked',
   revokeConfirm: 'Revoke this certificate? It can no longer be used to sign documents.',
   rollover: 'Roll over CSCA key',
@@ -54,8 +67,8 @@ export default {
     'The private key can be downloaded only once. Save it securely now: it is deleted after this download and cannot be retrieved again.',
   asDelegationTitle: 'Maintainer DSC delegation',
   asDelegationHint:
-    'Choose whether this maintainer uses the NIA Document Signer certificate (delegated, reviewable here) or its own certificate.',
-  useNiaDsc: 'Use NIA certificate (delegated)',
+    'Choose whether this maintainer uses the CSCA default Document Signer certificate (delegated, reviewable here) or its own certificate. This setting applies to DSC certificates only; LDS2 Signer certificates are issued directly by the CSCA.',
+  useNiaDsc: 'Use CSCA default DSC (delegated)',
   useOwnDsc: 'Use this maintainer’s own certificate',
   ownDscUnavailable: 'Available only after this maintainer has an approved, active certificate.',
   policyDefault: 'Open (anyone may apply)',

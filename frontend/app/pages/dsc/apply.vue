@@ -19,11 +19,10 @@ import {
   NStep,
   NSteps,
   NText,
-  NTooltip,
   useMessage,
 } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
-import { Send, Dices, LogIn, Copy, Info } from '@lucide/vue'
+import { Send, Dices, LogIn, Copy } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { MrzFields } from '@epass42/shared'
 import { COUNTRY_ALPHA3 } from '@epass42/shared'
@@ -428,17 +427,7 @@ onMounted(async () => {
               </NFormItem>
               <NFormItem path="dateOfBirth" required>
                 <template #label>
-                  <NSpace align="center" :size="4">
-                    <span>{{ $t('dsc.dateOfBirth') }}</span>
-                    <NTooltip>
-                      <template #trigger>
-                        <NIcon :size="14" style="opacity: 0.6; cursor: help">
-                          <Info />
-                        </NIcon>
-                      </template>
-                      {{ $t('dsc.dateOfBirthHint') }}
-                    </NTooltip>
-                  </NSpace>
+                  <FieldLabel :label="$t('dsc.dateOfBirth')" :hint="$t('dsc.dateOfBirthHint')" />
                 </template>
                 <DateField v-model="mrz.dateOfBirth" />
               </NFormItem>

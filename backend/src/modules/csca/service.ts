@@ -79,6 +79,12 @@ export class CscaService {
     return this.dscIssuance.issueDsc(params)
   }
 
+  issueLds2Signer(
+    params: Parameters<DscIssuanceService['issueLds2Signer']>[0],
+  ): Promise<DscCertRow> {
+    return this.dscIssuance.issueLds2Signer(params)
+  }
+
   loadDscKeyPair(row: DscCertRow, hash?: HashName): Promise<CertKeyPair> {
     return this.dscIssuance.loadDscKeyPair(row, hash)
   }

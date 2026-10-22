@@ -15,7 +15,7 @@ export default {
   holderReference: '持有者引用',
   permissions: '授权',
   dscs: '文档签名者',
-  dscsHint: '有效与已吊销的文档签名证书，含策略、类型、有效期与申请地址。',
+  dscsHint: '有效与已吊销的签名证书（DSC 与 LDS2），含证书类型、策略、有效期与申请地址。',
   name: '名称',
   type: '证件类型',
   policy: '策略',

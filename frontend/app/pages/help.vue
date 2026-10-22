@@ -161,6 +161,7 @@ const roles: Role[] = [
       links: [
         { to: '/cvca', labelKey: 'help.links.cvcaAdmin.applications', icon: BadgeCheck },
         { to: '/dv', labelKey: 'help.links.cvcaAdmin.terminal', icon: ListChecks },
+        { to: '/dv/audit', labelKey: 'help.links.cvcaAdmin.audit', icon: ScrollText },
       ],
     },
   },

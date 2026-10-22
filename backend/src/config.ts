@@ -80,6 +80,22 @@ const cscaSchema = z.object({
   /** Generate a CSCA key at startup when none exists. */
   bootstrap: z.boolean().default(true),
   niaDsc: niaDscSchema.prefault({}),
+  /**
+   * LDS2 Signer certificates (Doc 9303-12 §7.1.2).  They are requested through
+   * the same application flow as DSCs, always use an ECDSA P-256 subject key
+   * (§4.1.7) and default to the public-key lifetime in Table 1 (10 years + 3
+   * months).
+   */
+  lds2: z
+    .object({
+      validityDays: z
+        .number()
+        .int()
+        .min(1)
+        .max(20 * 365)
+        .default(3760),
+    })
+    .prefault({}),
 })
 
 /**

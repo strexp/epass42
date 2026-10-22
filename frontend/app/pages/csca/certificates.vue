@@ -2,9 +2,11 @@
 definePageMeta({ layout: 'realm' })
 
 import { NButton, NCard, NDataTable, NDropdown, useDialog, useMessage } from 'naive-ui'
+import type { Lds2SignerType } from '@epass42/shared'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { signerCertificateLabel } from '~/utils/lds2'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 
@@ -15,6 +17,8 @@ interface Certificate {
   status: string
   source: string
   mnt: string | null
+  certificateType: 'dsc' | 'lds2'
+  lds2Types: Lds2SignerType[] | null
   fingerprintSha256: string
   hasPrivateKey: boolean
 }
@@ -38,6 +42,11 @@ function canDownloadKey(row: Certificate): boolean {
   return isCscaAdmin.value || (row.mnt !== null && row.mnt === myMnt.value)
 }
 
+/** The file stem used for a certificate's downloads. */
+function fileStem(row: Certificate): string {
+  return `${row.certificateType === 'lds2' ? 'lds2' : 'dsc'}-${row.id}`
+}
+
 function keyUrl(id: number): string {
   return `${apiBase}/csca/certificates/${id}/private-key`
 }
@@ -50,7 +59,7 @@ function downloadKey(row: Certificate): void {
     positiveText: t('common.confirm'),
     negativeText: t('common.cancel'),
     onPositiveClick: () => {
-      downloadUrl(keyUrl(row.id), `dsc-${row.id}.key`)
+      downloadUrl(keyUrl(row.id), `${fileStem(row)}.key`)
       // The key is consumed by the download; refresh so the action disappears.
       window.setTimeout(() => void load(), 1500)
     },
@@ -112,9 +121,9 @@ function confirmRevoke(row: Certificate): void {
 
 function onAction(row: Certificate, key: string): void {
   if (key === 'pem') {
-    downloadUrl(`${apiBase}/csca/certificates/${row.id}.pem`, `dsc-${row.id}.pem`)
+    downloadUrl(`${apiBase}/csca/certificates/${row.id}.pem`, `${fileStem(row)}.pem`)
   } else if (key === 'der') {
-    downloadUrl(`${apiBase}/csca/certificates/${row.id}.der`, `dsc-${row.id}.der`)
+    downloadUrl(`${apiBase}/csca/certificates/${row.id}.der`, `${fileStem(row)}.der`)
   } else if (key === 'key') {
     downloadKey(row)
   } else if (key === 'revoke') {
@@ -124,6 +133,11 @@ function onAction(row: Certificate, key: string): void {
 
 const columns = computed(() => [
   { title: '#', key: 'id' },
+  {
+    title: t('common.certificateType'),
+    key: 'certificateType',
+    render: (row: Certificate) => signerCertificateLabel(row.certificateType, row.lds2Types, t),
+  },
   { title: t('common.subject'), key: 'subjectDn' },
   { title: t('common.mnt'), key: 'mnt' },
   {

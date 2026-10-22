@@ -17,7 +17,7 @@ export default {
   permissions: 'Authorization',
   dscs: 'Document signers',
   dscsHint:
-    'Active and revoked Document Signer certificates, with policy, type, validity and application URL.',
+    'Active and revoked signer certificates (DSC and LDS2), with the certificate type, policy, validity and application URL.',
   name: 'Name',
   type: 'Document type',
   policy: 'Policy',

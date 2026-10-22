@@ -22,8 +22,10 @@ import {
   X,
 } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
+import type { Lds2SignerType } from '@epass42/shared'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { signerCertificateLabel } from '~/utils/lds2'
 import StatusTag from '~/components/common/StatusTag.vue'
 
 definePageMeta({ layout: 'realm' })
@@ -35,6 +37,10 @@ interface Application {
   mnt: string | null
   ip: string | null
   keyMode: string
+  certificateType?: 'dsc' | 'lds2'
+  /** Legacy field name (pre-rename API responses). */
+  certType?: 'dsc' | 'lds2'
+  lds2Types: Lds2SignerType[] | null
   createdAt: string
 }
 
@@ -115,6 +121,12 @@ function rowProps(row: Application) {
 const columns = computed(() => [
   { title: '#', key: 'id' },
   { title: t('common.cn'), key: 'subjectCn' },
+  {
+    title: t('common.certificateType'),
+    key: 'certificateType',
+    render: (row: Application) =>
+      signerCertificateLabel(row.certificateType ?? row.certType, row.lds2Types, t),
+  },
   { title: t('common.mnt'), key: 'mnt' },
   { title: t('common.ip'), key: 'ip' },
   { title: t('common.mode'), key: 'keyMode' },

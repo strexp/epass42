@@ -124,7 +124,7 @@ export default {
         },
         s2: {
           title: '填写申请',
-          body: '填写通用名（CN）、机构（O）与可选的部门（OU）、证件类型、有效期与签发策略，以及您申请页面的网址。',
+          body: '先选择证书类型（文档签名者或 LDS2 签名者），再填写通用名（CN）；DSC 还需机构（O）与可选的部门（OU），以及证件类型或 LDS2 角色、有效期与签发策略，以及您申请页面的网址。',
         },
         s3: {
           title: '选择密钥模式',
@@ -136,7 +136,7 @@ export default {
         },
         s5: {
           title: '签署证件',
-          body: '使用该证书（配合您的签名服务或自建的 DSC-only 部署）为每份证件生成 EF.SOD 与个性化文件。',
+          body: '使用 DSC（配合您的签名服务或自建的 DSC-only 部署）为每份证件生成 EF.SOD 与个性化文件；LDS2 签名者用于签署旅行盖章、签证或追加生物特征等 LDS2 数据对象。',
         },
         s6: {
           title: '发布',
@@ -391,6 +391,7 @@ export default {
     cvcaAdmin: {
       applications: 'CVCA 管理',
       terminal: '终端申请',
+      audit: '审计日志',
     },
     selfHosted: {
       certApply: '申请 DSC 证书',

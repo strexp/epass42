@@ -29,7 +29,7 @@ import {
 } from '@epass42/shared'
 
 /** The certificate profile being built or validated. */
-export type CertKind = 'csca' | 'dsc' | 'ml-signer' | 'link'
+export type CertKind = 'csca' | 'dsc' | 'ml-signer' | 'lds2-signer' | 'link'
 
 /**
  * Default CSCA SAN locality (`localityName`).  It only seeds the default: the

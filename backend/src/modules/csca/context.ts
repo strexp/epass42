@@ -28,3 +28,10 @@ export function addYears(date: Date, years: number): Date {
   out.setUTCFullYear(out.getUTCFullYear() + years)
   return out
 }
+
+/** Adds whole days to a date (UTC). */
+export function addDays(date: Date, days: number): Date {
+  const out = new Date(date)
+  out.setUTCDate(out.getUTCDate() + days)
+  return out
+}

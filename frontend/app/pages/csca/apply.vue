@@ -22,8 +22,9 @@ import { LogIn, Save } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
-import type { DocumentTypeCode } from '@epass42/shared'
+import type { DocumentTypeCode, Lds2SignerType } from '@epass42/shared'
 import { dscDocumentTypeValues, documentTypesLabel } from '~/utils/documentTypes'
+import { lds2SignerTypeValues, lds2SignerTypesLabel } from '~/utils/lds2'
 
 definePageMeta({ layout: 'realm' })
 
@@ -38,18 +39,24 @@ const signedIn = computed(() => state.value.me !== null)
 
 const form = reactive({
   keyMode: 'remote_generated' as 'remote_generated' | 'user_uploaded',
+  certificateType: 'dsc' as 'dsc' | 'lds2',
   subjectCn: '',
   subjectO: '',
   subjectOu: '',
   csrPem: '',
   publicKeyPem: '',
   documentTypes: ['P'] as DocumentTypeCode[],
+  lds2Types: ['ts'] as Lds2SignerType[],
   validityDays: 3650,
   issuancePolicy: 'open',
   applicationUrl: '',
   notes: '',
 })
 const submitting = ref(false)
+const isLds2 = computed(() => form.certificateType === 'lds2')
+const DEFAULT_DSC_VALIDITY_DAYS = 3650
+/** Doc 9303-12 Table 1: 10-year public-key validity plus 3 months. */
+const DEFAULT_LDS2_VALIDITY_DAYS = 3760
 
 const keyModeOptions = computed(() => [
   { label: t('csca.keyModeNia'), value: 'remote_generated' },
@@ -67,9 +74,38 @@ const documentTypeOptions = computed(() =>
   dscDocumentTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
 )
 
+const lds2TypeOptions = computed(() =>
+  lds2SignerTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
+)
+
+const certificateTypeOptions = computed(() => [
+  { label: t('csca.certificateTypeDsc'), value: 'dsc' },
+  { label: t('csca.certificateTypeLds2'), value: 'lds2' },
+])
+
+/** Switches the form profile; LDS2 subjects have no O/OU or DocumentType. */
+function setCertificateType(value: 'dsc' | 'lds2'): void {
+  form.certificateType = value
+  if (value === 'lds2') {
+    form.subjectO = ''
+    form.subjectOu = ''
+    form.documentTypes = []
+    form.validityDays = DEFAULT_LDS2_VALIDITY_DAYS
+    if (form.lds2Types.length === 0) form.lds2Types = ['ts']
+  } else {
+    if (form.documentTypes.length === 0) form.documentTypes = ['P']
+    form.validityDays = DEFAULT_DSC_VALIDITY_DAYS
+  }
+}
+
 /** The DocumentType extension holds at most two values. */
 function setDocumentTypes(values: DocumentTypeCode[] | null): void {
   form.documentTypes = (values ?? []).slice(0, 2)
+}
+
+/** An LDS2 Signer may authorize one, two or all three roles. */
+function setLds2Types(values: Lds2SignerType[] | null): void {
+  form.lds2Types = (values ?? []).slice(0, 3)
 }
 
 function login(): void {
@@ -95,7 +131,9 @@ function isUrl(value: string): boolean {
 const rules = computed<FormRules>(() => ({
   subjectCn: {
     required: true,
-    message: t('errors.required'),
+    validator: (_rule: unknown, value: string) =>
+      value.trim() !== '' && (!isLds2.value || value.length <= 9),
+    message: isLds2.value ? t('csca.lds2CnHint') : t('errors.required'),
     trigger: ['input', 'blur'],
   },
   applicationUrl: {
@@ -112,8 +150,14 @@ const rules = computed<FormRules>(() => ({
     trigger: ['input', 'blur'],
   },
   documentTypes: {
-    validator: () => form.documentTypes.length >= 1 && form.documentTypes.length <= 2,
+    validator: () =>
+      isLds2.value || (form.documentTypes.length >= 1 && form.documentTypes.length <= 2),
     message: t('csca.documentTypeRule'),
+    trigger: ['change'],
+  },
+  lds2Types: {
+    validator: () => !isLds2.value || form.lds2Types.length >= 1,
+    message: t('csca.lds2TypeRule'),
     trigger: ['change'],
   },
 }))
@@ -146,12 +190,17 @@ async function submit(): Promise<void> {
       method: 'POST',
       body: {
         keyMode: form.keyMode,
+        certificateType: form.certificateType,
         subjectCn: form.subjectCn,
-        subjectO: form.subjectO || undefined,
-        subjectOu: form.subjectOu || undefined,
+        ...(isLds2.value
+          ? { lds2Types: form.lds2Types }
+          : {
+              subjectO: form.subjectO || undefined,
+              subjectOu: form.subjectOu || undefined,
+              documentTypes: form.documentTypes,
+            }),
         csrPem: form.csrPem || undefined,
         publicKeyPem: form.publicKeyPem || undefined,
-        documentTypes: form.documentTypes,
         validityDays: form.validityDays,
         issuancePolicy: form.issuancePolicy || undefined,
         applicationUrl: form.applicationUrl || undefined,
@@ -193,16 +242,32 @@ onMounted(async () => {
           label-placement="top"
           style="margin-top: 12px"
         >
+          <NFormItem>
+            <template #label>
+              <FieldLabel
+                :label="$t('csca.certificateType')"
+                :hint="$t('csca.certificateTypeHint')"
+              />
+            </template>
+            <NSelect
+              :value="form.certificateType"
+              :options="certificateTypeOptions"
+              @update:value="setCertificateType"
+            />
+          </NFormItem>
           <NFormItem :label="$t('csca.keyMode')">
             <NSelect v-model:value="form.keyMode" :options="keyModeOptions" />
           </NFormItem>
           <NFormItem path="subjectCn" :label="$t('csca.subjectCn')" required>
-            <NInput v-model:value="form.subjectCn" maxlength="64" />
+            <NInput v-model:value="form.subjectCn" :maxlength="isLds2 ? 9 : 64" />
+            <NText v-if="isLds2" depth="3" style="font-size: 12px">
+              {{ $t('csca.lds2CnHint') }}
+            </NText>
           </NFormItem>
-          <NFormItem :label="$t('csca.subjectO')">
+          <NFormItem v-if="!isLds2" :label="$t('csca.subjectO')">
             <NInput v-model:value="form.subjectO" maxlength="64" />
           </NFormItem>
-          <NFormItem :label="$t('csca.subjectOu')">
+          <NFormItem v-if="!isLds2" :label="$t('csca.subjectOu')">
             <NInput v-model:value="form.subjectOu" maxlength="64" />
           </NFormItem>
           <NFormItem v-if="form.keyMode === 'user_uploaded'" path="csrPem" :label="$t('csca.csr')">
@@ -217,8 +282,24 @@ onMounted(async () => {
             style="display: block; font-size: 12px; margin-bottom: 12px"
           >
             {{ $t('csca.uploadHint') }}
+            <template v-if="isLds2">{{ $t('csca.lds2KeyHint') }}</template>
           </NText>
-          <NFormItem path="documentTypes" :label="$t('csca.documentType')">
+          <NFormItem v-if="isLds2" path="lds2Types" :label="$t('csca.lds2Type')">
+            <NSelect
+              :value="form.lds2Types"
+              multiple
+              :max-tag-count="3"
+              :options="lds2TypeOptions"
+              @update:value="setLds2Types"
+            />
+            <NText depth="3" style="font-size: 12px">
+              {{ $t('csca.lds2TypeHint') }}
+            </NText>
+          </NFormItem>
+          <NFormItem v-if="!isLds2" path="documentTypes">
+            <template #label>
+              <FieldLabel :label="$t('csca.documentType')" :hint="$t('csca.documentTypeHint')" />
+            </template>
             <NSelect
               :value="form.documentTypes"
               multiple
@@ -226,12 +307,12 @@ onMounted(async () => {
               :options="documentTypeOptions"
               @update:value="setDocumentTypes"
             />
-            <NText depth="3" style="font-size: 12px">
-              {{ $t('csca.documentTypeHint') }}
-            </NText>
           </NFormItem>
           <NFormItem :label="$t('csca.validityDays')">
             <NInputNumber v-model:value="form.validityDays" :min="1" :max="7300" />
+            <NText v-if="isLds2" depth="3" style="font-size: 12px">
+              {{ $t('csca.lds2ValidityHint') }}
+            </NText>
           </NFormItem>
           <NFormItem :label="$t('csca.issuancePolicy')">
             <NSelect v-model:value="form.issuancePolicy" :options="policyOptions" />
@@ -248,6 +329,9 @@ onMounted(async () => {
       <template v-else>
         <NText depth="3">{{ $t('csca.reviewSummary') }}</NText>
         <NDescriptions :column="2" size="small" style="margin-top: 12px">
+          <NDescriptionsItem :label="$t('csca.certificateType')">
+            {{ isLds2 ? $t('csca.certificateTypeLds2') : $t('csca.certificateTypeDsc') }}
+          </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.keyMode')">
             {{
               form.keyMode === 'remote_generated' ? $t('csca.keyModeNia') : $t('csca.keyModeUpload')
@@ -256,14 +340,19 @@ onMounted(async () => {
           <NDescriptionsItem :label="$t('csca.subjectCn')">
             {{ form.subjectCn }}
           </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('csca.subjectO')">
-            {{ form.subjectO || '—' }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('csca.subjectOu')">
-            {{ form.subjectOu || '—' }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('csca.documentType')">
-            {{ documentTypesLabel(form.documentTypes, t) }}
+          <template v-if="!isLds2">
+            <NDescriptionsItem :label="$t('csca.subjectO')">
+              {{ form.subjectO || '—' }}
+            </NDescriptionsItem>
+            <NDescriptionsItem :label="$t('csca.subjectOu')">
+              {{ form.subjectOu || '—' }}
+            </NDescriptionsItem>
+            <NDescriptionsItem :label="$t('csca.documentType')">
+              {{ documentTypesLabel(form.documentTypes, t) }}
+            </NDescriptionsItem>
+          </template>
+          <NDescriptionsItem v-else :label="$t('csca.lds2Type')">
+            {{ lds2SignerTypesLabel(form.lds2Types, t) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.validityDays')">
             {{ form.validityDays }}

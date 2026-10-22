@@ -11,8 +11,12 @@ const DSC_ADMIN = {
   sub: 'dsc-admin',
   dn42: { active_mnt: 'EXAMPLE-DSC-MNT', mnt_by: ['EXAMPLE-DSC-MNT'] },
 }
+const DV_ADMIN = {
+  sub: 'dv-admin',
+  dn42: { active_mnt: 'EXAMPLE-DV-MNT', mnt_by: ['EXAMPLE-DV-MNT'] },
+}
 
-function cookieOf(response: LightMyRequestResponse, realm: 'csca' | 'dsc'): string {
+function cookieOf(response: LightMyRequestResponse, realm: 'csca' | 'dv' | 'dsc'): string {
   const cookie = response.cookies.find((entry) => entry.name === `epass42_${realm}_sid`)!
   return `${cookie.name}=${cookie.value}`
 }
@@ -20,7 +24,7 @@ function cookieOf(response: LightMyRequestResponse, realm: 'csca' | 'dsc'): stri
 async function login(
   app: FastifyInstance,
   oidc: FakeOidc,
-  realm: 'csca' | 'dsc',
+  realm: 'csca' | 'dv' | 'dsc',
   claims: Record<string, unknown>,
 ): Promise<string> {
   oidc.set(`${realm}-client`, { subject: String(claims.sub), claims })
@@ -62,5 +66,14 @@ describe('M13 audit log viewing', () => {
     expect(
       (await app.inject({ method: 'GET', url: '/dsc/audit', headers: { cookie: dsc } })).statusCode,
     ).toBe(200)
+  })
+
+  it('lets a DV administrator read the terminal-certificate audit trail', async () => {
+    const { app, oidc } = await harness()
+    const dv = await login(app, oidc, 'dv', DV_ADMIN)
+    const response = await app.inject({ method: 'GET', url: '/dv/audit', headers: { cookie: dv } })
+    expect(response.statusCode).toBe(200)
+    const items = response.json().items as { action: string }[]
+    expect(items.some((entry) => entry.action === 'auth.login')).toBe(true)
   })
 })

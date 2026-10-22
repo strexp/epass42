@@ -29,7 +29,7 @@ import {
   subjectKeyIdentifier,
 } from './profile'
 import * as x509 from './x509lib'
-import { COUNTRY_ALPHA2, OIDS } from '@epass42/shared'
+import { COUNTRY_ALPHA2, LDS2_SIGNER_OIDS, OIDS, type Lds2SignerType } from '@epass42/shared'
 
 /** Maps a hash name to its signature salt length (RSA-PSS). */
 function saltLength(hash: HashName): number {
@@ -231,6 +231,65 @@ export async function createDsc(
     profile.organization,
     profile.organizationalUnit,
   )
+  const certificate = await x509.X509CertificateGenerator.create({
+    publicKey: subjectKey.publicKey,
+    signingKey: issuer.key.privateKey,
+    subject,
+    issuer: issuer.certificate.subjectName,
+    serialNumber: bytesToHex(profile.serial ?? randomSerial()),
+    notBefore: profile.notBefore,
+    notAfter: profile.notAfter,
+    signingAlgorithm: certificateSigningAlgorithm(issuer.key, hash),
+    extensions,
+  })
+  return describeCertificate(certificate)
+}
+
+/** Parameters for an LDS2 Signer certificate (Doc 9303-12 §7.1.2). */
+export interface Lds2SignerProfile {
+  /** Common name; the profile limits it to 9 characters. */
+  commonName: string
+  country?: string
+  /** LDS2 roles authorized through the (critical) ExtendedKeyUsage. */
+  lds2Types: Lds2SignerType[]
+  notBefore: Date
+  notAfter: Date
+  serial?: Uint8Array
+  hash?: HashName
+}
+
+/**
+ * Creates an LDS2 Signer certificate signed by the CSCA (Doc 9303-12 §7.1.2).
+ *
+ * The profile is the DSC profile with these exceptions: the subject holds only
+ * `C` and `CN` (CN at most 9 characters), and the only extensions are
+ * AuthorityKeyIdentifier (nc) and a critical ExtendedKeyUsage naming one or
+ * more LDS2 Signer OIDs.  KeyUsage, BasicConstraints, DocumentType, SAN/IAN,
+ * PrivateKeyUsagePeriod, SKI and CRLDistributionPoints MUST NOT be included.
+ * The subject key MUST be ECDSA.
+ */
+export async function createLds2Signer(
+  profile: Lds2SignerProfile,
+  subjectKey: SubjectPublicKey,
+  issuer: { certificate: x509.X509Certificate; key: CertKeyPair; hash?: HashName },
+): Promise<GeneratedCertificate> {
+  if (profile.commonName.length < 1 || profile.commonName.length > 9) {
+    throw new Error('LDS2 Signer common name must contain 1 to 9 characters')
+  }
+  const types = [...new Set(profile.lds2Types)]
+  if (types.length === 0) throw new Error('an LDS2 Signer needs at least one role')
+  if (subjectKey.publicKey.algorithm.name !== 'ECDSA') {
+    throw new Error('an LDS2 Signer subject key must be ECDSA')
+  }
+  const hash = issuer.hash ?? profile.hash ?? 'SHA-256'
+  const extensions = [
+    await authorityKeyIdentifier(issuer.key.publicKey),
+    extendedKeyUsage(
+      types.map((type) => LDS2_SIGNER_OIDS[type]),
+      true,
+    ),
+  ]
+  const subject = new x509.Name(`CN=${profile.commonName},C=${profile.country ?? COUNTRY_ALPHA2}`)
   const certificate = await x509.X509CertificateGenerator.create({
     publicKey: subjectKey.publicKey,
     signingKey: issuer.key.privateKey,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NButton, NCard, NDataTable, NEmpty, NIcon, NSpace, NText, useMessage } from 'naive-ui'
-import { FilePlus2, RefreshCw } from '@lucide/vue'
+import { FilePlus2, RefreshCw, ScrollText } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -120,12 +120,22 @@ onMounted(async () => {
         size="small"
       >
         <template #action>
-          <NButton size="small" @click="loadApplications">
-            <template #icon
-              ><NIcon><RefreshCw /></NIcon
-            ></template>
-            {{ $t('common.reload') }}
-          </NButton>
+          <NSpace>
+            <NButton size="small" @click="loadApplications">
+              <template #icon
+                ><NIcon><RefreshCw /></NIcon
+              ></template>
+              {{ $t('common.reload') }}
+            </NButton>
+            <NuxtLink v-if="isAdmin" to="/dv/audit">
+              <NButton size="small">
+                <template #icon
+                  ><NIcon><ScrollText /></NIcon
+                ></template>
+                {{ $t('audit.title') }}
+              </NButton>
+            </NuxtLink>
+          </NSpace>
         </template>
         <div v-if="applications.length" role="region" :aria-label="$t('dv.myApplications')">
           <NDataTable

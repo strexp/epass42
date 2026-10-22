@@ -29,6 +29,7 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
       ) {
         return reply.code(400).send({ error: 'csr_or_public_key_required' })
       }
+      const isLds2 = request.body.certificateType === 'lds2'
       const result = db
         .insert(dscApplication)
         .values({
@@ -36,13 +37,18 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
           applicantAccountId: principal.account.id,
           ip: request.ip,
           keyMode: request.body.keyMode,
+          certificateType: request.body.certificateType,
           subjectCn: request.body.subjectCn,
-          subjectO: request.body.subjectO ?? null,
-          subjectOu: request.body.subjectOu ?? null,
+          // LDS2 Signer subjects hold C and CN only (Doc 9303-12 §7.1.2).
+          subjectO: isLds2 ? null : (request.body.subjectO ?? null),
+          subjectOu: isLds2 ? null : (request.body.subjectOu ?? null),
           csrPem: request.body.csrPem ?? null,
           publicKeyPem: request.body.publicKeyPem ?? null,
-          documentTypes: request.body.documentTypes,
-          validityDays: request.body.validityDays,
+          // A DSC carries DocumentTypes; an LDS2 Signer carries its roles.
+          documentTypes: isLds2 ? null : request.body.documentTypes,
+          lds2Types: isLds2 ? [...new Set(request.body.lds2Types ?? [])] : null,
+          validityDays:
+            request.body.validityDays ?? (isLds2 ? deps.config.csca.lds2.validityDays : 3650),
           issuancePolicy: request.body.issuancePolicy ?? null,
           applicationUrl: request.body.applicationUrl ?? null,
           notes: request.body.notes ?? null,
@@ -54,10 +60,11 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
       writeAudit(db, {
         actorAccountId: principal.account.id,
         realm: 'csca',
-        action: 'dsc.application.submit',
+        action: isLds2 ? 'lds2.application.submit' : 'dsc.application.submit',
         targetType: 'dsc_application',
         targetId: id,
         ip: request.ip,
+        detail: { certificateType: request.body.certificateType },
       })
       return reply.code(201).send({ id, status: 'submitted' })
     },
@@ -108,7 +115,7 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
       writeAudit(db, {
         actorAccountId: principal.account.id,
         realm: 'csca',
-        action: 'dsc.application.view',
+        action: row.certificateType === 'lds2' ? 'lds2.application.view' : 'dsc.application.view',
         targetType: 'dsc_application',
         targetId: row.id,
         ip: request.ip,
@@ -141,7 +148,8 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
       writeAudit(db, {
         actorAccountId: request.principal!.account.id,
         realm: 'csca',
-        action: 'dsc.application.approve',
+        action:
+          row.certificateType === 'lds2' ? 'lds2.application.approve' : 'dsc.application.approve',
         targetType: 'dsc_application',
         targetId: row.id,
         ip: request.ip,
@@ -172,7 +180,8 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
       writeAudit(db, {
         actorAccountId: request.principal!.account.id,
         realm: 'csca',
-        action: 'dsc.application.reject',
+        action:
+          row.certificateType === 'lds2' ? 'lds2.application.reject' : 'dsc.application.reject',
         targetType: 'dsc_application',
         targetId: row.id,
         ip: request.ip,

@@ -115,9 +115,10 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
     return { total: items.length, items }
   })
 
-  // Every active or revoked Document Signer certificate, with the policy,
-  // name, validity, document type and application URL published for relying
-  // parties (the certificate bytes stay under /csca/certificates).
+  // Every active or revoked signer certificate (DSC or LDS2 Signer), with the
+  // certificate type, policy, name, validity, document type/LDS2 roles and
+  // application URL published for relying parties (certificate bytes stay under
+  // /csca/certificates).
   server.get('/pkd/dscs', async () => {
     const items = db
       .select()
@@ -139,6 +140,8 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
           status: row.status,
           source: row.source,
           keyMode: row.keyMode,
+          certificateType: meta.certificateType,
+          lds2Types: meta.lds2Types,
           documentTypes: meta.documentTypes,
           issuancePolicy: row.issuancePolicy,
           applicationUrl: row.applicationUrl,

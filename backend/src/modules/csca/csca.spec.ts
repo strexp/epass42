@@ -8,6 +8,7 @@ import {
   documentTypesOfCertificate,
   generateRsaKeyPair,
   parseCertificatePem,
+  validateCertProfile,
   verifyDscAgainstCsca,
 } from '@epass42/pki'
 import { OIDS } from '@epass42/shared'
@@ -631,5 +632,165 @@ describe('M5 CSCA role', () => {
     const certificate = parseCertificatePem(pem.body)
     expect(certificate.subjectName.getField('O')).toEqual(['Example Org'])
     expect(certificate.subjectName.getField('OU')).toEqual(['Example Unit'])
+  })
+
+  it('issues an LDS2 Signer and publishes its certificate type', async () => {
+    const { app, cscaCookie, cscaPem } = await harness()
+
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        certificateType: 'lds2',
+        subjectCn: 'LDS2TVB',
+        lds2Types: ['ts', 'v', 'b'],
+        validityDays: 3760,
+      },
+    })
+    expect(submit.statusCode).toBe(201)
+    const id = json(submit).id as number
+
+    // The application detail keeps the certificate type, so the UI classifies
+    // it as LDS2 rather than falling back to DSC.
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/csca/applications/${id}`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(json(detail).certificateType).toBe('lds2')
+    expect(json(detail).lds2Types).toEqual(['ts', 'v', 'b'])
+
+    // LDS2 certificates never satisfy the maintainer's DSC delegation.
+    const delegation = await app.inject({
+      method: 'GET',
+      url: '/csca/settings/mnt',
+      headers: { cookie: cscaCookie },
+    })
+    expect(json(delegation).hasActiveDsc).toBe(false)
+
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${id}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const meta = json(approve)
+    expect(meta.certificateType).toBe('lds2')
+    expect(meta.lds2Types).toEqual(['ts', 'v', 'b'])
+    expect(meta.documentTypes).toEqual([])
+
+    const certificate = parseCertificatePem(meta.certPem as string)
+    expect(certificate.subjectName.getField('O')).toEqual([])
+    expect(certificate.subjectName.getField('OU')).toEqual([])
+    expect(certificate.subjectName.getField('C')).toEqual(['XD'])
+    expect(certificate.subjectName.getField('CN')).toEqual(['LDS2TVB'])
+    expect(certificate.getExtension(OIDS.keyUsage)).toBeFalsy()
+    expect(certificate.getExtension(OIDS.subjectAltName)).toBeFalsy()
+    expect(certificate.getExtension(OIDS.idIcaoDocumentType)).toBeFalsy()
+    const eku = certificate.getExtension(OIDS.extKeyUsage) as unknown as {
+      critical: boolean
+      usages: string[]
+    }
+    expect(eku.critical).toBe(true)
+    expect(eku.usages).toEqual([OIDS.lds2TsSigner, OIDS.lds2VisaSigner, OIDS.lds2BiometricsSigner])
+    expect(certificate.publicKey.algorithm.name).toBe('ECDSA')
+
+    // The profile and chain both validate against the CSCA.
+    expect(validateCertProfile(certificate, 'lds2-signer')).toEqual({ valid: true, errors: [] })
+    const chain = await verifyDscAgainstCsca(
+      certificate,
+      [parseCertificatePem(cscaPem)],
+      'lds2-signer',
+    )
+    expect(chain.valid).toBe(true)
+
+    // The certificate registry and the PKD list tag the certificate type.
+    const registry = await app.inject({
+      method: 'GET',
+      url: '/csca/certificates',
+      headers: { cookie: cscaCookie },
+    })
+    const listed = (json(registry).items as { id: number; certificateType: string }[]).find(
+      (row) => row.id === meta.id,
+    )
+    expect(listed?.certificateType).toBe('lds2')
+
+    const pkd = await app.inject({ method: 'GET', url: '/pkd/dscs' })
+    const published = (
+      json(pkd).items as { id: number; certificateType: string; lds2Types: string[] }[]
+    ).find((row) => row.id === meta.id)
+    expect(published?.certificateType).toBe('lds2')
+    expect(published?.lds2Types).toEqual(['ts', 'v', 'b'])
+
+    // The delegation still ignores LDS2 certificates.
+    const after = await app.inject({
+      method: 'GET',
+      url: '/csca/settings/mnt',
+      headers: { cookie: cscaCookie },
+    })
+    expect(json(after).hasActiveDsc).toBe(false)
+  })
+
+  it('validates LDS2 applications and rejects non-ECDSA subject keys', async () => {
+    const { app, cscaCookie } = await harness()
+
+    const tooLong = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        certificateType: 'lds2',
+        subjectCn: 'TOO-LONG-CN',
+        lds2Types: ['ts'],
+      },
+    })
+    expect(tooLong.statusCode).toBe(400)
+
+    const noRole = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', certificateType: 'lds2', subjectCn: 'LDS2' },
+    })
+    expect(noRole.statusCode).toBe(400)
+
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        certificateType: 'lds2',
+        subjectCn: 'LDS2',
+        lds2Types: ['ts', 'ts'],
+      },
+    })
+    expect(duplicate.statusCode).toBe(400)
+
+    // LDS2 Signers MUST use ECDSA (Doc 9303-12 §4.1.7), so an RSA SPKI fails
+    // at approval instead of producing a non-conforming certificate.
+    const rsa = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    const uploaded = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'user_uploaded',
+        certificateType: 'lds2',
+        subjectCn: 'LDS2RSA',
+        lds2Types: ['b'],
+        publicKeyPem: derToPem(rsa.spki, 'PUBLIC KEY'),
+      },
+    })
+    expect(uploaded.statusCode).toBe(201)
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${json(uploaded).id as number}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(400)
   })
 })

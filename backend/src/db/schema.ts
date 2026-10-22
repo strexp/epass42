@@ -15,7 +15,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
-import type { DocumentTypeCode } from '@epass42/shared'
+import type { DocumentTypeCode, Lds2SignerType, SignerCertificateType } from '@epass42/shared'
 
 /* ------------------------------------------------------------------ *
  * Authentication
@@ -120,13 +120,23 @@ export const dscApplication = sqliteTable('dsc_application', {
   ip: text('ip'),
   keyMode: text('key_mode').notNull(),
   subjectCn: text('subject_cn'),
+  /**
+   * The certificate kind requested: a Document Signer (`dsc`) or an LDS2
+   * Signer (`lds2`).  LDS2 Signer subjects carry no O/OU and no DocumentType.
+   */
+  certificateType: text('cert_type', { enum: ['dsc', 'lds2'] })
+    .$type<SignerCertificateType>()
+    .notNull()
+    .default('dsc'),
   /** Applicant-chosen organization (O) and organizational unit (OU). */
   subjectO: text('subject_o'),
   subjectOu: text('subject_ou'),
   csrPem: text('csr_pem'),
   publicKeyPem: text('public_key_pem'),
-  /** Applicant-selected DocumentType list (one or two values). */
+  /** Applicant-selected DocumentType list (one or two values; DSC only). */
   documentTypes: text('document_type', { mode: 'json' }).$type<DocumentTypeCode[]>(),
+  /** LDS2 signer roles (Doc 9303-12 §7.1.2); LDS2 applications only. */
+  lds2Types: text('lds2_types', { mode: 'json' }).$type<Lds2SignerType[]>(),
   validityDays: integer('validity_days'),
   issuancePolicy: text('issuance_policy'),
   applicationUrl: text('application_url'),
@@ -135,7 +145,7 @@ export const dscApplication = sqliteTable('dsc_application', {
   reviewedBy: integer('reviewed_by'),
   reviewedAt: text('reviewed_at'),
   rejectReason: text('reject_reason'),
-  /** The DSC certificate issued on approval (for the one-time key export). */
+  /** The signer certificate issued on approval (for the one-time key export). */
   dscCertId: integer('dsc_cert_id').references(() => dscCert.id),
   createdAt: text('created_at').notNull(),
 })
@@ -147,6 +157,13 @@ export const dscCert = sqliteTable('dsc_cert', {
   subjectDn: text('subject_dn').notNull(),
   mnt: text('mnt'),
   source: text('source').notNull(),
+  /** `dsc` for a Document Signer, `lds2` for an LDS2 Signer. */
+  certificateType: text('cert_type', { enum: ['dsc', 'lds2'] })
+    .$type<SignerCertificateType>()
+    .notNull()
+    .default('dsc'),
+  /** LDS2 signer roles (ExtendedKeyUsage) for `lds2` certificates. */
+  lds2Types: text('lds2_types', { mode: 'json' }).$type<Lds2SignerType[]>(),
   certPem: text('cert_pem').notNull(),
   keyRef: text('key_ref'),
   /** Stored key algorithm/curve of the subject key (e.g. `ECDSA-P256`). */

@@ -13,7 +13,7 @@ import { hash as hashBytes, type HashName } from '../crypto/crypto'
 import { bytesToHex } from '../codec/hex'
 import { parseDocumentTypeValue, type CertKind } from '../x509/profile'
 import * as x509 from '../x509/x509lib'
-import { OIDS } from '@epass42/shared'
+import { LDS2_SIGNER_OIDS, OIDS } from '@epass42/shared'
 
 /** The result of a validation that returns a list of deviations. */
 export interface ValidationResult {
@@ -72,6 +72,33 @@ const ML_SIGNER_RULES: ProfileRules = {
   forbidden: [{ oid: '2.5.29.19', name: 'BasicConstraints' }],
 }
 
+/**
+ * LDS2 Signer profile (Doc 9303-12 §7.1.2 Table 7): only AuthorityKeyIdentifier
+ * and a critical ExtendedKeyUsage; every other extension is prohibited.
+ */
+const LDS2_SIGNER_RULES: ProfileRules = {
+  required: [
+    { oid: '2.5.29.35', critical: false, name: 'AuthorityKeyIdentifier' },
+    { oid: '2.5.29.37', critical: true, name: 'ExtendedKeyUsage' },
+  ],
+  forbidden: [
+    { oid: '2.5.29.14', name: 'SubjectKeyIdentifier' },
+    { oid: '2.5.29.15', name: 'KeyUsage' },
+    { oid: '2.5.29.16', name: 'PrivateKeyUsagePeriod' },
+    { oid: '2.5.29.17', name: 'SubjectAltName' },
+    { oid: '2.5.29.18', name: 'IssuerAltName' },
+    { oid: '2.5.29.19', name: 'BasicConstraints' },
+    { oid: '2.5.29.31', name: 'CRLDistributionPoints' },
+    { oid: '2.5.29.32', name: 'CertificatePolicies' },
+    { oid: '2.23.136.1.1.6.1', name: 'NameChange' },
+    { oid: '2.23.136.1.1.6.2', name: 'DocumentType' },
+    { oid: '2.5.29.30', name: 'NameConstraints' },
+    { oid: '2.5.29.36', name: 'PolicyConstraints' },
+    { oid: '2.5.29.54', name: 'InhibitAnyPolicy' },
+    { oid: '2.5.29.46', name: 'FreshestCRL' },
+  ],
+}
+
 function rulesFor(kind: CertKind): ProfileRules {
   switch (kind) {
     case 'csca':
@@ -81,6 +108,8 @@ function rulesFor(kind: CertKind): ProfileRules {
       return DSC_RULES
     case 'ml-signer':
       return ML_SIGNER_RULES
+    case 'lds2-signer':
+      return LDS2_SIGNER_RULES
   }
 }
 
@@ -148,6 +177,42 @@ export function validateCertProfile(
       errors.push(...parseDocumentTypeValue(new Uint8Array(documentType.value)).errors)
     }
   }
+  if (kind === 'lds2-signer') {
+    // Doc 9303-12 §7.1.2 Table 7: no extension other than AKI and EKU.
+    const allowedExtensions = new Set<string>([OIDS.authorityKeyIdentifier, OIDS.extKeyUsage])
+    const unexpectedExtensions = certificate.extensions
+      .map((extension) => extension.type)
+      .filter((oid) => !allowedExtensions.has(oid))
+    if (unexpectedExtensions.length > 0) {
+      errors.push(`LDS2 Signer has unexpected extensions: ${unexpectedExtensions.join(', ')}`)
+    }
+    // Doc 9303-12 §7.1.2: only C and CN, with a CN of at most 9 characters.
+    if (commonName[0] !== undefined && commonName[0].length > 9) {
+      errors.push('LDS2 Signer commonName must not exceed 9 characters')
+    }
+    const subjectFields = certificate.subjectName
+      .toJSON()
+      .flatMap((attribute) => Object.keys(attribute))
+    const unexpected = subjectFields.filter((field) => field !== 'C' && field !== 'CN')
+    if (unexpected.length > 0) {
+      errors.push(`LDS2 Signer subject must only contain C and CN (found ${unexpected.join(', ')})`)
+    }
+    if (certificate.publicKey.algorithm.name !== 'ECDSA') {
+      errors.push('LDS2 Signer public key must be ECDSA')
+    }
+    const eku = certificate.getExtension<x509.ExtendedKeyUsageExtension>(OIDS.extKeyUsage)
+    if (eku) {
+      const usages = eku.usages as string[]
+      const allowed = Object.values(LDS2_SIGNER_OIDS)
+      const unknown = usages.filter((oid) => !allowed.includes(oid))
+      if (unknown.length > 0) {
+        errors.push(`LDS2 Signer ExtendedKeyUsage has unexpected OIDs: ${unknown.join(', ')}`)
+      }
+      if (usages.length === 0) {
+        errors.push('LDS2 Signer ExtendedKeyUsage must name at least one LDS2 role')
+      }
+    }
+  }
 
   return { valid: errors.length === 0, errors }
 }
@@ -157,12 +222,17 @@ export interface DscChainResult extends ValidationResult {
   csca?: x509.X509Certificate
 }
 
-/** Verifies that a DSC was issued by one of the given CSCA certificates. */
+/**
+ * Verifies that a CSCA-issued signer certificate (a DSC by default, or an LDS2
+ * Signer) chains to one of the given CSCA certificates.
+ */
 export async function verifyDscAgainstCsca(
   dsc: x509.X509Certificate,
   cscaList: x509.X509Certificate[],
+  kind: 'dsc' | 'lds2-signer' = 'dsc',
 ): Promise<DscChainResult> {
   const errors: string[] = []
+  const label = kind === 'lds2-signer' ? 'LDS2 Signer' : 'DSC'
   const aki = dsc.getExtension<x509.AuthorityKeyIdentifierExtension>('2.5.29.35')
   let issuer: x509.X509Certificate | undefined
   for (const csca of cscaList) {
@@ -173,15 +243,15 @@ export async function verifyDscAgainstCsca(
     break
   }
   if (!issuer) {
-    errors.push('no CSCA certificate matches the DSC issuer/AKI')
+    errors.push(`no CSCA certificate matches the ${label} issuer/AKI`)
     return { valid: false, errors }
   }
   const signatureOk = await dsc.verify({
     publicKey: issuer.publicKey,
     signatureOnly: true,
   })
-  if (!signatureOk) errors.push('DSC signature does not verify against the CSCA key')
-  const profile = validateCertProfile(dsc, 'dsc')
+  if (!signatureOk) errors.push(`${label} signature does not verify against the CSCA key`)
+  const profile = validateCertProfile(dsc, kind)
   errors.push(...profile.errors)
   return { valid: errors.length === 0, errors, csca: issuer }
 }

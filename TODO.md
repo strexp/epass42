@@ -90,6 +90,7 @@ epass42/
 | M15    | 部署、文档、发布                                                                           | 待办   |
 | M16    | UX 与标识重构（公众提示/降技术细节、路由化、审核详情页、DSC 去数字 ID、隐藏 review queue） | 完成   |
 | M17    | CVCA 角色（LDS2 授权 PKI：CV 证书 / DV 申请/审核/签发、权限覆盖、PKD CVCA/DV 列表）        | 完成   |
+| M18    | CSCA 签发 LDS2 签名证书（LDS2-TS/V/B）、证书类型标注与终端证书审计入口                     | 完成   |
 
 ---
 
@@ -299,6 +300,34 @@ epass42/
 
 ---
 
+## 20. M18 — CSCA LDS2 签名证书与终端审计入口
+
+> 依据 Doc 9303-12 §7.1.2（LDS2 Signer Certificate Profile）、§4.1.7（LDS2 Signers MUST use ECDSA）
+> 与 Table 1（LDS2 Signer 公钥有效期 10 年 + 3 个月）。LDS2 Signer 与 DSC 一样直接由 CSCA 签发，
+> 但证书 profile 是 DSC 的例外：Subject 仅 `C` + `CN`（CN ≤ 9 字符），扩展仅
+> AuthorityKeyIdentifier 与 critical ExtendedKeyUsage（`2.23.136.1.1.9.8.1/.2/.3`），
+> 不得包含 KeyUsage、BasicConstraints、DocumentType、SAN/IAN、PrivateKeyUsagePeriod、SKI、CRLDP。
+
+- [x] T18.1 `packages/shared` 增加 `id-icao-lds2Signer`（`2.23.136.1.1.9.8`）与三个 EKU OID、LDS2 角色
+      （`ts`/`v`/`b`）及证书类型枚举。
+- [x] T18.2 `packages/pki` 增加 `createLds2Signer()`：仅 AKI + critical EKU，Subject 仅 CN/C，强制 ECDSA 公钥；
+      `validateCertProfile(cert, 'lds2-signer')` 校验扩展白名单、EKU OID、CN 长度与 ECDSA；
+      `verifyDscAgainstCsca(..., 'lds2-signer')` 支持链验证；`scripts/verify` 增加 `--kind lds2-signer`。
+- [x] T18.3 复用 `/csca/apply` 与 `dsc_application`/`dsc_cert`：新增 `cert_type`（`dsc`/`lds2`）与
+      `lds2_types`（JSON）列（迁移 `0005`）；LDS2 申请校验至少一个角色、CN ≤ 9；私钥模式支持
+      CSCA 生成（ECDSA P-256）或上传 CSR/SPKI（仅 P-256/P-384）；默认有效期 3760 天（可覆盖）。
+- [x] T18.4 **维护者 DSC 委派仅针对 DSC**：`activeOwnDsc()`、`resolveDscSelection()`、NIA DSC 选择与
+      EF.SOD 签发材料解析均过滤 `cert_type = 'dsc'`，LDS2 证书不参与委派或文档签名。
+- [x] T18.5 `/csca/certificates` 与 `/pkd/dscs` 返回 `certificateType` 与 `lds2Types`；
+      `/csca/certificates`、`/pkd` 页面新增「证书类型」列（DSC 或 LDS2-TS/V/B）。
+- [x] T18.6 前端 `/csca/apply` 增加证书类型选择（DSC / LDS2）与 LDS2 角色多选；LDS2 时隐藏 O/OU、
+      DocumentType，CN 限制 9 字符，有效期默认 3760 天；申请详情与列表显示类型/角色；en/zh 文案补齐。
+- [x] T18.7 `/dv` 终端证书页增加仅管理员可见的审计日志入口，新增 `/dv/audit` 页面（复用 `GET /dv/audit`）。
+- [x] T18.8 测试：pki 的 LDS2 profile/链验证；backend 的 LDS2 申请/签发/类型标注/委派隔离/非法输入；
+      DV 审计日志访问；format/lint/typecheck/test 全绿。
+
+---
+
 ## 附录 A — OID 常量表
 
 | 名称                                              | OID                            |
@@ -343,6 +372,15 @@ epass42/
 - 禁止：EKU、BasicConstraints。
 - Subject：C + CN。
 
+### B.2a LDS2 Signer（§7.1.2）
+
+- 必须：`C` + `CN`（CN ≤ 9 字符，不得含 O/OU 等其它属性）；AKI(nc, keyIdentifier)；EKU(c) 为
+  `2.23.136.1.1.9.8.1`（LDS2-TS）/`.2`（LDS2-V）/`.3`（LDS2-B）之一或多个。
+- 禁止：KeyUsage、BasicConstraints、DocumentType、SAN/IAN、PrivateKeyUsagePeriod、SKI、CRLDP、
+  CertificatePolicies、NameChange 及其它扩展。
+- 公钥必须为 ECDSA（§4.1.7）；证书默认有效期 10 年 + 3 个月（Table 1）。
+- 吊销状态仍由签发 CSCA 的同一张 CRL 覆盖（证书本身不含 CRLDP）。
+
 ### B.3 CRL
 
 - v2；thisUpdate/nextUpdate 秒+Z；revokedCertificates 有则不空无则不出现；AKI(nc)、cRLNumber(nc)。
@@ -385,15 +423,16 @@ CREATE TABLE csca_key (
   status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL);
 CREATE TABLE dsc_application (
   id INTEGER PRIMARY KEY, mnt TEXT, applicant_account_id INTEGER REFERENCES account(id),
-  key_mode TEXT NOT NULL, subject_cn TEXT, csr_pem TEXT, public_key_pem TEXT,
-  document_type TEXT, validity_days INTEGER, issuance_policy TEXT, application_url TEXT,
+  key_mode TEXT NOT NULL, cert_type TEXT NOT NULL DEFAULT 'dsc',
+  subject_cn TEXT, subject_o TEXT, subject_ou TEXT, csr_pem TEXT, public_key_pem TEXT,
+  document_type TEXT, lds2_types TEXT, validity_days INTEGER, issuance_policy TEXT, application_url TEXT,
   notes TEXT, status TEXT NOT NULL DEFAULT 'submitted',
   reviewed_by INTEGER, reviewed_at TEXT, reject_reason TEXT, created_at TEXT NOT NULL);
 CREATE TABLE dsc_cert (
   id INTEGER PRIMARY KEY, csca_key_id INTEGER REFERENCES csca_key(id),
   serial TEXT NOT NULL UNIQUE, subject_dn TEXT NOT NULL, mnt TEXT,
-  source TEXT NOT NULL, cert_pem TEXT NOT NULL, key_ref TEXT,
-  issuance_policy TEXT, application_url TEXT,
+  source TEXT NOT NULL, cert_type TEXT NOT NULL DEFAULT 'dsc', lds2_types TEXT,
+  cert_pem TEXT NOT NULL, key_ref TEXT, issuance_policy TEXT, application_url TEXT,
   status TEXT NOT NULL DEFAULT 'active', not_before TEXT, not_after TEXT,
   revoked_at TEXT, revoke_reason TEXT, created_at TEXT NOT NULL);
 

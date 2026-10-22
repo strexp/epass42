@@ -15,10 +15,11 @@ import {
   NText,
 } from 'naive-ui'
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { COUNTRY_ALPHA3, type DvPermissions } from '@epass42/shared'
+import { COUNTRY_ALPHA3, type DvPermissions, type Lds2SignerType } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
 import { usePkdConfig } from '~/composables/usePkdConfig'
 import { documentTypeLabel, documentTypesLabel, documentTypeValues } from '~/utils/documentTypes'
+import { signerCertificateLabel } from '~/utils/lds2'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
@@ -51,6 +52,8 @@ interface PkdDsc {
   name: string
   mnt: string | null
   status: string
+  certificateType: 'dsc' | 'lds2'
+  lds2Types: Lds2SignerType[] | null
   documentTypes: string[]
   issuancePolicy: string | null
   applicationUrl: string | null
@@ -190,11 +193,17 @@ const dvColumns = computed(() => [
 
 const dscColumns = computed(() => [
   { title: t('pkd.name'), key: 'name', ellipsis: { tooltip: true } },
+  {
+    title: t('common.certificateType'),
+    key: 'certificateType',
+    render: (row: PkdDsc) => signerCertificateLabel(row.certificateType, row.lds2Types, t),
+  },
   { title: t('common.mnt'), key: 'mnt' },
   {
     title: t('pkd.type'),
     key: 'documentTypes',
-    render: (row: PkdDsc) => documentTypesLabel(row.documentTypes, t),
+    render: (row: PkdDsc) =>
+      row.certificateType === 'lds2' ? '—' : documentTypesLabel(row.documentTypes, t),
   },
   {
     title: t('pkd.policy'),

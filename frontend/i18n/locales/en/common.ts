@@ -81,6 +81,20 @@ export default {
       iStar: 'Identity documents (I)',
       separator: ', ',
     },
+    certificateType: 'Certificate type',
+    dsc: 'DSC',
+    lds2: 'LDS2',
+    lds2Types: {
+      ts: 'LDS2-TS (travel stamp)',
+      v: 'LDS2-V (electronic visa)',
+      b: 'LDS2-B (additional biometrics)',
+    },
+    // Compact role codes for tables (same shape as "DSC", no description).
+    lds2TypeCodes: {
+      ts: 'LDS2-TS',
+      v: 'LDS2-V',
+      b: 'LDS2-B',
+    },
   },
   home: {
     intro: 'Official document-signing service of the National Immigration Agency.',

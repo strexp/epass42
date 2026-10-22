@@ -79,6 +79,20 @@ export default {
       iStar: '身份证件（I）',
       separator: '、',
     },
+    certificateType: '证书类型',
+    dsc: 'DSC',
+    lds2: 'LDS2',
+    lds2Types: {
+      ts: 'LDS2-TS（电子盖章）',
+      v: 'LDS2-V（电子签证）',
+      b: 'LDS2-B（追加生物特征）',
+    },
+    // 表格中使用的简写角色代码（与 “DSC” 一致，不带说明）。
+    lds2TypeCodes: {
+      ts: 'LDS2-TS',
+      v: 'LDS2-V',
+      b: 'LDS2-B',
+    },
   },
   home: {
     intro: '国家移民管理局的官方证件签名服务。',

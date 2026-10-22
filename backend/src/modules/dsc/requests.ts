@@ -70,7 +70,13 @@ export class DscRequestService {
       const own = this.db
         .select()
         .from(dscCert)
-        .where(and(eq(dscCert.mnt, requester.mnt), eq(dscCert.status, 'active')))
+        .where(
+          and(
+            eq(dscCert.mnt, requester.mnt),
+            eq(dscCert.certificateType, 'dsc'),
+            eq(dscCert.status, 'active'),
+          ),
+        )
         .get()
       if (own) return { mode: 'owned', certId: own.id }
     }

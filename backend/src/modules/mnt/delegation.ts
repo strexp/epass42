@@ -19,12 +19,14 @@ export interface MntDelegation {
   hasActiveDsc: boolean
 }
 
-/** The maintainer's own active DSC certificate, or undefined. */
+/** The maintainer's own active DSC certificate, or undefined (LDS2 excluded). */
 export function activeOwnDsc(db: Db, mnt: string) {
   return db
     .select()
     .from(dscCert)
-    .where(and(eq(dscCert.mnt, mnt), eq(dscCert.status, 'active')))
+    .where(
+      and(eq(dscCert.mnt, mnt), eq(dscCert.certificateType, 'dsc'), eq(dscCert.status, 'active')),
+    )
     .get()
 }
 

@@ -115,5 +115,7 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
 - **M10** CSCA Master List generation, publication and verification — done.
 - **M11** frontend (Nuxt 4 SPA + Naive UI): i18n (en), dark mode, API client,
   applicant/admin flows, masked preview and one-time claim — done.
+- **M18** CSCA-issued LDS2 Signer certificates (LDS2-TS/V/B), certificate-type
+  tagging in the registry and PKD, and the terminal-certificate audit page — done.
 
 See [`TODO.md`](TODO.md) for the full milestone plan.

@@ -61,6 +61,9 @@ conservative option.
 # certificate profile (+ optional DSC chain to a CSCA)
 epass42-verify cert ./dsc.crt --kind dsc --ca ./csca.crt
 
+# LDS2 Signer profile (TS/V/B ExtendedKeyUsage) and chain
+epass42-verify cert ./lds2.crt --kind lds2-signer --ca ./csca.crt
+
 # chain via openssl (Doc 9303-12 §7.1.1)
 epass42-verify chain ./dsc.crt --ca ./csca.crt
 

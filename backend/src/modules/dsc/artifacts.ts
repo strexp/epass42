@@ -46,7 +46,9 @@ export class DscArtifactService {
     if (row.dscSelection === 'owned') {
       if (!row.dscCertId) throw new AppError('certificate_not_found', 'owned DSC id missing', 400)
       const cert = this.db.select().from(dscCert).where(eq(dscCert.id, row.dscCertId)).get()
-      if (!cert || cert.status !== 'active') {
+      // Only a Document Signer may sign an EF.SOD; LDS2 Signer certificates
+      // carry a different ExtendedKeyUsage and are never selectable here.
+      if (!cert || cert.certificateType !== 'dsc' || cert.status !== 'active') {
         throw new AppError('certificate_not_found', 'owned DSC not found or inactive', 400)
       }
       if (row.mnt !== null && cert.mnt !== null && !mntIncludes(row.mnt, cert.mnt)) {

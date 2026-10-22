@@ -2,13 +2,14 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { generateEcKeyPair, generateRsaKeyPair } from '../crypto/crypto'
-import { createCscaRoot, createDsc } from './x509'
+import { createCscaRoot, createDsc, createLds2Signer } from './x509'
 import {
   certificateCoversDocumentType,
   documentTypeExtension,
   documentTypesOfCertificate,
 } from './profile'
 import { createCrl, readCrlNumber } from './crl'
+import { validateCertProfile, verifyDscAgainstCsca } from '../verify/verify'
 import { OIDS } from '@epass42/shared'
 import * as x509 from './x509lib'
 
@@ -106,6 +107,65 @@ describe('X.509 CSCA profile', () => {
 
     writeFileSync('/tmp/opencode/pki/csca2.crt', csca.pem)
     writeFileSync('/tmp/opencode/pki/dsc.crt', dsc.pem)
+  })
+
+  it('builds an LDS2 Signer with only AKI and a critical EKU', async () => {
+    const cscaKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    const { notBefore, notAfter } = dates()
+    const csca = await createCscaRoot(
+      {
+        commonName: 'ePass 42 LDS2 CSCA',
+        notBefore,
+        notAfter,
+        crlDistributionPoints: CRL_DP,
+        pss: false,
+      },
+      cscaKey,
+    )
+    // LDS2 Signers MUST use ECDSA (Doc 9303-12 §4.1.7), even when the CSCA is RSA.
+    const signerKey = await generateEcKeyPair('P-256')
+    const signer = await createLds2Signer(
+      {
+        commonName: 'LDS2TS',
+        lds2Types: ['ts', 'v'],
+        notBefore,
+        notAfter,
+      },
+      { publicKey: signerKey.publicKey },
+      { certificate: csca.certificate, key: cscaKey },
+    )
+    const cert = signer.certificate
+
+    // Subject: only C and CN (CN ≤ 9 characters), no O/OU/SAN.
+    expect(cert.subject).toBe('CN=LDS2TS, C=XD')
+    expect(cert.getExtension(OIDS.subjectAltName)).toBeFalsy()
+    expect(cert.getExtension(OIDS.issuerAltName)).toBeFalsy()
+    expect(cert.getExtension(OIDS.subjectKeyIdentifier)).toBeFalsy()
+    expect(cert.getExtension(OIDS.keyUsage)).toBeFalsy()
+    expect(cert.getExtension(OIDS.basicConstraints)).toBeFalsy()
+    expect(cert.getExtension(OIDS.idIcaoDocumentType)).toBeFalsy()
+    expect(cert.getExtension(OIDS.cRLDistributionPoints)).toBeFalsy()
+
+    const eku = cert.getExtension<x509.ExtendedKeyUsageExtension>(OIDS.extKeyUsage)
+    expect(eku?.critical).toBe(true)
+    expect(eku?.usages).toEqual([OIDS.lds2TsSigner, OIDS.lds2VisaSigner])
+    expect(cert.signatureAlgorithm.name).toBe('RSASSA-PKCS1-v1_5')
+    expect(await cert.verify({ publicKey: cscaKey.publicKey, signatureOnly: true })).toBe(true)
+
+    // The profile validator accepts it and the chain reaches the CSCA.
+    expect(validateCertProfile(cert, 'lds2-signer')).toEqual({ valid: true, errors: [] })
+    const chain = await verifyDscAgainstCsca(cert, [csca.certificate], 'lds2-signer')
+    expect(chain.valid).toBe(true)
+
+    // RSA subject keys are rejected: LDS2 Signers must be ECDSA.
+    const rsaSignerKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    await expect(
+      createLds2Signer(
+        { commonName: 'LDS2B', lds2Types: ['b'], notBefore, notAfter },
+        { publicKey: rsaSignerKey.publicKey },
+        { certificate: csca.certificate, key: cscaKey },
+      ),
+    ).rejects.toThrow(/ECDSA/)
   })
 })
 

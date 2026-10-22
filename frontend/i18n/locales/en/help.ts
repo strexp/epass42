@@ -132,7 +132,7 @@ export default {
         },
         s2: {
           title: 'Fill in the application',
-          body: 'Provide the common name, the organization (O) and optional unit (OU), the document types, the validity and issuance policy, and the URL of your application page.',
+          body: 'Choose the certificate type (Document Signer or LDS2 Signer), then provide the common name, the organization (O) and optional unit (OU) for a DSC, the document types or LDS2 roles, the validity and issuance policy, and the URL of your application page.',
         },
         s3: {
           title: 'Choose the key mode',
@@ -144,7 +144,7 @@ export default {
         },
         s5: {
           title: 'Sign documents',
-          body: 'Use the certificate with your signing service (or your own DSC-only deployment) to build the EF.SOD and the personalization file for each document.',
+          body: 'Use a DSC with your signing service (or your own DSC-only deployment) to build the EF.SOD and the personalization file for each document; an LDS2 Signer signs LDS2 data objects such as travel stamps, visas or additional biometrics.',
         },
         s6: {
           title: 'Publish',
@@ -400,6 +400,7 @@ export default {
     cvcaAdmin: {
       applications: 'CVCA administration',
       terminal: 'Terminal applications',
+      audit: 'Audit log',
     },
     selfHosted: {
       certApply: 'Apply for a DSC',

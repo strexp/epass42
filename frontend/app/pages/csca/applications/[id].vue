@@ -22,6 +22,8 @@ import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { documentTypesLabel } from '~/utils/documentTypes'
+import type { Lds2SignerType } from '@epass42/shared'
+import { lds2SignerTypesLabel } from '~/utils/lds2'
 import { downloadUrl } from '~/utils/download'
 
 interface Application {
@@ -30,12 +32,16 @@ interface Application {
   applicantAccountId: number | null
   ip: string | null
   keyMode: string
+  certificateType?: 'dsc' | 'lds2'
+  /** Legacy field name (pre-rename API responses). */
+  certType?: 'dsc' | 'lds2'
   subjectCn: string | null
   subjectO: string | null
   subjectOu: string | null
   csrPem: string | null
   publicKeyPem: string | null
   documentTypes: string[] | null
+  lds2Types: Lds2SignerType[] | null
   validityDays: number | null
   issuancePolicy: string | null
   applicationUrl: string | null
@@ -43,9 +49,9 @@ interface Application {
   status: string
   reviewedAt: string | null
   rejectReason: string | null
-  /** The issued DSC certificate, for the one-time private-key export. */
+  /** The issued signer certificate, for the one-time private-key export. */
   dscCertId: number | null
-  /** Whether the issued DSC private key is still available. */
+  /** Whether the issued signer private key is still available. */
   hasPrivateKey: boolean
   createdAt: string
 }
@@ -67,6 +73,9 @@ const rejectReason = ref('')
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+const isLds2 = computed(
+  () => (application.value?.certificateType ?? application.value?.certType) === 'lds2',
+)
 
 /** A system-generated DSC key may be claimed once, from the application. */
 const canDownloadKey = computed(
@@ -85,7 +94,7 @@ function confirmDownloadKey(): void {
     onPositiveClick: () => {
       downloadUrl(
         `${apiBase}/csca/certificates/${row.dscCertId}/private-key`,
-        `dsc-${row.dscCertId}.key`,
+        `${isLds2.value ? 'lds2' : 'dsc'}-${row.dscCertId}.key`,
       )
       window.setTimeout(() => void load(), 1500)
     },
@@ -152,15 +161,20 @@ onMounted(async () => {
           <StatusTag :status="application.status" />
         </template>
         <NDescriptions :column="2" size="small" :bordered="false">
+          <NDescriptionsItem :label="$t('csca.certificateType')">
+            {{ isLds2 ? $t('csca.certificateTypeLds2') : $t('csca.certificateTypeDsc') }}
+          </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.subjectCn')">
             {{ application.subjectCn ?? '—' }}
           </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('csca.subjectO')">
-            {{ application.subjectO ?? '—' }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('csca.subjectOu')">
-            {{ application.subjectOu ?? '—' }}
-          </NDescriptionsItem>
+          <template v-if="!isLds2">
+            <NDescriptionsItem :label="$t('csca.subjectO')">
+              {{ application.subjectO ?? '—' }}
+            </NDescriptionsItem>
+            <NDescriptionsItem :label="$t('csca.subjectOu')">
+              {{ application.subjectOu ?? '—' }}
+            </NDescriptionsItem>
+          </template>
           <NDescriptionsItem :label="$t('csca.keyMode')">
             {{
               application.keyMode === 'remote_generated'
@@ -174,7 +188,10 @@ onMounted(async () => {
           <NDescriptionsItem :label="$t('common.ip')">{{
             application.ip ?? '—'
           }}</NDescriptionsItem>
-          <NDescriptionsItem :label="$t('csca.documentType')">
+          <NDescriptionsItem v-if="isLds2" :label="$t('csca.lds2Type')">
+            {{ lds2SignerTypesLabel(application.lds2Types ?? [], t) }}
+          </NDescriptionsItem>
+          <NDescriptionsItem v-else :label="$t('csca.documentType')">
             {{ documentTypesLabel(application.documentTypes ?? [], t) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.validityDays')">

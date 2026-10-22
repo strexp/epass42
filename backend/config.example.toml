@@ -131,6 +131,12 @@ keyBits = 2048
 pss = false
 hash = "SHA-256"
 
+# LDS2 Signer certificates (Doc 9303-12 §7.1.2): requested through the same
+# application flow as DSCs, always ECDSA P-256 subject keys.  The default is the
+# Table 1 public-key lifetime (10 years + 3 months).
+[csca.lds2]
+validityDays = 3760
+
 # Certificate Revocation List scheduling (M6).
 [crl]
 autoGenerate = true

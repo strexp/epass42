@@ -34,7 +34,7 @@ Commands:
   sod <file>      verify an EF.SOD signature (and chain with --ca)
 
 Options:
-  --kind <csca|dsc|ml-signer>   certificate profile (cert)
+  --kind <csca|dsc|ml-signer|lds2-signer>  certificate profile (cert)
   --ca <file>                   issuing/trusted certificate (PEM or DER)
   --dg <n=file>                 data group for SOD hash checking (repeatable)
   -h, --help
@@ -60,11 +60,11 @@ async function verifyCert(path: string, kind: CertKind, caPath?: string): Promis
     fail(`${kind} certificate profile deviations:\n  - ${result.errors.join('\n  - ')}`)
   }
   process.stdout.write(`ok: ${kind} certificate ${certificate.subject}\n`)
-  if (caPath && kind === 'dsc') {
+  if (caPath && (kind === 'dsc' || kind === 'lds2-signer')) {
     const ca = loadCertificate(caPath)
-    const chain = await verifyDscAgainstCsca(certificate, [ca])
+    const chain = await verifyDscAgainstCsca(certificate, [ca], kind)
     if (!chain.valid) fail(`chain: ${chain.errors.join('; ')}`)
-    process.stdout.write('ok: DSC chains to the supplied CSCA\n')
+    process.stdout.write(`ok: ${kind} chains to the supplied CSCA\n`)
   }
 }
 
