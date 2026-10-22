@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest'
 
 import { generateEcKeyPair, generateRsaKeyPair } from '../crypto/crypto'
 import { createCscaRoot, createDsc } from './x509'
+import {
+  certificateCoversDocumentType,
+  documentTypeExtension,
+  documentTypesOfCertificate,
+} from './profile'
 import { createCrl, readCrlNumber } from './crl'
 import { OIDS } from '@epass42/shared'
 import * as x509 from './x509lib'
@@ -176,5 +181,63 @@ describe('CRL profile', () => {
     })
     expect(readCrlNumber(crl.crl)).toBe(9n)
     expect(await crl.crl.verify({ publicKey: cscaKey.publicKey })).toBe(true)
+  })
+})
+
+describe('DocumentType extension', () => {
+  it('encodes the I wildcard alongside P in DER order and covers ID/IP', async () => {
+    const cscaKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    const { notBefore, notAfter, keyNotAfter } = dates()
+    const csca = await createCscaRoot(
+      {
+        commonName: 'ePass 42 Type CSCA',
+        notBefore,
+        notAfter,
+        privateKeyNotAfter: keyNotAfter,
+        crlDistributionPoints: CRL_DP,
+      },
+      cscaKey,
+    )
+    const dscKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    const dsc = await createDsc(
+      {
+        commonName: 'ePass 42 P+I DSC',
+        documentTypes: ['P', 'I'],
+        notBefore,
+        notAfter,
+        crlDistributionPoints: CRL_DP,
+      },
+      dscKey,
+      { certificate: csca.certificate, key: cscaKey },
+    )
+    const extension = dsc.certificate.getExtension(OIDS.idIcaoDocumentType)
+    expect(extension?.critical).toBe(false)
+    // DER SET OF orders the shortest encoding first: "I" (13 01 49) < "P" (13 01 50).
+    expect(documentTypesOfCertificate(dsc.certificate)).toEqual(['I', 'P'])
+    expect(certificateCoversDocumentType(dsc.certificate, 'P')).toBe(true)
+    expect(certificateCoversDocumentType(dsc.certificate, 'ID')).toBe(true)
+    expect(certificateCoversDocumentType(dsc.certificate, 'IP')).toBe(true)
+
+    const pOnly = await createDsc(
+      {
+        commonName: 'ePass 42 P-only DSC',
+        documentTypes: ['P'],
+        notBefore,
+        notAfter,
+        crlDistributionPoints: CRL_DP,
+      },
+      dscKey,
+      { certificate: csca.certificate, key: cscaKey },
+    )
+    expect(certificateCoversDocumentType(pOnly.certificate, 'P')).toBe(true)
+    expect(certificateCoversDocumentType(pOnly.certificate, 'ID')).toBe(false)
+  })
+
+  it('rejects empty, unknown and oversized type lists', () => {
+    expect(() => documentTypeExtension([])).toThrow()
+    expect(() => documentTypeExtension(['X'])).toThrow()
+    expect(() => documentTypeExtension(['P', 'ID', 'IP'])).toThrow()
+    // Duplicates collapse to a single SET OF member.
+    expect(() => documentTypeExtension(['P', 'P'])).not.toThrow()
   })
 })

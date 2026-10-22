@@ -75,8 +75,11 @@ export default {
     pem: 'PEM',
     der: 'DER',
     documentType: {
-      passport: 'Passport',
-      identityCard: 'Identity card',
+      passport: 'Passport (P)',
+      identityCard: 'Identity card (ID)',
+      passportCard: 'Passport card (IP)',
+      iStar: 'Identity documents (I)',
+      separator: ', ',
     },
   },
   home: {

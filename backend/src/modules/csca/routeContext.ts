@@ -4,6 +4,7 @@
 import { z } from 'zod'
 
 import { parseCertificatePem, sha256 } from '@epass42/pki'
+import { documentTypeListSchema } from '@epass42/shared'
 import type { dscCert } from '../../db/schema'
 import { documentTypesOf } from '../../util/cert'
 import type { AuthContext } from '../auth/middleware'
@@ -22,7 +23,7 @@ export const applicationBody = z.object({
   subjectOu: z.string().max(64).optional(),
   csrPem: z.string().max(20_000).optional(),
   publicKeyPem: z.string().max(20_000).optional(),
-  documentType: z.string().min(1).max(2).default('P'),
+  documentTypes: documentTypeListSchema.default(['P']),
   validityDays: z
     .number()
     .int()
@@ -47,7 +48,9 @@ export function certMetadata(row: typeof dscCert.$inferSelect) {
     source: row.source,
     mnt: row.mnt,
     keyMode: row.keyMode,
-    documentType: documentTypes[0] ?? null,
+    // A DSC may authorize two types; the singular field is only meaningful for
+    // a single-type certificate.  Consumers should use `documentTypes`.
+    documentType: documentTypes.length === 1 ? documentTypes[0]! : null,
     documentTypes,
     issuancePolicy: row.issuancePolicy,
     applicationUrl: row.applicationUrl,

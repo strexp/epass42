@@ -76,3 +76,68 @@ describe('MRZ TD3', () => {
     expect(bytesToHex(buildDg1(SAMPLE))).toBe(expected)
   })
 })
+
+/** The TD1 (ID-1 card) fields from the card42 sample, using the ID document code. */
+const TD1_SAMPLE: MrzFields = {
+  documentCode: 'ID',
+  issuingState: 'UTO',
+  surname: 'ERIKSSON',
+  givenNames: 'ANNA MARIA',
+  documentNumber: 'D23145890',
+  nationality: 'UTO',
+  dateOfBirth: '740812',
+  sex: 'F',
+  dateOfExpiry: '120415',
+}
+
+const TD1_LINE1 = 'IDUTOD231458907' + '<'.repeat(15)
+const TD1_LINE2 = '7408122F1204159UTO<<<<<<<<<<<6'
+const TD1_LINE3 = 'ERIKSSON<<ANNA<MARIA<<<<<<<<<<'
+
+describe('MRZ TD1', () => {
+  it('builds the three 30-character ID card lines', () => {
+    expect(buildMrzLines(TD1_SAMPLE)).toEqual({
+      line1: TD1_LINE1,
+      line2: TD1_LINE2,
+      line3: TD1_LINE3,
+    })
+    expect(TD1_LINE1).toHaveLength(30)
+    expect(TD1_LINE2).toHaveLength(30)
+    expect(TD1_LINE3).toHaveLength(30)
+  })
+
+  it('validates the TD1 check digits and composite', () => {
+    const result = validateMrzLines({
+      line1: TD1_LINE1,
+      line2: TD1_LINE2,
+      line3: TD1_LINE3,
+    })
+    expect(result.errors).toEqual([])
+    expect(result.valid).toBe(true)
+    expect(result.format).toBe('TD1')
+    expect(result.checks.documentNumber).toBe('7')
+    expect(result.checks.dateOfBirth).toBe('2')
+    expect(result.checks.dateOfExpiry).toBe('9')
+    expect(result.checks.composite).toBe('6')
+  })
+
+  it('rejects a corrupted TD1 composite check digit', () => {
+    const broken = TD1_LINE2.slice(0, 29) + '0'
+    expect(validateMrzLines({ line1: TD1_LINE1, line2: broken, line3: TD1_LINE3 }).valid).toBe(
+      false,
+    )
+  })
+
+  it('builds the 90-byte MRZ and DG1 for ID and IP documents', () => {
+    expect(mrzBytes(TD1_SAMPLE)).toHaveLength(90)
+    expect(buildDg1(TD1_SAMPLE)).toHaveLength(95)
+
+    const passportCard: MrzFields = { ...TD1_SAMPLE, documentCode: 'IP' }
+    expect(mrzBytes(passportCard)).toHaveLength(90)
+    expect(buildMrzLines(passportCard).line1.slice(0, 2)).toBe('IP')
+  })
+
+  it('derives the BAC key seed input from TD1 fields', () => {
+    expect(mrzInformation('D23145890', '740812', '120415')).toHaveLength(24)
+  })
+})

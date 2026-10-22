@@ -73,8 +73,11 @@ export default {
     pem: 'PEM',
     der: 'DER',
     documentType: {
-      passport: '护照',
-      identityCard: '身份证',
+      passport: '护照（P）',
+      identityCard: '身份证（ID）',
+      passportCard: '护照卡（IP）',
+      iStar: '身份证件（I）',
+      separator: '、',
     },
   },
   home: {

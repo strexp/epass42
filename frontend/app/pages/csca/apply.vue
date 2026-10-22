@@ -22,7 +22,8 @@ import { LogIn, Save } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
-import { documentTypeValues } from '~/utils/documentTypes'
+import type { DocumentTypeCode } from '@epass42/shared'
+import { dscDocumentTypeValues, documentTypesLabel } from '~/utils/documentTypes'
 
 definePageMeta({ layout: 'realm' })
 
@@ -42,7 +43,7 @@ const form = reactive({
   subjectOu: '',
   csrPem: '',
   publicKeyPem: '',
-  documentType: 'P',
+  documentTypes: ['P'] as DocumentTypeCode[],
   validityDays: 3650,
   issuancePolicy: 'open',
   applicationUrl: '',
@@ -63,8 +64,13 @@ const policyOptions = computed(() => [
 ])
 
 const documentTypeOptions = computed(() =>
-  documentTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
+  dscDocumentTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
 )
+
+/** The DocumentType extension holds at most two values. */
+function setDocumentTypes(values: DocumentTypeCode[] | null): void {
+  form.documentTypes = (values ?? []).slice(0, 2)
+}
 
 function login(): void {
   auth.login('csca', '/csca/apply')
@@ -105,6 +111,11 @@ const rules = computed<FormRules>(() => ({
     message: t('csca.uploadHint'),
     trigger: ['input', 'blur'],
   },
+  documentTypes: {
+    validator: () => form.documentTypes.length >= 1 && form.documentTypes.length <= 2,
+    message: t('csca.documentTypeRule'),
+    trigger: ['change'],
+  },
 }))
 
 async function nextStep(): Promise<void> {
@@ -140,7 +151,7 @@ async function submit(): Promise<void> {
         subjectOu: form.subjectOu || undefined,
         csrPem: form.csrPem || undefined,
         publicKeyPem: form.publicKeyPem || undefined,
-        documentType: form.documentType,
+        documentTypes: form.documentTypes,
         validityDays: form.validityDays,
         issuancePolicy: form.issuancePolicy || undefined,
         applicationUrl: form.applicationUrl || undefined,
@@ -207,8 +218,17 @@ onMounted(async () => {
           >
             {{ $t('csca.uploadHint') }}
           </NText>
-          <NFormItem :label="$t('csca.documentType')">
-            <NSelect v-model:value="form.documentType" :options="documentTypeOptions" />
+          <NFormItem path="documentTypes" :label="$t('csca.documentType')">
+            <NSelect
+              :value="form.documentTypes"
+              multiple
+              :max-tag-count="2"
+              :options="documentTypeOptions"
+              @update:value="setDocumentTypes"
+            />
+            <NText depth="3" style="font-size: 12px">
+              {{ $t('csca.documentTypeHint') }}
+            </NText>
           </NFormItem>
           <NFormItem :label="$t('csca.validityDays')">
             <NInputNumber v-model:value="form.validityDays" :min="1" :max="7300" />
@@ -243,7 +263,7 @@ onMounted(async () => {
             {{ form.subjectOu || '—' }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.documentType')">
-            {{ form.documentType }}
+            {{ documentTypesLabel(form.documentTypes, t) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.validityDays')">
             {{ form.validityDays }}

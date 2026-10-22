@@ -11,8 +11,9 @@ import { certificateKeyId } from '../x509/crl'
 import { hashOid } from '../cms/cms'
 import { hash as hashBytes, type HashName } from '../crypto/crypto'
 import { bytesToHex } from '../codec/hex'
-import type { CertKind } from '../x509/profile'
+import { parseDocumentTypeValue, type CertKind } from '../x509/profile'
 import * as x509 from '../x509/x509lib'
+import { OIDS } from '@epass42/shared'
 
 /** The result of a validation that returns a list of deviations. */
 export interface ValidationResult {
@@ -139,6 +140,12 @@ export function validateCertProfile(
     const bc = certificate.getExtension<x509.BasicConstraintsExtension>('2.5.29.19')
     if (bc && (!bc.ca || bc.pathLength !== 0)) {
       errors.push('CSCA BasicConstraints must be cA=TRUE with pathLenConstraint=0')
+    }
+  }
+  if (kind === 'dsc') {
+    const documentType = certificate.getExtension(OIDS.idIcaoDocumentType)
+    if (documentType) {
+      errors.push(...parseDocumentTypeValue(new Uint8Array(documentType.value)).errors)
     }
   }
 

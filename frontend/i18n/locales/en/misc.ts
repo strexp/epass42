@@ -38,6 +38,8 @@ export default {
     request_already_consumed: 'This file has already been claimed and can no longer be retrieved.',
     reveal_not_allowed: 'This file is delivered by staff, not claimed by the applicant.',
     document_number_conflict: 'This document number already exists for your organization.',
+    dsc_document_type_mismatch:
+      'This Document Signer certificate is not authorized to sign this document type.',
     no_active_dsc:
       'No approved Document Signer certificate is available for this organization yet.',
     no_active_dv:
@@ -48,7 +50,7 @@ export default {
     ta_requires_cvca:
       'Terminal Authentication needs an ECDSA CVCA key. Enable the CVCA role or set cvca.algorithm = "ecdsa".',
     dg2_too_large: 'The photo is too large. Choose a smaller image or reduce its quality.',
-    passport_not_active: 'This passport is not active.',
+    passport_not_active: 'This document is not active.',
     application_not_found: 'This application no longer exists.',
     application_already_reviewed: 'This application has already been reviewed.',
     certificate_not_found: 'This certificate no longer exists.',

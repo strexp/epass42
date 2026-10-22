@@ -3,7 +3,9 @@ import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import {
+  certificateCoversDocumentType,
   derToPem,
+  documentTypesOfCertificate,
   generateRsaKeyPair,
   parseCertificatePem,
   verifyDscAgainstCsca,
@@ -101,7 +103,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'AS4242422189 DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'AS4242422189 DSC', documentTypes: ['P'] },
     })
     expect(submit.statusCode).toBe(201)
     const applicationId = json(submit).id as number
@@ -142,13 +144,98 @@ describe('M5 CSCA role', () => {
     expect(again.statusCode).toBe(409)
   })
 
+  it('issues DSCs for the concrete ID/IP types and the I* wildcard', async () => {
+    const { app, cscaCookie } = await harness()
+
+    for (const documentType of ['ID', 'IP', 'I'] as const) {
+      const submit = await app.inject({
+        method: 'POST',
+        url: '/csca/applications',
+        headers: { cookie: cscaCookie },
+        payload: {
+          keyMode: 'remote_generated',
+          subjectCn: `${documentType} DSC`,
+          documentTypes: [documentType],
+        },
+      })
+      expect(submit.statusCode).toBe(201)
+      const approve = await app.inject({
+        method: 'POST',
+        url: `/csca/applications/${json(submit).id as number}/approve`,
+        headers: { cookie: cscaCookie },
+      })
+      expect(approve.statusCode).toBe(201)
+      const certificate = parseCertificatePem(json(approve).certPem as string)
+      expect(documentTypesOfCertificate(certificate)).toEqual([documentType])
+      if (documentType === 'I') {
+        expect(certificateCoversDocumentType(certificate, 'ID')).toBe(true)
+        expect(certificateCoversDocumentType(certificate, 'IP')).toBe(true)
+        expect(certificateCoversDocumentType(certificate, 'P')).toBe(false)
+      }
+    }
+
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Bad DSC', documentTypes: ['X'] },
+    })
+    expect(invalid.statusCode).toBe(400)
+
+    const tooMany = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'Too many DSC',
+        documentTypes: ['P', 'ID', 'IP'],
+      },
+    })
+    expect(tooMany.statusCode).toBe(400)
+  })
+
+  it('issues a DSC authorized for a selected P+I pair', async () => {
+    const { app, cscaCookie } = await harness()
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'P+I DSC',
+        documentTypes: ['P', 'I'],
+      },
+    })
+    expect(submit.statusCode).toBe(201)
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${json(submit).id as number}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const certificate = parseCertificatePem(json(approve).certPem as string)
+    expect(documentTypesOfCertificate(certificate)).toEqual(['I', 'P'])
+    expect(certificateCoversDocumentType(certificate, 'P')).toBe(true)
+    expect(certificateCoversDocumentType(certificate, 'ID')).toBe(true)
+    expect(certificateCoversDocumentType(certificate, 'IP')).toBe(true)
+
+    // The application detail exposes the selected list.
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/csca/applications/${json(submit).id as number}`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(json(detail).documentTypes).toEqual(['P', 'I'])
+  })
+
   it('publishes active DSC certificates and serves PEM/DER', async () => {
     const { app, cscaCookie } = await harness()
     const submit = await app.inject({
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'Public DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Public DSC', documentTypes: ['P'] },
     })
     const id = json(submit).id as number
     await app.inject({
@@ -178,7 +265,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'Revocable DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Revocable DSC', documentTypes: ['P'] },
     })
     const id = json(submit).id as number
     const approve = await app.inject({
@@ -211,7 +298,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'Rejected DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Rejected DSC', documentTypes: ['P'] },
     })
     const id = json(submit).id as number
     const reject = await app.inject({
@@ -232,7 +319,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'Own application', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Own application', documentTypes: ['P'] },
     })
     expect(submit.statusCode).toBe(201)
 
@@ -314,7 +401,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: cscaCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'AS own DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'AS own DSC', documentTypes: ['P'] },
     })
     await app.inject({
       method: 'POST',
@@ -346,7 +433,7 @@ describe('M5 CSCA role', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie: ownerCookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'Owned DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Owned DSC', documentTypes: ['P'] },
     })
     const adminCookie = await loginAs(app, oidc, 'csca', 'csca-client', {
       sub: 'csca-admin',
@@ -421,7 +508,7 @@ describe('M5 CSCA role', () => {
         keyMode: 'user_uploaded',
         publicKeyPem: derToPem(keyPair.spki, 'PUBLIC KEY'),
         subjectCn: 'Uploaded DSC',
-        documentType: 'P',
+        documentTypes: ['P'],
       },
     })
     const approve = await app.inject({
@@ -505,7 +592,7 @@ describe('M5 CSCA role', () => {
         subjectCn: 'OU DSC',
         subjectO: 'Example Org',
         subjectOu: 'Example Unit',
-        documentType: 'P',
+        documentTypes: ['P'],
       },
     })
     const id = json(submit).id as number

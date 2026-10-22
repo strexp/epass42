@@ -67,7 +67,7 @@ describe('M9 PKD REST and LDIF', () => {
     const item = list.json().items[0]
     expect(item.id).toBe(row.id)
     expect(item.status).toBe('revoked')
-    expect(item.documentTypes).toContain('P')
+    expect(item.documentTypes).toEqual(expect.arrayContaining(['P', 'I']))
     expect(item.issuancePolicy).toBe('open')
     expect(item.applicationUrl).toBe('https://example.net/dsc')
     expect(item.notBefore).toBeTruthy()

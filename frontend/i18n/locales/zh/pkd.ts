@@ -17,7 +17,7 @@ export default {
   dscs: '文档签名者',
   dscsHint: '有效与已吊销的文档签名证书，含策略、类型、有效期与申请地址。',
   name: '名称',
-  type: '类型',
+  type: '证件类型',
   policy: '策略',
   validity: '有效期',
   url: '网址',

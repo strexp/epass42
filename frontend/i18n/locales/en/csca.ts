@@ -16,6 +16,8 @@ export default {
   publicKey: 'Public key (SPKI PEM)',
   uploadHint: 'Provide a CSR or a public key; either one is enough.',
   documentType: 'Document type',
+  documentTypeHint: 'Select one or two types. I covers both ID and IP.',
+  documentTypeRule: 'Select one or two document types.',
   validityDays: 'Validity (days)',
   issuancePolicy: 'Issuance policy',
   applicationUrl: 'Application page URL',

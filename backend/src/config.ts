@@ -9,7 +9,12 @@ import { resolve } from 'node:path'
 import { parse as parseToml } from 'smol-toml'
 import { z } from 'zod'
 
-import { COUNTRY_ALPHA2, COUNTRY_ALPHA3, dvPermissionsSchema } from '@epass42/shared'
+import {
+  COUNTRY_ALPHA2,
+  COUNTRY_ALPHA3,
+  documentTypeListSchema,
+  dvPermissionsSchema,
+} from '@epass42/shared'
 
 export const realmSchema = z.enum(['csca', 'cvca', 'dv', 'dsc'])
 export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dv', 'dsc'])
@@ -40,7 +45,12 @@ export type OAuthProviderConfig = z.infer<typeof oauthProviderSchema>
 
 const niaDscSchema = z.object({
   commonName: z.string().default('ePass 42 NIA DSC'),
-  documentTypes: z.array(z.string()).default(['P']),
+  /**
+   * Authorized document types (Doc 9303-12 §7.1.1).  `P` is TD3, `ID`/`IP`
+   * are TD1 and `I` is the wildcard covering every `I*` type.  The default
+   * authorizes both passports and ID-1 documents on the single NIA DSC.
+   */
+  documentTypes: documentTypeListSchema.default(['P', 'I']),
   validityYears: z.number().int().min(1).default(10),
   privateKeyUsageYears: z.number().int().min(1).default(3),
   /** DSC key algorithm; may differ from the CSCA (Doc 9303-12 §4.1.5). */

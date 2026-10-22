@@ -1,4 +1,5 @@
 export * from './constants'
+export * from './documentTypes'
 export * from './errors'
 export * from './oids'
 export * from './schemas'

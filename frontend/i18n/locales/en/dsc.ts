@@ -29,8 +29,7 @@ export default {
   receiveSelf: 'You can claim it yourself once it is approved.',
   receiveStaff: 'Produced by staff and handed over to you.',
   cardAccess: 'Card access password',
-  cardAccessHint:
-    'Six digits printed on the document. Leave empty to use the passport data instead.',
+  cardAccessHint: 'Six digits printed on the document. Leave empty to use the MRZ data instead.',
   reviewTitle: 'Review request',
   reviewHint: 'Check the submitted data below before approving or rejecting.',
   reviewUnmasked: 'Submitted data (visible to reviewers only)',
@@ -53,7 +52,7 @@ export default {
   address: 'Address',
   telephone: 'Telephone',
   dateOfBirthHint: 'Choose your date of birth; it is stored in the MRZ as YYMMDD.',
-  mrz: 'Document (passport)',
+  mrz: 'Document',
   documentation: 'Document type',
   portrait: 'Your photo (DG2)',
   portraitHint: 'Crop to a 4:5 portrait.',
@@ -184,14 +183,14 @@ export default {
   displayPhoto: 'Display photo',
   signatureImageOptional: 'Signature image',
   submitHint: 'This information is used to prepare your document.',
-  activePassportTitle: 'Active passport',
+  activePassportTitle: 'Active document',
   activePassportHint:
-    'You already have an active passport. You may still apply again, but approving the new request will invalidate the current passport.',
-  activePassportEmpty: 'You have no active passport.',
+    'You already have an active document. You may still apply again, but approving the new request will invalidate the current document.',
+  activePassportEmpty: 'You have no active document.',
   passportDocumentNumber: 'Document number',
   passportIssuedAt: 'Issued',
-  revokePassport: 'Revoke passport',
+  revokePassport: 'Revoke document',
   revokePassportConfirm:
-    'Revoke this passport now? It will no longer be usable. A newly approved passport replaces it automatically.',
+    'Revoke this document now? It will no longer be usable. A newly approved document replaces it automatically.',
   revokeReason: 'Reason (optional)',
 } as const

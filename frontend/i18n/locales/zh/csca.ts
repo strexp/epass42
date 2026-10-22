@@ -16,6 +16,8 @@ export default {
   publicKey: '公钥（SPKI PEM）',
   uploadHint: '请提供 CSR 或公钥，二者之一即可。',
   documentType: '证件类型',
+  documentTypeHint: '可选择一至两种类型；I 覆盖 ID/IP 身份证件。',
+  documentTypeRule: '请选择一至两种证件类型。',
   validityDays: '有效期（天）',
   issuancePolicy: '签发策略',
   applicationUrl: '申请页面地址',

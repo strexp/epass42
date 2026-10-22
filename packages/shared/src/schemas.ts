@@ -8,6 +8,7 @@
 import { z } from 'zod'
 
 import { COUNTRY_ALPHA3 } from './constants'
+import { documentIssueTypeSchema } from './documentTypes'
 
 /** YYMMDD or YYYYMMDD date, digits only (MRZ / ISO 19794-5). */
 export const compactDate = z.string().regex(/^\d{6}(\d{2})?$/, 'expected YYMMDD or YYYYMMDD')
@@ -15,9 +16,13 @@ export const compactDate = z.string().regex(/^\d{6}(\d{2})?$/, 'expected YYMMDD 
 /** Base64-encoded binary payload. */
 export const base64 = z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/, 'invalid base64')
 
-/** MRZ (ICAO Doc 9303-3) TD3 fields entered by the applicant. */
+/**
+ * MRZ (ICAO Doc 9303-3) fields entered by the applicant.  The concrete document
+ * type selects the TD1 (ID/IP) or TD3 (P) layout; `I` is a DSC authorization
+ * wildcard and cannot be personalized.
+ */
 export const mrzFieldsSchema = z.object({
-  documentCode: z.string().min(1).max(2).default('P'),
+  documentCode: documentIssueTypeSchema.default('P'),
   issuingState: z.literal(COUNTRY_ALPHA3).default(COUNTRY_ALPHA3),
   surname: z.string().min(1).max(39),
   givenNames: z.string().max(39).default(''),
@@ -27,8 +32,14 @@ export const mrzFieldsSchema = z.object({
   sex: z.enum(['M', 'F', '<']).default('<'),
   /** Optional; computed by the service from the issuing profile validity. */
   dateOfExpiry: compactDate.optional(),
+  /** TD3 personal number (ignored by the TD1 layout). */
   personalNumber: z.string().max(14).default(''),
+  /** TD3 optional data (ignored by the TD1 layout). */
   optionalData: z.string().max(14).default(''),
+  /** TD1 optional data 1 (`<<<` when omitted). */
+  optionalData1: z.string().max(15).optional(),
+  /** TD1 optional data 2 (`<<<` when omitted). */
+  optionalData2: z.string().max(11).optional(),
 })
 
 /** DG2 (face) already crop/scale/JPEG-encoded by the browser. */

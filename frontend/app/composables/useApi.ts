@@ -46,6 +46,7 @@ const ERROR_KEYS = new Set([
   'certificate_not_found',
   'mrz_invalid',
   'document_number_conflict',
+  'dsc_document_type_mismatch',
   'no_active_dsc',
   'no_private_key',
   'private_key_consumed',

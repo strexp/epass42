@@ -129,7 +129,7 @@ describe('M6 CRL', () => {
       method: 'POST',
       url: '/csca/applications',
       headers: { cookie },
-      payload: { keyMode: 'remote_generated', subjectCn: 'Auto CRL DSC', documentType: 'P' },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Auto CRL DSC', documentTypes: ['P'] },
     })
     const approve = await app.inject({
       method: 'POST',

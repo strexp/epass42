@@ -103,7 +103,7 @@ export interface DscProfile {
   organization?: string
   /** Optional organisational unit (encoded as an `OU` attribute). */
   organizationalUnit?: string
-  /** Authorised document types, e.g. `['P']`. */
+  /** Authorised DocumentType values, e.g. `['P', 'I']` (Doc 9303-12 §7.1.1). */
   documentTypes: string[]
   notBefore: Date
   notAfter: Date
@@ -114,6 +114,9 @@ export interface DscProfile {
   pss?: boolean
   hash?: HashName
 }
+
+/** Parameters for a Master List Signer certificate (no DocumentType). */
+export type MasterListSignerProfile = Omit<DscProfile, 'documentTypes'>
 
 /** The DER/PEM and metadata of a generated certificate. */
 export interface GeneratedCertificate {
@@ -315,7 +318,7 @@ export async function createCscaLink(
 
 /** Creates a Master List Signer certificate (EKU id-icao-cscaMasterListSigningKey). */
 export async function createMasterListSigner(
-  profile: DscProfile,
+  profile: MasterListSignerProfile,
   subjectKey: CertKeyPair,
   issuer: { certificate: x509.X509Certificate; key: CertKeyPair; hash?: HashName },
 ): Promise<GeneratedCertificate> {

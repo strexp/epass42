@@ -106,7 +106,7 @@ epass42/
 
 - X.509：`createCscaRoot`/`createDsc`/`createCscaLink`/`createMasterListSigner`，含 `PrivateKeyUsagePeriod`、`DocumentType`、`directoryName` SAN/IAN；RSA-PSS 与 PKCS#1 v1.5。**ECDSA 未实现**（默认 RSA）。
 - CRL（v2、AKI、cRLNumber，无 delta/IDP/条目级扩展）、CMS SignedData / EF.SOD(`77`) / EF.CardSecurity、CSCA Master List。
-- 数据组 DG1–DG16（DG3/DG4 外层包装）、TD3 MRZ、SecurityInfo/EF.CardAccess、perso 脚本、验证（`verifySod`/`verifyDscAgainstCsca`/`validateCertProfile`）。
+- 数据组 DG1–DG16（DG3/DG4 外层包装）、TD1/TD3 MRZ、SecurityInfo/EF.CardAccess、perso 脚本、验证（`verifySod`/`verifyDscAgainstCsca`/`validateCertProfile`）。
 - `AUDIT.md` 记录与 Doc 9303-10/11/12 的逐条对照；修正了 pkijs eContent 双重 OCTET STRING、多字节 TLV constructed 位、card42 样例复合校验位等问题。
 
 ### M2 脚本
@@ -133,7 +133,7 @@ epass42/
 
 ### M7 DSC Signing Service
 
-- 结构化请求（无裸 hex）；服务端权威 DG1（issuing state / nationality / 到期日由 settings 计算）。
+- 结构化请求（无裸 hex）；服务端权威 DG1（TD1/TD3；issuing state / nationality / 到期日由 settings 计算）；证件类型 `P`/`ID`/`IP` 分开，DSC 授权值 `I` 覆盖所有 `I*` 类型。
 - DG2 结构校验 + **16 KiB 上限**（`issuing.dg2MaxBytes`，超限 `413 dg2_too_large`）；DG3/DG4 包装；DG5/DG7；DG11/DG12（发证机构/签发日期/背书由服务端填充）/DG13/DG16；**DG14（Security Options）仅在启用 CA/AA 时输出**（仅 PACE 时 SecurityInfos 只保留在主文件 EF.CardAccess），DG15 仅 AA。
 - 安全机制（PACE/CA/AA）与 DSC 选择为**管理员默认 + 服务端推导**，申请者不配置；按机制分别配置算法（`issuing.security.pace/aa/ca`）；服务端生成 AA(RSA-2048)/CA(P-256)，EF.CardAccess/DG14、EF.CardSecurity；EF.SOD 自检；`.perso` 产物（AA/CA 私钥仅存在于产物）。
 - **LDS1 Chip Authentication**（`issuing.security.ca.enabled`，默认关闭）：开启后 LDS1 的 EF.CardAccess/DG14 宣告 CA，并个性化 CA 标量（DGI FF03）与主文件 EF.CardSecurity（DGI FF05）；DG14 复用 EF.CardSecurity 的 eContent（EF.CardAccess SecurityInfos + 芯片静态 CA 公钥 `ChipAuthenticationPublicKeyInfo`/id-PK-ECDH），与 card42 提交 `3e7c02f` 一致；与 LDS2 共用同一 CA 密钥对和 EF.CardAccess/Security（均位于 Master File），CA key id 为 `issuing.security.ca.keyId`。CA 需要 PACE（读 EF.CardSecurity）。

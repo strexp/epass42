@@ -73,7 +73,6 @@ describe('CSCA Master List', () => {
     const mlSigner = await createMasterListSigner(
       {
         commonName: 'ePass 42 Master List Signer',
-        documentTypes: ['P'],
         ...TEST_DATES,
         crlDistributionPoints: TEST_CRL_DP,
         pss: false,

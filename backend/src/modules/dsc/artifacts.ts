@@ -8,7 +8,7 @@ import { eq } from 'drizzle-orm'
 
 import type { SignRequest } from '@epass42/shared'
 import { AppError } from '@epass42/shared'
-import { verifySod } from '@epass42/pki'
+import { certificateCoversDocumentType, parseCertificatePem, verifySod } from '@epass42/pki'
 
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
@@ -40,6 +40,9 @@ export class DscArtifactService {
 
   /** Resolves the Document Signer material for a request. */
   async selectSigningMaterial(row: SignRequestRow): Promise<SigningMaterial> {
+    const payload = JSON.parse(row.payloadJson) as SignRequest
+    const documentType = payload.mrz.documentCode
+
     if (row.dscSelection === 'owned') {
       if (!row.dscCertId) throw new AppError('certificate_not_found', 'owned DSC id missing', 400)
       const cert = this.db.select().from(dscCert).where(eq(dscCert.id, row.dscCertId)).get()
@@ -53,6 +56,7 @@ export class DscArtifactService {
           403,
         )
       }
+      this.assertDocumentTypeCovered(cert.certPem, documentType)
       return {
         certPem: cert.certPem,
         keyPair: await this.csca.loadDscKeyPair(cert, this.config.csca.niaDsc.hash),
@@ -62,10 +66,26 @@ export class DscArtifactService {
     let nia = currentNiaDsc(this.db)
     if (!nia) nia = await this.csca.ensureNiaDsc()
     if (!nia) throw new AppError('certificate_not_found', 'no NIA DSC available', 500)
+    this.assertDocumentTypeCovered(nia.certPem, documentType)
     return {
       certPem: nia.certPem,
       keyPair: await this.csca.loadDscKeyPair(nia, this.config.csca.niaDsc.hash),
       hash: this.config.csca.niaDsc.hash,
+    }
+  }
+
+  /**
+   * Refuses to sign a document with a DSC whose DocumentType extension does not
+   * authorize it (Doc 9303-12 §7.1.1).  The built-in NIA DSC covers `P` and all
+   * `I*` types when configured with `["P", "I"]`.
+   */
+  private assertDocumentTypeCovered(certPem: string, documentType: string): void {
+    if (!certificateCoversDocumentType(parseCertificatePem(certPem), documentType)) {
+      throw new AppError(
+        'dsc_document_type_mismatch',
+        `the Document Signer is not authorized for document type ${documentType}`,
+        409,
+      )
     }
   }
 
@@ -173,13 +193,13 @@ export class DscArtifactService {
       })
       .where(eq(signRequest.reference, row.reference))
       .run()
-    // Re-issuance: the newly approved passport supersedes and invalidates any
-    // previous active passport of the applicant, keeping a single usable one.
+    // Re-issuance: the newly approved document supersedes and invalidates any
+    // previous active document of the applicant, keeping a single usable one.
     if (row.requesterAccountId !== null) {
       for (const previous of this.requests.activePassports(row.requesterAccountId)) {
         if (previous.reference === row.reference) continue
         this.destroyArtifact(previous)
-        this.requests.revoke(previous, 'superseded by a new passport')
+        this.requests.revoke(previous, 'superseded by a new document')
       }
     }
     return this.requests.getByReference(row.reference) as SignRequestRow

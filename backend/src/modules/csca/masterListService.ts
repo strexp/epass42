@@ -59,7 +59,6 @@ export class MasterListService {
         country: config.countryAlpha2,
         organization: config.csca.organization,
         organizationalUnit: config.csca.organizationalUnit,
-        documentTypes: ['P'],
         notBefore: now,
         notAfter: addYears(now, config.csca.niaDsc.validityYears),
         crlDistributionPoints: config.csca.crlDistributionPoints,

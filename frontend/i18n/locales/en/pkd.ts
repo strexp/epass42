@@ -19,7 +19,7 @@ export default {
   dscsHint:
     'Active and revoked Document Signer certificates, with policy, type, validity and application URL.',
   name: 'Name',
-  type: 'Type',
+  type: 'Document type',
   policy: 'Policy',
   validity: 'Validity',
   url: 'URL',

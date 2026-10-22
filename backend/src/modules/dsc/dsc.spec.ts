@@ -13,7 +13,7 @@ import { FakeOidc, makeTestApp, staticMntResolver } from '../../test-support'
 import type { Db } from '../../db/client'
 import { mntConfig } from '../../db/schema'
 import { recordAsAdmin } from '../auth/authorization'
-import { currentCscaKey } from '../csca/service'
+import { currentCscaKey, type CscaService } from '../csca/service'
 import { mrzExpiry } from './build'
 import type { DscService } from './service'
 import type { MntResolver } from '../jurisdiction/whois'
@@ -53,6 +53,11 @@ function mrz(documentNumber: string): Record<string, unknown> {
   }
 }
 
+/** A minimal MRZ record for a concrete document type. */
+function mrzOfType(documentNumber: string, documentCode: 'P' | 'ID' | 'IP') {
+  return { ...mrz(documentNumber), documentCode }
+}
+
 function payload(
   documentNumber = 'X1234567',
   overrides: Record<string, unknown> = {},
@@ -65,6 +70,7 @@ interface Harness {
   oidc: FakeOidc
   db: Db
   dsc: DscService
+  csca: CscaService
   cscaPem: string
 }
 
@@ -81,6 +87,7 @@ async function harness(
     oidc,
     db: built.dbHandle.db,
     dsc: built.dsc,
+    csca: built.csca,
     cscaPem: currentCscaKey(built.dbHandle.db)!.certPem,
   }
 }
@@ -266,6 +273,89 @@ describe('M7 DSC signing service', () => {
     expect(result.errors).toEqual([])
     expect(result.valid).toBe(true)
     void reference
+  })
+
+  it('signs a TD1 ID card with the built-in P+I DSC', async () => {
+    const { app, oidc, dsc, cscaPem } = await harness()
+    const cookie = await applicant(app, oidc)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie },
+      payload: payload('ID1234567', { mrz: mrzOfType('ID1234567', 'ID') }),
+    })
+    expect(submit.statusCode).toBe(201)
+    const reference = submit.json().reference as string
+
+    const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: admin },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(200)
+
+    const perso = parsePerso(artifactText(dsc, reference))
+    const dg1 = parseTlv(perso.dataGroups.get(1)!)
+    const mrz = dg1.children[0]!.value
+    expect(mrz).toHaveLength(90)
+    expect(Buffer.from(mrz).toString('latin1').slice(0, 2)).toBe('ID')
+
+    const result = await verifySod(perso.sod!, perso.dataGroups, [parseCertificatePem(cscaPem)])
+    expect(result.errors).toEqual([])
+    expect(result.valid).toBe(true)
+  })
+
+  it('refuses to sign an I* document when the NIA DSC is configured for P only', async () => {
+    const { app, oidc, dsc } = await harness({
+      csca: { bootstrap: true, niaDsc: { documentTypes: ['P'] } },
+    })
+    const cookie = await applicant(app, oidc)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie },
+      payload: payload('IDPONLY1', { mrz: mrzOfType('IDPONLY1', 'ID') }),
+    })
+    expect(submit.statusCode).toBe(201)
+    const row = dsc.getByReference(submit.json().reference as string)!
+    await expect(dsc.approve(row, null)).rejects.toMatchObject({
+      code: 'dsc_document_type_mismatch',
+    })
+  })
+
+  it('refuses to sign with an owned DSC that does not authorize the document type', async () => {
+    const { app, oidc, dsc, db, csca } = await harness()
+    const cscaRow = currentCscaKey(db)!
+    const cscaPair = await csca.loadKeyPair(cscaRow)
+    const owned = await csca.issueDsc({
+      csca: cscaRow,
+      cscaPair,
+      commonName: 'Owned P-only DSC',
+      documentTypes: ['P'],
+      validityYears: 1,
+      privateKeyUsageYears: 1,
+      source: 'owned',
+      mnt: 'USER-MNT',
+      keyMode: 'remote_generated',
+    })
+
+    const cookie = await login(app, oidc, 'dsc', 'dsc-client', USER)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie },
+      payload: payload('IDOWNED1', {
+        mrz: mrzOfType('IDOWNED1', 'ID'),
+        dscSelection: { mode: 'owned', dscCertId: owned.id },
+      }),
+    })
+    expect(submit.statusCode).toBe(201)
+    const row = dsc.getByReference(submit.json().reference as string)!
+    await expect(dsc.approve(row, null)).rejects.toMatchObject({
+      code: 'dsc_document_type_mismatch',
+    })
   })
 
   it('personalises a CVCA trust point and id-TA when Terminal Authentication is enabled', async () => {

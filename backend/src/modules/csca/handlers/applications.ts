@@ -41,7 +41,7 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
           subjectOu: request.body.subjectOu ?? null,
           csrPem: request.body.csrPem ?? null,
           publicKeyPem: request.body.publicKeyPem ?? null,
-          documentType: request.body.documentType,
+          documentTypes: request.body.documentTypes,
           validityDays: request.body.validityDays,
           issuancePolicy: request.body.issuancePolicy ?? null,
           applicationUrl: request.body.applicationUrl ?? null,

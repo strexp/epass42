@@ -32,7 +32,7 @@ import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
-import { documentTypeValues } from '~/utils/documentTypes'
+import { documentTypeLabel, documentTypeValues } from '~/utils/documentTypes'
 
 definePageMeta({ layout: 'realm' })
 
@@ -87,6 +87,9 @@ const sexOptions = computed(() => [
 const documentTypeOptions = computed(() =>
   documentTypeValues.map((item) => ({ label: t(item.labelKey), value: item.value })),
 )
+
+/** TD1 names occupy 30 characters; TD3 names occupy 39. */
+const nameMaxLength = computed(() => (mrz.documentCode === 'P' ? 39 : 30))
 
 interface Jurisdiction {
   mnts: string[]
@@ -409,10 +412,10 @@ onMounted(async () => {
                 <NInput v-model:value="mrz.documentNumber" maxlength="9" />
               </NFormItem>
               <NFormItem path="surname" :label="$t('dsc.surname')" required>
-                <NInput v-model:value="mrz.surname" maxlength="39" />
+                <NInput v-model:value="mrz.surname" :maxlength="nameMaxLength" />
               </NFormItem>
               <NFormItem :label="$t('dsc.givenNames')">
-                <NInput v-model:value="mrz.givenNames" maxlength="39" />
+                <NInput v-model:value="mrz.givenNames" :maxlength="nameMaxLength" />
               </NFormItem>
               <NFormItem path="dateOfBirth" required>
                 <template #label>
@@ -445,6 +448,7 @@ onMounted(async () => {
           </NFormItem>
           <EmrtdPreview
             :mrz="previewMrz"
+            :document-type="documentTypeLabel(mrz.documentCode, t)"
             :portrait-data-url="portrait?.previewDataUrl ?? null"
             style="margin-top: 12px"
           />
@@ -546,7 +550,7 @@ onMounted(async () => {
           <NText depth="3">{{ $t('dsc.reviewSummary') }}</NText>
           <NDescriptions :column="2" size="small" style="margin-top: 12px">
             <NDescriptionsItem :label="$t('dsc.documentation')">
-              {{ mrz.documentCode }}
+              {{ documentTypeLabel(mrz.documentCode, t) }}
             </NDescriptionsItem>
             <NDescriptionsItem :label="$t('dsc.documentNumber')">
               {{ mrz.documentNumber }}

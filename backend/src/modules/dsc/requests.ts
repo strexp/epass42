@@ -78,7 +78,7 @@ export class DscRequestService {
   }
 
   /**
-   * Every active passport of an account, newest first: an approved request
+   * Every active document of an account, newest first: an approved request
    * (produced and/or claimed) that has not been revoked or rejected.
    */
   activePassports(accountId: number): SignRequestRow[] {
@@ -91,14 +91,14 @@ export class DscRequestService {
   }
 
   /**
-   * The account's currently active passport: the most recent approved request
+   * The account's currently active document: the most recent approved request
    * (produced and/or claimed).  A revoked or rejected request is not active.
    */
   activePassport(accountId: number): SignRequestRow | undefined {
     return this.activePassports(accountId)[0]
   }
 
-  /** Marks a passport revoked so it is no longer the owner's active passport. */
+  /** Marks a document revoked so it is no longer the owner's active document. */
   revoke(row: SignRequestRow, reason: string | null): SignRequestRow {
     this.db
       .update(signRequest)

@@ -2,7 +2,7 @@
 
 ePass 42 is a dn42 public key infrastructure: a certificate directory (PKD), a
 Country Signing Certificate Authority (CSCA) and a Document Signer (DSC) signing
-service for eMRTD ("passport") personalization.
+service for eMRTD (passport and ID card) personalization.
 
 ## Repository layout
 
@@ -85,6 +85,9 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
   `slapd.conf` example for validating the LDIF dump.
 - Data groups follow ICAO Doc 9303-10 §4.7 (reused code audited in
   [`packages/pki/AUDIT.md`](packages/pki/AUDIT.md)).
+- Document types follow Doc 9303-12 §7.1.1: `P` (TD3 passport), `ID`/`IP`
+  (TD1 cards) and the `I` wildcard; the built-in NIA DSC defaults to
+  `["P", "I"]`, so one system DSC signs both passports and ID-1 documents.
 - Applicants submit structured fields only; images (DG2/DG5/DG7) are encoded in
   the browser and biometric templates (DG3/DG4) uploaded pre-encoded.
 
@@ -103,7 +106,7 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
 - **M5** CSCA role: DSC applications, online issuance, revocation and key
   rollover — done.
 - **M6** CRL generation with schedule-based refresh — done.
-- **M7** DSC signing service: structured requests, DG/AA/CA/SOD/perso build — done.
+- **M7** DSC signing service: structured requests, TD1/TD3 DG1, DG/AA/CA/SOD/perso build — done.
 - **M8** delivery: masked preview, one-time reveal, delivery modes and history — done.
 - **M9** PKD role: REST, LDIF dump, a built-in read-only LDAP server and the
   OpenLDAP LDIF schema — done.

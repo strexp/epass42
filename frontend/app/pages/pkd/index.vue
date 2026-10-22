@@ -17,7 +17,7 @@ import {
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { COUNTRY_ALPHA3, type DvPermissions } from '@epass42/shared'
 import { useApiBase } from '~/composables/useApi'
-import { documentTypeValues } from '~/utils/documentTypes'
+import { documentTypeLabel, documentTypesLabel, documentTypeValues } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
@@ -187,7 +187,7 @@ const dscColumns = computed(() => [
   {
     title: t('pkd.type'),
     key: 'documentTypes',
-    render: (row: PkdDsc) => row.documentTypes.join(', ') || '—',
+    render: (row: PkdDsc) => documentTypesLabel(row.documentTypes, t),
   },
   {
     title: t('pkd.policy'),
@@ -219,7 +219,11 @@ const dscColumns = computed(() => [
 
 const revokedColumns = computed(() => [
   { title: t('pkd.hash'), key: 'hash', ellipsis: { tooltip: true } },
-  { title: t('pkd.documentCode'), key: 'documentCode' },
+  {
+    title: t('pkd.documentCode'),
+    key: 'documentCode',
+    render: (row: RevokedDocument) => documentTypeLabel(row.documentCode, t),
+  },
   {
     title: t('pkd.revokedAt'),
     key: 'revokedAt',

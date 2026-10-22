@@ -27,6 +27,7 @@ import type { SignRequest } from '@epass42/shared'
 import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { documentTypeLabel } from '~/utils/documentTypes'
 import { formatMrzDate } from '~/utils/mrzDate'
 import { downloadText } from '~/utils/download'
 
@@ -377,6 +378,9 @@ onMounted(async () => {
 
         <template v-if="reviewed?.payload">
           <NDescriptions :column="2" size="small" style="margin-top: 8px">
+            <NDescriptionsItem :label="$t('dsc.documentation')">
+              {{ documentTypeLabel(reviewed.payload.mrz.documentCode, t) }}
+            </NDescriptionsItem>
             <NDescriptionsItem :label="$t('dsc.documentNumber')">
               {{ reviewed.payload.mrz.documentNumber }}
             </NDescriptionsItem>
@@ -436,6 +440,9 @@ onMounted(async () => {
       <!-- Everyone: the masked, non-destructive preview. -->
       <NCard v-if="masked" size="small" :title="$t('dsc.previewTitle')">
         <NDescriptions :column="2" size="small">
+          <NDescriptionsItem :label="$t('dsc.documentation')">
+            {{ masked.documentCode ? documentTypeLabel(String(masked.documentCode), t) : '—' }}
+          </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dsc.documentNumber')">
             {{ maskedValue(masked.documentNumber) }}
           </NDescriptionsItem>

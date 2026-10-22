@@ -9,6 +9,7 @@ import { desc } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { derToPem } from '@epass42/pki'
+import { documentIssueTypeSchema } from '@epass42/shared'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { dscCert, dvCert } from '../../db/schema'
@@ -40,7 +41,7 @@ export interface PkdRouteDeps {
 
 /** The MRZ lookup fields a relying party supplies to check revocation. */
 const documentLookup = z.object({
-  documentCode: z.string().min(1).max(2).default('P'),
+  documentCode: documentIssueTypeSchema.default('P'),
   issuingState: z.string().length(3),
   documentNumber: z.string().min(1).max(9),
   dateOfBirth: z.string().regex(/^\d{6}(\d{2})?$/),

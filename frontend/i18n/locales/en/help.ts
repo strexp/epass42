@@ -19,7 +19,7 @@ export default {
   },
   roles: {
     applicant: {
-      name: 'Passport holder',
+      name: 'Document holder',
       tagline: 'Apply for your document personalization file and claim it once it is approved.',
     },
     reviewer: {
@@ -58,7 +58,7 @@ export default {
     },
     verifier: {
       name: 'Verification terminal',
-      tagline: 'Verify passports at the border using the data published in the PKD.',
+      tagline: 'Verify documents at the border using the data published in the PKD.',
     },
     public: {
       name: 'General public',

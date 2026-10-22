@@ -15,6 +15,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
+import type { DocumentTypeCode } from '@epass42/shared'
+
 /* ------------------------------------------------------------------ *
  * Authentication
  * ------------------------------------------------------------------ */
@@ -123,7 +125,8 @@ export const dscApplication = sqliteTable('dsc_application', {
   subjectOu: text('subject_ou'),
   csrPem: text('csr_pem'),
   publicKeyPem: text('public_key_pem'),
-  documentType: text('document_type'),
+  /** Applicant-selected DocumentType list (one or two values). */
+  documentTypes: text('document_type', { mode: 'json' }).$type<DocumentTypeCode[]>(),
   validityDays: integer('validity_days'),
   issuancePolicy: text('issuance_policy'),
   applicationUrl: text('application_url'),

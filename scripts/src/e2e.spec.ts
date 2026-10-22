@@ -155,7 +155,6 @@ describe('M2 scripts end to end', () => {
     const mlSigner = await createMasterListSigner(
       {
         commonName: 'ePass 42 E2E ML Signer',
-        documentTypes: ['P'],
         notBefore: now,
         notAfter: new Date('2036-10-08T00:00:00Z'),
         crlDistributionPoints: ['ldap://epass42.local/c=XD'],

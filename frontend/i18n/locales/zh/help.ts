@@ -16,7 +16,7 @@ export default {
   },
   roles: {
     applicant: {
-      name: '护照持有人',
+      name: '证件持有人',
       tagline: '申请用于制作您证件的个性化文件，审核通过后一次性领取。',
     },
     reviewer: {
@@ -53,7 +53,7 @@ export default {
     },
     verifier: {
       name: '验证终端',
-      tagline: '在边检使用 PKD 已发布的数据验证护照。',
+      tagline: '在边检使用 PKD 已发布的数据验证证件。',
     },
     public: {
       name: '公众查询者',

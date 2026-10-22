@@ -37,6 +37,7 @@ export default {
     request_already_consumed: '该文件已被领取，无法再次获取。',
     reveal_not_allowed: '该文件由工作人员交付，申请人不能领取。',
     document_number_conflict: '该证件号码在您的机构中已存在。',
+    dsc_document_type_mismatch: '该文档签名证书未被授权签署此证件类型。',
     no_active_dsc: '该机构尚无已批准的文档签名证书。',
     no_active_dv: '该机构尚无已批准的文档验证者证书。',
     no_dv_available: '目前没有可用的签发机构为该终端签发证书。',
@@ -45,7 +46,7 @@ export default {
     ta_requires_cvca:
       '终端认证需要 ECDSA 的 CVCA 密钥：请启用 CVCA 角色或设置 cvca.algorithm = "ecdsa"。',
     dg2_too_large: '照片过大，请更换更小的图片或降低质量。',
-    passport_not_active: '该护照不是有效状态。',
+    passport_not_active: '该证件不是有效状态。',
     application_not_found: '该申请已不存在。',
     application_already_reviewed: '该申请已完成审核。',
     certificate_not_found: '该证书已不存在。',

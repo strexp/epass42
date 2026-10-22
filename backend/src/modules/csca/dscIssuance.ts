@@ -207,7 +207,10 @@ export class DscIssuanceService {
       commonName: application.subjectCn ?? `DSC for ${application.mnt ?? 'unknown'}`,
       organization: application.subjectO,
       organizationalUnit: application.subjectOu,
-      documentTypes: [application.documentType ?? 'P'],
+      documentTypes:
+        application.documentTypes && application.documentTypes.length > 0
+          ? application.documentTypes
+          : ['P'],
       validityYears: Math.max(1, Math.round((application.validityDays ?? 3650) / 365)),
       privateKeyUsageYears: 1,
       source: 'owned',

@@ -21,6 +21,7 @@ import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { documentTypesLabel } from '~/utils/documentTypes'
 import { downloadUrl } from '~/utils/download'
 
 interface Application {
@@ -34,7 +35,7 @@ interface Application {
   subjectOu: string | null
   csrPem: string | null
   publicKeyPem: string | null
-  documentType: string | null
+  documentTypes: string[] | null
   validityDays: number | null
   issuancePolicy: string | null
   applicationUrl: string | null
@@ -174,7 +175,7 @@ onMounted(async () => {
             application.ip ?? '—'
           }}</NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.documentType')">
-            {{ application.documentType ?? '—' }}
+            {{ documentTypesLabel(application.documentTypes ?? [], t) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.validityDays')">
             {{ application.validityDays ?? '—' }}

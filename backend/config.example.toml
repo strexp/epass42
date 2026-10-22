@@ -113,7 +113,10 @@ crlDistributionPoints = ["ldap://epass42.local/c=XD"]
 # The system NIA Document Signer certificate issued at startup.
 [csca.niaDsc]
 commonName = "ePass 42 NIA DSC"
-documentTypes = ["P"]
+# Authorized document types (Doc 9303-12 §7.1.1): "P" is a TD3 passport,
+# "ID"/"IP" are TD1 identity/passport cards and "I" authorizes every I* type.
+# The default lets one built-in DSC sign both passports and ID-1 documents.
+documentTypes = ["P", "I"]
 # The DSC key algorithm may differ from the CSCA's (Doc 9303-12 §4.1.5).
 algorithm = "rsa"
 curve = "P-256"
