@@ -258,11 +258,14 @@ onMounted(async () => {
           <NFormItem :label="$t('csca.keyMode')">
             <NSelect v-model:value="form.keyMode" :options="keyModeOptions" />
           </NFormItem>
-          <NFormItem path="subjectCn" :label="$t('csca.subjectCn')" required>
+          <NFormItem path="subjectCn" required>
+            <template #label>
+              <FieldLabel
+                :label="$t('csca.subjectCn')"
+                :hint="isLds2 ? $t('csca.lds2CnHint') : undefined"
+              />
+            </template>
             <NInput v-model:value="form.subjectCn" :maxlength="isLds2 ? 9 : 64" />
-            <NText v-if="isLds2" depth="3" style="font-size: 12px">
-              {{ $t('csca.lds2CnHint') }}
-            </NText>
           </NFormItem>
           <NFormItem v-if="!isLds2" :label="$t('csca.subjectO')">
             <NInput v-model:value="form.subjectO" maxlength="64" />
@@ -284,7 +287,10 @@ onMounted(async () => {
             {{ $t('csca.uploadHint') }}
             <template v-if="isLds2">{{ $t('csca.lds2KeyHint') }}</template>
           </NText>
-          <NFormItem v-if="isLds2" path="lds2Types" :label="$t('csca.lds2Type')">
+          <NFormItem v-if="isLds2" path="lds2Types">
+            <template #label>
+              <FieldLabel :label="$t('csca.lds2Type')" :hint="$t('csca.lds2TypeHint')" />
+            </template>
             <NSelect
               :value="form.lds2Types"
               multiple
@@ -292,9 +298,6 @@ onMounted(async () => {
               :options="lds2TypeOptions"
               @update:value="setLds2Types"
             />
-            <NText depth="3" style="font-size: 12px">
-              {{ $t('csca.lds2TypeHint') }}
-            </NText>
           </NFormItem>
           <NFormItem v-if="!isLds2" path="documentTypes">
             <template #label>
@@ -308,11 +311,14 @@ onMounted(async () => {
               @update:value="setDocumentTypes"
             />
           </NFormItem>
-          <NFormItem :label="$t('csca.validityDays')">
+          <NFormItem>
+            <template #label>
+              <FieldLabel
+                :label="$t('csca.validityDays')"
+                :hint="isLds2 ? $t('csca.lds2ValidityHint') : undefined"
+              />
+            </template>
             <NInputNumber v-model:value="form.validityDays" :min="1" :max="7300" />
-            <NText v-if="isLds2" depth="3" style="font-size: 12px">
-              {{ $t('csca.lds2ValidityHint') }}
-            </NText>
           </NFormItem>
           <NFormItem :label="$t('csca.issuancePolicy')">
             <NSelect v-model:value="form.issuancePolicy" :options="policyOptions" />
