@@ -366,8 +366,10 @@ export async function buildPersoSigning(
       documentNumber: request.mrz.documentNumber,
       dateOfBirth: request.mrz.dateOfBirth,
       dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
-      // The CAN is a PACE password (master-file DGI FF06); it is written only
-      // for LDS1 and only when the applicant provided one (Doc 9303-11).
+      // PACE password encodings are card-wide (card42 d265c24): f(MRZ) is
+      // DGI FF04 and f(CAN) is DGI FF06, stored package-static on the card, so
+      // personalizing the LDS1 section serves every LDS2 DF.  The CAN is only
+      // written when the applicant provided one (Doc 9303-11).
       can: request.can,
       dataGroups: groups,
       sod,
@@ -398,14 +400,15 @@ export async function buildPersoSigning(
   ]
 
   // Optional empty LDS2 applications (disabled by default).  They reuse the
-  // master-file Chip Authentication material generated above.
+  // master-file Chip Authentication material generated above.  PACE password
+  // encodings are card-wide on card42 (f(MRZ)/f(CAN) are package-static), so
+  // the LDS1 section above personalizes them once for every LDS2 DF; the LDS2
+  // sections must not carry @doc/@dob/@doe or @can, otherwise they would
+  // override the card-wide value (card42 d265c24).
   if (lds2Enabled) {
     for (const role of profile.lds2.roles) {
       sections.push({
         role,
-        documentNumber: request.mrz.documentNumber,
-        dateOfBirth: request.mrz.dateOfBirth,
-        dateOfExpiry: request.mrz.dateOfExpiry ?? mrzExpiry(profile.validityYears),
         dataGroups: [],
         caScalar,
         cardAccess,

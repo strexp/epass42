@@ -4,6 +4,12 @@
  * Assembles the LDS1/LDS2 sections consumed by
  * `card42.host.emrtd.perso.LdsScript` (`@instance`, `@doc`, `@dg`, `@sod`,
  * `@aa`, `@ca`, `@cardaccess`, `@cardsecurity`, `@record`, `@transparent`).
+ *
+ * PACE password encodings are card-wide in card42 (the LDS1 and LDS2 applet
+ * instances share the package-static f(MRZ)/f(CAN) storage), so the LDS1
+ * section normally owns `@doc`/`@dob`/`@doe` and `@can`; LDS2 sections omit
+ * them and inherit the values.  An LDS2 section may still carry the directives
+ * to override the card-wide value (card42 `d265c24`).
  */
 import { bytesToHex } from '../codec/hex'
 import { parseTlv } from '../codec/der'
@@ -53,15 +59,23 @@ export interface CvTrustPoint {
 export interface PersoSection {
   role: PersoRole
   aid?: string
-  documentNumber: string
-  /** YYMMDD, for the BAC/PACE seed. */
-  dateOfBirth: string
-  /** YYMMDD, for the BAC/PACE seed. */
-  dateOfExpiry: string
+  /**
+   * LDS1: the MRZ document number, used for BAC and the card-wide PACE
+   * f(MRZ) seed (DGI FF04).  LDS2 sections normally omit all three MRZ fields:
+   * card42 shares the PACE password encodings across every DF, so the LDS1
+   * section personalizes them once for the whole card.  An LDS2 section may
+   * still carry all three fields to override the card-wide value.
+   */
+  documentNumber?: string
+  /** YYMMDD; see {@link documentNumber}. */
+  dateOfBirth?: string
+  /** YYMMDD; see {@link documentNumber}. */
+  dateOfExpiry?: string
   /**
    * Optional PACE Card Access Number (six digits, password reference 0x02).
-   * Written only for the LDS1 (master file) section; PACE falls back to the MRZ
-   * password of `documentNumber`/`dateOfBirth`/`dateOfExpiry` when absent.
+   * Normally written only by the LDS1 section; card42 stores f(CAN) card-wide
+   * and every LDS2 DF inherits it.  An LDS2 section may still carry it to
+   * override the card-wide value.
    */
   can?: string
   dataGroups: PersoDataGroup[]
@@ -126,9 +140,19 @@ function renderSection(section: PersoSection): string[] {
   const aid = section.aid ?? AID[role]
   lines.push(`@instance ${aid.toUpperCase()}`)
   if (role !== 'lds1') lines.push(`@lds2 ${role}`)
-  lines.push(`@doc ${section.documentNumber}`)
-  lines.push(`@dob ${section.dateOfBirth}`)
-  lines.push(`@doe ${section.dateOfExpiry}`)
+  const mrzFields = [section.documentNumber, section.dateOfBirth, section.dateOfExpiry]
+  const hasMrz = mrzFields.some((value) => value !== undefined)
+  if (hasMrz && mrzFields.some((value) => value === undefined)) {
+    throw new Error(`section ${role} needs all of @doc/@dob/@doe or none`)
+  }
+  if (role === 'lds1' && !hasMrz) {
+    throw new Error('the LDS1 section needs @doc, @dob and @doe')
+  }
+  if (hasMrz) {
+    lines.push(`@doc ${section.documentNumber}`)
+    lines.push(`@dob ${section.dateOfBirth}`)
+    lines.push(`@doe ${section.dateOfExpiry}`)
+  }
   if (section.can) lines.push(`@can ${section.can}`)
 
   for (const group of [...section.dataGroups].sort((a, b) => a.number - b.number)) {

@@ -557,10 +557,11 @@ describe('M7 DSC signing service', () => {
     expect(result.valid).toBe(true)
   })
 
-  it('personalises the optional PACE Card Access Number (CAN) for LDS1 only', async () => {
+  it('keeps the card-wide PACE credentials in the LDS1 section only', async () => {
     const { app, oidc, dsc } = await harness()
     const admin = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
-    // Emit an LDS2 application too, to show @can stays in the LDS1 section.
+    // Emit an LDS2 application too: card42 stores f(MRZ)/f(CAN) card-wide, so
+    // the LDS2 section must inherit them instead of overriding them.
     const update = await app.inject({
       method: 'PUT',
       url: '/dsc/settings/issuing-profile',
@@ -569,7 +570,13 @@ describe('M7 DSC signing service', () => {
     })
     expect(update.statusCode).toBe(200)
 
-    // Without a CAN there is no @can directive.
+    const lds2Section = (perso: string): string => {
+      const start = perso.indexOf('@instance A0000002472001')
+      expect(start).toBeGreaterThanOrEqual(0)
+      return perso.slice(start)
+    }
+
+    // Without a CAN there is no @can directive; LDS2 still has no PACE fields.
     const plain = await submit(app, oidc, 'C1111111')
     const plainId = plain
     await app.inject({
@@ -578,9 +585,14 @@ describe('M7 DSC signing service', () => {
       headers: { cookie: admin },
       payload: {},
     })
-    expect(artifactText(dsc, plainId)).not.toMatch(/^@can /m)
+    const plainPerso = artifactText(dsc, plainId)
+    expect(plainPerso).not.toMatch(/^@can /m)
+    expect(plainPerso.match(/^@doc /gm) ?? []).toHaveLength(1)
+    expect(plainPerso.match(/^@dob /gm) ?? []).toHaveLength(1)
+    expect(plainPerso.match(/^@doe /gm) ?? []).toHaveLength(1)
+    expect(lds2Section(plainPerso)).not.toMatch(/^@(doc|dob|doe|can) /m)
 
-    // With a CAN it is written once, in the LDS1 (master file) section.
+    // With a CAN it is written once, in the LDS1 (card-wide) section.
     const canCookie = await applicant(app, oidc)
     const withCan = await app.inject({
       method: 'POST',
@@ -600,6 +612,7 @@ describe('M7 DSC signing service', () => {
     const lds1 = perso.split('@instance A0000002472001')[0]!
     expect(lds1).toMatch(/^@can 123456$/m)
     expect(perso.match(/^@can /gm) ?? []).toHaveLength(1)
+    expect(lds2Section(perso)).not.toMatch(/^@(doc|dob|doe|can) /m)
   })
 
   it('rejects a malformed Card Access Number', async () => {

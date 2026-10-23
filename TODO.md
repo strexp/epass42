@@ -138,7 +138,7 @@ epass42/
 - DG2 结构校验 + **16 KiB 上限**（`issuing.dg2MaxBytes`，超限 `413 dg2_too_large`）；DG3/DG4 包装；DG5/DG7；DG11/DG12（发证机构/签发日期/背书由服务端填充）/DG13/DG16；**DG14（Security Options）仅在启用 CA/AA 时输出**（仅 PACE 时 SecurityInfos 只保留在主文件 EF.CardAccess），DG15 仅 AA。
 - 安全机制（PACE/CA/AA）与 DSC 选择为**管理员默认 + 服务端推导**，申请者不配置；按机制分别配置算法（`issuing.security.pace/aa/ca`）；服务端生成 AA(RSA-2048)/CA(P-256)，EF.CardAccess/DG14、EF.CardSecurity；EF.SOD 自检；`.perso` 产物（AA/CA 私钥仅存在于产物）。
 - **LDS1 Chip Authentication**（`issuing.security.ca.enabled`，默认关闭）：开启后 LDS1 的 EF.CardAccess/DG14 宣告 CA，并个性化 CA 标量（DGI FF03）与主文件 EF.CardSecurity（DGI FF05）；DG14 复用 EF.CardSecurity 的 eContent（EF.CardAccess SecurityInfos + 芯片静态 CA 公钥 `ChipAuthenticationPublicKeyInfo`/id-PK-ECDH），与 card42 提交 `3e7c02f` 一致；与 LDS2 共用同一 CA 密钥对和 EF.CardAccess/Security（均位于 Master File），CA key id 为 `issuing.security.ca.keyId`。CA 需要 PACE（读 EF.CardSecurity）。
-- 可选输出**默认空的 LDS2 应用**（`issuing.lds2`，默认关闭）：按 Travel/Visa/Additional Biometrics 生成空应用段；每个 LDS2 应用始终宣告 CA，并复用上述主文件 CA 材料。记录/透明 EF 仍为空，留待 M12+。启用某个应用时，CVCA 信任点（DGI FF07）的对应授权位同时开启（读+追加，`0F`）：卡侧 `requireLds2Access()` 将信任点授权与终端证书应用扩展相 AND，信任点为 `00` 时无论证书扩展如何所有 LDS2 读均返回 `6982`。`[issuing.security.ta.authorization]` 仅是信任点的基础值（默认取 `[cvca.authorization]`），无法压制已发出应用的授权；其独有作用是 LDS1 ePassport 字节（DG3/DG4，card42 `requireLds1ChatAccess` 同样校验信任点）。ICC 当前日期（DGI FF08）始终取个性化日期，不设配置项。
+- 可选输出**默认空的 LDS2 应用**（`issuing.lds2`，默认关闭）：按 Travel/Visa/Additional Biometrics 生成空应用段；每个 LDS2 应用始终宣告 CA，并复用上述主文件 CA 材料。PACE 口令编码（f(MRZ) DGI FF04 / f(CAN) DGI FF06）是**卡级**的（card42 `d265c24` 将 `Pace` 改为包级 static）：perso 只在 LDS1 段写 `@doc/@dob/@doe` 与 `@can`，LDS2 段不再携带这些指令，由三个 LDS2 DF 继承；LDS2 段若写入则覆盖全卡值。记录/透明 EF 仍为空，留待 M12+。启用某个应用时，CVCA 信任点（DGI FF07）的对应授权位同时开启（读+追加，`0F`）：卡侧 `requireLds2Access()` 将信任点授权与终端证书应用扩展相 AND，信任点为 `00` 时无论证书扩展如何所有 LDS2 读均返回 `6982`。`[issuing.security.ta.authorization]` 仅是信任点的基础值（默认取 `[cvca.authorization]`），无法压制已发出应用的授权；其独有作用是 LDS1 ePassport 字节（DG3/DG4，card42 `requireLds1ChatAccess` 同样校验信任点）。ICC 当前日期（DGI FF08）始终取个性化日期，不设配置项。
 - 提交前按登录的 `activeMnt` 或 whois（`jurisdiction.whois`，默认 `whois.dn42`）查询 IP 的 `mnt-by` 判定管辖；若该 MNT 使用自有 DSC 则提示并引导（可忽略继续用 NIA）。
 
 ### M8 交付
@@ -164,7 +164,7 @@ epass42/
 
 - **card42 宿主侧**：ePass 42 生成的 EF.SOD 通过 card42 `PassiveAuthentication`（DSC 链 + 签名 + DG 哈希），CardAccess/CardSecurity 解析正确。
 - **card42 模拟器**：用 ePass 42 构建器（card42 CSCA/DSC、样例 MRZ、合规 DG2）生成 perso，`make test-emrtd` 的 `EmrtdBacTest` + `EmrtdPaceIntegrationTest` 全绿（BAC/SM/AA/PA/PACE 3DES+AES）。
-- **card42 LDS2**：启用 `issuing.lds2` 的产物被 card42 `EmrtdPersoExporter` 正确解析（FF03 CA 标量 + 011C/011D），Travel 应用可建 PACE、读出 CardAccess/CardSecurity。card42 `EmrtdLds2*` 套件按样例假定存在记录，对“默认空”不适用；其 `EmrtdChipAuthIntegrationTest` 在本机对样例 perso 亦不稳定（环境相关）。
+- **card42 LDS2**：启用 `issuing.lds2` 的产物被 card42 `EmrtdPersoExporter` 正确解析（FF03 CA 标量 + 011C/011D），Travel/Visa/Biometrics 应用继承 LDS1 段的卡级 PACE-MRZ/CAN（card42 `d265c24` 起 LDS2 段不再重复 `@doc/@can`），可建 PACE、读出 CardAccess/CardSecurity。card42 `EmrtdLds2*` 套件按样例假定存在记录，对“默认空”不适用；其 `EmrtdChipAuthIntegrationTest` 在本机对样例 perso 亦不稳定（环境相关）。
 - **card42 LDS1 CA**：启用 `issuing.security.ca.enabled` 的产物对应 card42 的 LDS1 Chip Authentication（FF03/FF05），可由 `EmrtdLds1ChipAuthIntegrationTest`（PACE → 主文件 EF.CardSecurity → CA → 读 DG1）覆盖。
 
 ### 已知遗留

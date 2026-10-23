@@ -120,10 +120,9 @@ describe('eMRTD perso script', () => {
         dataGroups: [{ number: 1, bytes: buildDg1(td1) }],
       },
       {
+        // Card-wide PACE credentials: the LDS2 section inherits the LDS1 f(MRZ)
+        // and f(CAN), so it carries no @doc/@dob/@doe/@can.
         role: 'travel',
-        documentNumber: 'D23145890',
-        dateOfBirth: '740812',
-        dateOfExpiry: '120415',
         dataGroups: [],
       },
     ])
@@ -134,5 +133,42 @@ describe('eMRTD perso script', () => {
     expect(script).toContain('# ERIKSSON<<ANNA<MARIA<<<<<<<<<<')
     expect(script).toContain('# --- travel (A0000002472001) ---')
     expect(script.match(/# MRZ TD1/g)).toHaveLength(1)
+    const travel = script.slice(script.indexOf('# --- travel'))
+    expect(travel).not.toMatch(/^@(doc|dob|doe|can) /m)
+  })
+
+  it('lets an LDS2 section override the card-wide PACE credentials', () => {
+    const script = renderEmrtdScript([
+      {
+        role: 'lds1',
+        documentNumber: 'L898902C<',
+        dateOfBirth: '690806',
+        dateOfExpiry: '940623',
+        dataGroups: [],
+        can: '123456',
+      },
+      {
+        role: 'travel',
+        documentNumber: 'L898902C<',
+        dateOfBirth: '690806',
+        dateOfExpiry: '940623',
+        can: '654321',
+        dataGroups: [],
+      },
+    ])
+    const travel = script.slice(script.indexOf('# --- travel'))
+    expect(travel).toMatch(/^@doc L898902C<$/m)
+    expect(travel).toMatch(/^@dob 690806$/m)
+    expect(travel).toMatch(/^@doe 940623$/m)
+    expect(travel).toMatch(/^@can 654321$/m)
+  })
+
+  it('rejects partial MRZ fields and an LDS1 section without them', () => {
+    expect(() =>
+      renderEmrtdScript([{ role: 'travel', documentNumber: 'L898902C<', dataGroups: [] }]),
+    ).toThrow(/all of @doc\/@dob\/@doe or none/)
+    expect(() => renderEmrtdScript([{ role: 'lds1', dataGroups: [] }])).toThrow(
+      /LDS1 section needs @doc, @dob and @doe/,
+    )
   })
 })
