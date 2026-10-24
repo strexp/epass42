@@ -64,8 +64,8 @@ function entryFor(base: string, object: PkdObject): LdapEntry {
     return {
       dn: `cn=${object.cn},ou=csca,${base}`,
       attributes: {
-        // RFC 4523 pkiCA expects cACertificate; extensibleObject keeps the
-        // serial-number RDN (cn) valid without a custom DIT content rule.
+        // RFC 4523 pkiCA is auxiliary and carries cACertificate; inetOrgPerson
+        // is the structural class and supplies the serial-number RDN (cn).
         objectclass: ['top', 'inetOrgPerson', 'pkiCA'],
         cn: [object.cn],
         sn: [object.cn],
