@@ -37,11 +37,14 @@ export class FakeOidc {
   }
 
   /** The factory injected into {@link buildApp}. */
-  readonly factory: OidcDriverFactory = (provider: OAuthProviderConfig): OidcDriver => {
+  readonly factory: OidcDriverFactory = (
+    provider: OAuthProviderConfig,
+    redirectUri: string,
+  ): OidcDriver => {
     const identities = this.identities
     return {
       provider,
-      redirectUri: `http://localhost/auth/${provider.realm}/callback`,
+      redirectUri,
       async start(): Promise<OidcFlowStart> {
         const state = `state-${provider.clientId}`
         return {
@@ -63,31 +66,31 @@ export class FakeOidc {
 
 const PROVIDERS = [
   {
-    realm: 'csca',
+    realms: ['csca'],
     issuer: 'https://csca.idp.test',
     clientId: 'csca-client',
     scopes: ['openid', 'email', 'dn42'],
   },
   {
-    realm: 'cvca',
+    realms: ['cvca'],
     issuer: 'https://cvca.idp.test',
     clientId: 'cvca-client',
     scopes: ['openid', 'email', 'dn42'],
   },
   {
-    realm: 'dv',
+    realms: ['dv'],
     issuer: 'https://dv.idp.test',
     clientId: 'dv-client',
     scopes: ['openid', 'email', 'dn42'],
   },
   {
-    realm: 'dsc',
+    realms: ['dsc'],
     issuer: 'https://dsc.idp.test',
     clientId: 'dsc-client',
     scopes: ['openid', 'email', 'dn42'],
   },
   {
-    realm: 'ml',
+    realms: ['ml'],
     issuer: 'https://ml.idp.test',
     clientId: 'ml-client',
     scopes: ['openid', 'email', 'dn42'],

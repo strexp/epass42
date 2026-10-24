@@ -4,14 +4,14 @@ import { FakeOidc, makeTestApp } from '../../test-support'
 
 const PROVIDERS = [
   {
-    realm: 'dsc',
+    realms: ['dsc'],
     issuer: 'https://alpha.idp.test',
     clientId: 'alpha-client',
     alias: 'alpha',
     scopes: ['openid', 'dn42'],
   },
   {
-    realm: 'dsc',
+    realms: ['dsc'],
     issuer: 'https://beta.idp.test',
     clientId: 'beta-client',
     alias: 'beta',
@@ -38,6 +38,25 @@ async function startState(
   const start = await app.inject({ method: 'GET', url })
   expect(start.statusCode).toBe(302)
   return new URL(start.headers.location as string).searchParams.get('state') as string
+}
+
+const SHARED_PROVIDERS = [
+  {
+    realms: ['csca', 'dsc'],
+    issuer: 'https://shared.idp.test',
+    clientId: 'shared-client',
+    alias: 'shared',
+    scopes: ['openid', 'dn42'],
+  },
+]
+
+async function sharedSetup() {
+  const oidc = new FakeOidc()
+  oidc.set('shared-client', {
+    subject: 'shared-user',
+    claims: { sub: 'shared-user', dn42: { asn: 42 } },
+  })
+  return makeTestApp(oidc, { oauthProviders: SHARED_PROVIDERS })
 }
 
 describe('multiple OAuth providers per realm', () => {
@@ -78,5 +97,38 @@ describe('multiple OAuth providers per realm', () => {
       url: `/auth/dsc/callback/alpha?code=x&state=${state}`,
     })
     expect(callback.statusCode).toBe(302)
+  })
+
+  it('seeds one provider definition into every allowed realm with stable callbacks', async () => {
+    const { app } = await sharedSetup()
+    const config = await app.inject({ method: 'GET', url: '/api/config' })
+    const providers = config.json().oauthProviders as Record<
+      string,
+      { alias: string; issuer: string }[]
+    >
+    expect(providers.csca).toHaveLength(1)
+    expect(providers.dsc).toHaveLength(1)
+    expect(providers.csca[0]).toMatchObject({
+      alias: 'shared',
+      issuer: 'https://shared.idp.test',
+    })
+    expect(providers.dsc[0]).toMatchObject({
+      alias: 'shared',
+      issuer: 'https://shared.idp.test',
+    })
+
+    // The realm still selects the callback endpoint; only the configuration
+    // definition is shared between realms.
+    for (const realm of ['csca', 'dsc'] as const) {
+      const start = await app.inject({ method: 'GET', url: `/auth/${realm}/login` })
+      expect(start.statusCode).toBe(302)
+      const state = new URL(start.headers.location as string).searchParams.get('state')
+      const callback = await app.inject({
+        method: 'GET',
+        url: `/auth/${realm}/callback/shared?code=x&state=${state}`,
+      })
+      expect(callback.statusCode).toBe(302)
+      expect(callback.cookies.find((entry) => entry.name === `epass42_${realm}_sid`)).toBeTruthy()
+    }
   })
 })

@@ -141,4 +141,41 @@ describe('backend e2e — system and authentication', () => {
       { rateLimit: { max: 2, windowMs: 60_000 } },
     )
   })
+
+  it('allows one provider definition to serve multiple realms', async () => {
+    await withBackend(
+      async (backend) => {
+        const config = await backend.client.get('/api/config')
+        const providers = config.json<{
+          oauthProviders: Record<string, { alias: string; issuer: string }[]>
+        }>().oauthProviders
+        expect(providers.csca?.[0]).toMatchObject({
+          alias: 'shared',
+          issuer: 'https://shared.idp.test',
+        })
+        expect(providers.dsc?.[0]).toMatchObject({
+          alias: 'shared',
+          issuer: 'https://shared.idp.test',
+        })
+
+        // Both realms complete the normal realm callback; only the provider
+        // definition is shared.
+        await loginAs(backend, 'csca', 'shared-client', CSCA_USER)
+        expect((await backend.client.get('/auth/csca/me')).status).toBe(200)
+        await loginAs(backend, 'dsc', 'shared-client', CSCA_USER)
+        expect((await backend.client.get('/auth/dsc/me')).status).toBe(200)
+      },
+      {
+        oauthProviders: [
+          {
+            realms: ['csca', 'dsc'],
+            issuer: 'https://shared.idp.test',
+            clientId: 'shared-client',
+            alias: 'shared',
+            scopes: ['openid', 'dn42'],
+          },
+        ],
+      },
+    )
+  })
 })

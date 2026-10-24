@@ -120,7 +120,7 @@ epass42/
 
 ### M4 认证与授权
 
-- 双 realm 完全隔离（cookie/session/CSRF）；`openid-client`（PKCE/state/nonce）；每个 provider 可配 `alias`，callback 路径带别名 `/auth/{realm}/callback/{alias}`；dn42 claim 映射与预填；`CSCA_ADMIN_MNTS`/`DSC_ADMIN_MNTS` 鉴权；CORS（分域部署）、防 CSRF/开放重定向/SSRF。
+- 双 realm 完全隔离（cookie/session/CSRF）；`openid-client`（PKCE/state/nonce）；每个 provider 可配 `alias` 与 `realms` 列表（一个定义可服务多个 realm），callback 路径带别名 `/auth/{realm}/callback/{alias}`；dn42 claim 映射与预填；`CSCA_ADMIN_MNTS`/`DSC_ADMIN_MNTS` 鉴权；CORS（分域部署）、防 CSRF/开放重定向/SSRF。
 - 委派 MNT 评审：`mnt_config.use_nia_dsc`（缺省即 NIA）+ `maintainer`(role=`as-admin`)；只能看/审本 MNT 且委派 NIA 的申请，禁改全局设定；NIA 管理员全量。`GET/PUT /csca/settings/mnt` 与 `/dsc/settings/mnt` 查看与切换（无 active DSC 时禁止切到自有）。
 
 ### M5 CSCA 角色

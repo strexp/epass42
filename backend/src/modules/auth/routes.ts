@@ -1,8 +1,8 @@
 /**
  * Authentication routes (M4/T4.2): `/auth/{realm}/login|callback|logout|me`.
  *
- * The two realms are fully isolated: separate providers, cookies, session rows
- * and CSRF scope.  Realm routes are only registered when the role is enabled.
+ * Realms are fully isolated: separate provider records, cookies, session rows
+ * and CSRF scope; one configured provider may be registered in several realms.  Realm routes are only registered when the role is enabled.
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'

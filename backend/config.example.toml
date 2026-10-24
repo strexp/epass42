@@ -11,7 +11,7 @@
 #   Verifying CA cvca CVCA key, authorization and Document Verifier defaults
 #   Terminal    dv    terminal certificate applications (uses cvca settings)
 #   Perso.      dsc   issuing fields, LDS2 and security mechanisms
-#   Login             OAuth/OIDC providers, one per realm
+#   Login             OAuth/OIDC providers and their allowed realms
 #
 # A role's section is only read when that role is listed in `roles` below.
 
@@ -284,69 +284,21 @@ hash = "SHA-256"
 validityYears = 10
 
 # ============================================================================
-# Login — OAuth/OIDC providers, one per realm
+# Login — OAuth/OIDC providers
 # ============================================================================
-# The `dn42` claim carries the ASN and maintainer data.  A realm may list more
-# than one provider; the `alias` names the login method in the UI.
+# The `dn42` claim carries the ASN and maintainer data.  One provider may serve
+# several realms; list them in `realms`.  The provider is registered once per
+# realm, so the callback path remains
+# `/auth/{realm}/callback/{alias}` and every redirect URI must be registered
+# with the provider.  A realm may also list several providers; repeat the block
+# with a different issuer/clientId.
 [[oauthProviders]]
-realm = "csca"
+realms = ["csca", "cvca", "dv", "dsc", "ml"]
 issuer = "https://auth.example.net"
-clientId = "epass42-csca"
+clientId = "epass42"
 clientSecret = "replace-me"
 # Short login-method alias (defaults to the issuer host); shown in the UI and
 # used in the callback URL.
-alias = "auth"
-scopes = ["openid", "profile", "email", "dn42"]
-enabled = true
-
-[oauthProviders.claimMap]
-dn42 = "dn42"
-
-# Verification realm (maintainers applying for DV certificates).
-[[oauthProviders]]
-realm = "cvca"
-issuer = "https://auth.example.net"
-clientId = "epass42-cvca"
-clientSecret = "replace-me"
-alias = "auth"
-scopes = ["openid", "profile", "email", "dn42"]
-enabled = true
-
-[oauthProviders.claimMap]
-dn42 = "dn42"
-
-# Terminal realm (Document Verifier holders applying for terminal certificates).
-[[oauthProviders]]
-realm = "dv"
-issuer = "https://auth.example.net"
-clientId = "epass42-dv"
-clientSecret = "replace-me"
-alias = "auth"
-scopes = ["openid", "profile", "email", "dn42"]
-enabled = true
-
-[oauthProviders.claimMap]
-dn42 = "dn42"
-
-# Personalization realm (issuing organisations).
-[[oauthProviders]]
-realm = "dsc"
-issuer = "https://auth.example.net"
-clientId = "epass42-dsc"
-clientSecret = "replace-me"
-alias = "auth"
-scopes = ["openid", "profile", "email", "dn42"]
-enabled = true
-
-[oauthProviders.claimMap]
-dn42 = "dn42"
-
-# Master list realm (ML administrators).
-[[oauthProviders]]
-realm = "ml"
-issuer = "https://auth.example.net"
-clientId = "epass42-ml"
-clientSecret = "replace-me"
 alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]
 enabled = true

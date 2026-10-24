@@ -79,3 +79,24 @@ describe('ML configuration', () => {
     expect(config.adminMnts.ml).toEqual([])
   })
 })
+describe('OAuth provider configuration', () => {
+  it('lets one provider definition serve several realms', () => {
+    const config = parseConfig({
+      oauthProviders: [
+        {
+          realms: ['csca', 'dsc'],
+          issuer: 'https://idp.example',
+          clientId: 'shared-client',
+        },
+      ],
+    })
+    expect(config.oauthProviders).toHaveLength(1)
+    expect(config.oauthProviders[0]?.realms).toEqual(['csca', 'dsc'])
+  })
+
+  it('rejects an empty or duplicated realm list', () => {
+    const base = { issuer: 'https://idp.example', clientId: 'client' }
+    expect(() => parseConfig({ oauthProviders: [{ ...base, realms: [] }] })).toThrow()
+    expect(() => parseConfig({ oauthProviders: [{ ...base, realms: ['csca', 'csca'] }] })).toThrow()
+  })
+})

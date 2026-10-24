@@ -1,8 +1,8 @@
 /**
  * OAuth/OIDC provider registration and the authorization-code driver (M4).
  *
- * Providers are declared in configuration and seeded into `oauth_provider`.
- * The production driver uses `openid-client` (dynamic discovery, PKCE, state,
+ * Providers are declared once in configuration and seeded into `oauth_provider`
+ * as one row per allowed realm.  The production driver uses `openid-client` (dynamic discovery, PKCE, state,
  * nonce); tests inject a fake driver through {@link OidcDriverFactory} so the
  * whole login flow can run without a live identity provider.
  */
@@ -102,43 +102,47 @@ export class OpenidClientDriver implements OidcDriver {
   }
 }
 
-/** A provider together with its seeded database id. */
+/** A provider together with its seeded database id and realm row. */
 export interface ProviderRecord {
   id: number
+  /** The realm this seeded row belongs to. */
+  realm: Realm
   config: OAuthProviderConfig
 }
 
 /** Upserts configured providers into `oauth_provider` and returns them with ids. */
 export function seedProviders(db: Db, config: AppConfig): ProviderRecord[] {
   const records: ProviderRecord[] = []
+  const rows = db.select().from(oauthProvider).all()
   for (const provider of config.oauthProviders) {
-    const existing = db
-      .select()
-      .from(oauthProvider)
-      .all()
-      .find(
+    // One configured provider becomes one row per allowed realm.  The realm is
+    // part of the row key so the callback path and session cookie stay stable.
+    for (const realm of provider.realms) {
+      const existing = rows.find(
         (row) =>
-          row.realm === provider.realm &&
+          row.realm === realm &&
           row.issuer === provider.issuer &&
           row.clientId === provider.clientId,
       )
-    const values = {
-      realm: provider.realm,
-      issuer: provider.issuer,
-      clientId: provider.clientId,
-      scopes: provider.scopes.join(' '),
-      claimMap: JSON.stringify(provider.claimMap),
-      enabled: provider.enabled,
+      const values = {
+        realm,
+        issuer: provider.issuer,
+        clientId: provider.clientId,
+        scopes: provider.scopes.join(' '),
+        claimMap: JSON.stringify(provider.claimMap),
+        enabled: provider.enabled,
+      }
+      let id: number
+      if (existing) {
+        db.update(oauthProvider).set(values).where(eq(oauthProvider.id, existing.id)).run()
+        id = existing.id
+      } else {
+        const result = db.insert(oauthProvider).values(values).run()
+        id = Number(result.lastInsertRowid)
+        rows.push({ ...values, id })
+      }
+      records.push({ id, realm, config: provider })
     }
-    let id: number
-    if (existing) {
-      db.update(oauthProvider).set(values).where(eq(oauthProvider.id, existing.id)).run()
-      id = existing.id
-    } else {
-      const result = db.insert(oauthProvider).values(values).run()
-      id = Number(result.lastInsertRowid)
-    }
-    records.push({ id, config: provider })
   }
   return records
 }
@@ -178,7 +182,7 @@ export class AuthProviders {
     for (const record of records) {
       if (!record.config.enabled) continue
       this.byId.set(record.id, record)
-      const realm = record.config.realm
+      const realm = record.realm
       const base = record.config.alias ?? defaultAlias(record.config)
       let alias = base
       let counter = 2
@@ -196,13 +200,13 @@ export class AuthProviders {
 
   /** Enabled providers for a realm. */
   list(realm: Realm): ProviderRecord[] {
-    return [...this.byId.values()].filter((record) => record.config.realm === realm)
+    return [...this.byId.values()].filter((record) => record.realm === realm)
   }
 
   /** Looks up a provider by id, restricted to a realm. */
   get(realm: Realm, id: number): ProviderRecord | undefined {
     const record = this.byId.get(id)
-    return record && record.config.realm === realm ? record : undefined
+    return record && record.realm === realm ? record : undefined
   }
 
   /** Looks up a provider by its alias within a realm. */
@@ -227,7 +231,7 @@ export class AuthProviders {
     if (cached) return cached
     // The alias is part of the callback path so each login method has a
     // distinct, registrable redirect URI.
-    const redirectUri = `${this.publicUrl.replace(/\/$/, '')}/auth/${record.config.realm}/callback/${this.aliasOf(record.id)}`
+    const redirectUri = `${this.publicUrl.replace(/\/$/, '')}/auth/${record.realm}/callback/${this.aliasOf(record.id)}`
     const driver = this.factory(record.config, redirectUri)
     this.drivers.set(record.id, driver)
     return driver

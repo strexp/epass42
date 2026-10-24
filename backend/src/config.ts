@@ -24,9 +24,21 @@ export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dv', 'dsc', 'ml'])
 /** The default (insecure) session secret used in development. */
 export const DEV_SESSION_SECRET = 'dev-insecure-session-secret-change-me'
 
-/** One configured OAuth provider (M4/T4.1). */
+/**
+ * One configured OAuth/OIDC provider (M4/T4.1).
+ *
+ * `realms` lists every realm this provider may sign in to.  The provider is
+ * seeded once per realm, which keeps the callback path stable at
+ * `/auth/{realm}/callback/{alias}` while avoiding duplicate definitions in
+ * configuration.
+ */
 export const oauthProviderSchema = z.object({
-  realm: realmSchema,
+  realms: z
+    .array(realmSchema)
+    .min(1)
+    .refine((realms) => new Set(realms).size === realms.length, {
+      message: 'realms must be unique',
+    }),
   issuer: z.string().url(),
   clientId: z.string().min(1),
   clientSecret: z.string().optional(),
