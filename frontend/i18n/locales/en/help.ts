@@ -470,7 +470,7 @@ export default {
       mine: 'My applications',
     },
     certAdmin: {
-      certificates: 'Certificate registry',
+      certificates: 'Certificate Registry',
       audit: 'Audit log',
     },
     cvca: {
@@ -491,7 +491,7 @@ export default {
       audit: 'Audit log',
     },
     mlAdmin: {
-      home: 'Master list',
+      home: 'Master List',
       audit: 'Audit log',
       directory: 'PKD directory',
     },

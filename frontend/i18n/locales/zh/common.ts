@@ -63,7 +63,7 @@ export default {
     skipToContent: '跳到主要内容',
     theme: '切换深色模式',
     adminOnly: '仅管理员可见',
-    adminOnlyHint: '此卡片仅管理员可见。',
+    adminOnlyHint: '此功能仅管理员可用。',
     opensInNewTab: '在新标签页打开',
     breadcrumb: '面包屑',
     mnt: 'MNT',

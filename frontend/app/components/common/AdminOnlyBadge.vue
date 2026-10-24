@@ -2,7 +2,7 @@
 import { NIcon, NTooltip } from 'naive-ui'
 import { ShieldCheck } from '@lucide/vue'
 
-/** A shield marker for cards that are visible to administrators only. */
+/** A shield marker for administrator-only features. */
 const { t } = useI18n()
 </script>
 
