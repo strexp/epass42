@@ -17,6 +17,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -28,11 +29,53 @@ jobs:
       - run: pnpm run format:check
       - run: pnpm run lint
       - run: pnpm run typecheck
-      - run: pnpm run test
+
+  # Unit tests for the library, backend and frontend.  The e2e suite has its own
+  # matrix below so a failure is reported against the scenario group.
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Unit tests (all packages except the e2e suite)
+        run: pnpm -r --filter '!@epass42/scripts' test
+
+  # The e2e suites run one job per scenario group: the pure-PKI package suite and
+  # the real-HTTP backend suite.  Both boot no external service (SQLite in
+  # memory, fake OIDC), so they are safe on hosted runners.
+  #
+  # card42's cross-project suite is intentionally not part of this matrix: it
+  # needs a separate card42 checkout plus the Oracle Java Card simulator.  It is
+  # skipped by default; run it locally with
+  #   pnpm --filter @epass42/scripts test:card42
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [packages, backend]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: E2E — ${{ matrix.suite }}
+        run: pnpm --filter @epass42/scripts test:${{ matrix.suite }}
 
   build:
-    needs: check
+    needs: [check, unit, e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -66,7 +109,7 @@ jobs:
   # Confirm this commit is still the head of the default branch: a newer push may
   # have landed while the checks and build ran.
   head:
-    needs: [check, build]
+    needs: [check, unit, e2e, build]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     outputs:
@@ -89,7 +132,7 @@ jobs:
   # Publish both images (linux/amd64 + linux/arm64) as `latest`, but only once
   # checks and the build have passed and this is still the branch head.
   docker:
-    needs: [check, build, head]
+    needs: [check, unit, e2e, build, head]
     if: needs.head.outputs.is_latest == 'true'
     permissions:
       contents: read
