@@ -3,7 +3,13 @@
  */
 import { z } from 'zod'
 
-import { dvClassSchema, dvPermissionsSchema, type DvClass } from '@epass42/shared'
+import {
+  SUBJECT_NAME_MAX,
+  dvClassSchema,
+  dvPermissionsSchema,
+  isValidSubjectName,
+  type DvClass,
+} from '@epass42/shared'
 import type { dvCert, terminalCert } from '../../db/schema'
 import type { AuthContext } from '../auth/middleware'
 import type { CvcaService } from './service'
@@ -17,7 +23,11 @@ export interface CvcaRouteDeps extends AuthContext {
 /** The DV application submission body. */
 export const applicationBody = z.object({
   keyMode: z.enum(['remote_generated', 'user_uploaded']).default('remote_generated'),
-  subjectCn: z.string().min(1).max(64),
+  subjectCn: z
+    .string()
+    .min(1)
+    .max(SUBJECT_NAME_MAX)
+    .refine(isValidSubjectName, { message: 'invalid_subject_name' }),
   /** Optional holder mnemonic (up to 9 chars); derived from the name when absent. */
   holderMnemonic: z
     .string()

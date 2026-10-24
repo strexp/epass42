@@ -51,7 +51,7 @@ export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: Dv
           applicantAccountId: principal.account.id,
           ip: request.ip,
           keyMode: request.body.keyMode,
-          subjectCn: request.body.subjectCn,
+          subjectCn: request.body.subjectCn.trim(),
           holderMnemonic: request.body.holderMnemonic ?? null,
           csrPem: request.body.csrPem ?? null,
           publicKeyPem: request.body.publicKeyPem ?? null,

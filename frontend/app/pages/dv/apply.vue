@@ -19,7 +19,7 @@ import {
 } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 import { LogIn, Save } from '@lucide/vue'
-import type { DvPermissions } from '@epass42/shared'
+import { isValidSubjectName, type DvPermissions } from '@epass42/shared'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
@@ -75,7 +75,8 @@ const formRef = ref<FormInst | null>(null)
 const rules = computed<FormRules>(() => ({
   subjectCn: {
     required: true,
-    message: t('errors.required'),
+    validator: (_rule: unknown, value: string) => value.trim() !== '' && isValidSubjectName(value),
+    message: t('dv.subjectNameRule'),
     trigger: ['input', 'blur'],
   },
   csrPem: {
