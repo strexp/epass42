@@ -18,6 +18,7 @@ import {
   BadgeCheck,
   CreditCard,
   FileBadge,
+  FileCheck,
   FilePlus2,
   FolderTree,
   Globe,
@@ -32,7 +33,7 @@ import {
   ShieldCheck,
   UserCheck,
 } from '@lucide/vue'
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const { t } = useI18n()
 usePageTitle(() => t('help.title'))
@@ -99,6 +100,18 @@ const roles: Role[] = [
     },
   },
   {
+    key: 'dscAdmin',
+    icon: Settings,
+    flow: {
+      steps: buildSteps('dscAdmin', ['system', 'system', 'system', 'system', 'system', 'system']),
+      links: [
+        { to: '/dsc/settings', labelKey: 'help.links.dscAdmin.settings', icon: Settings },
+        { to: '/dsc/audit', labelKey: 'help.links.dscAdmin.audit', icon: ScrollText },
+        { to: '/dsc', labelKey: 'help.links.dscAdmin.home', icon: ListChecks },
+      ],
+    },
+  },
+  {
     key: 'certApplicant',
     icon: FileBadge,
     flow: {
@@ -107,8 +120,8 @@ const roles: Role[] = [
         'system',
         'system',
         'system',
-        'external',
         'system',
+        'external',
       ]),
       links: [
         { to: '/csca/apply', labelKey: 'help.links.certApplicant.apply', icon: FilePlus2 },
@@ -143,10 +156,26 @@ const roles: Role[] = [
     },
   },
   {
+    key: 'cvcaAdmin',
+    icon: Landmark,
+    flow: {
+      steps: buildSteps('cvcaAdmin', ['system', 'system', 'system', 'system', 'system', 'system']),
+      links: [
+        { to: '/cvca', labelKey: 'help.links.cvcaAdmin.applications', icon: BadgeCheck },
+        {
+          to: '/cvca/certificates',
+          labelKey: 'help.links.cvcaAdmin.certificates',
+          icon: BadgeCheck,
+        },
+        { to: '/cvca/audit', labelKey: 'help.links.cvcaAdmin.audit', icon: ScrollText },
+      ],
+    },
+  },
+  {
     key: 'terminal',
     icon: MonitorSmartphone,
     flow: {
-      steps: buildSteps('terminal', ['system', 'system', 'system', 'system', 'external']),
+      steps: buildSteps('terminal', ['system', 'system', 'system', 'system', 'system', 'external']),
       links: [
         { to: '/dv/apply', labelKey: 'help.links.terminal.apply', icon: FilePlus2 },
         { to: '/dv', labelKey: 'help.links.terminal.mine', icon: ListChecks },
@@ -154,29 +183,25 @@ const roles: Role[] = [
     },
   },
   {
-    key: 'cvcaAdmin',
-    icon: Landmark,
+    key: 'dvAdmin',
+    icon: Server,
     flow: {
-      steps: buildSteps('cvcaAdmin', ['system', 'system', 'system', 'system', 'system', 'system']),
+      steps: buildSteps('dvAdmin', ['system', 'system', 'system', 'system', 'system']),
       links: [
-        { to: '/cvca', labelKey: 'help.links.cvcaAdmin.applications', icon: BadgeCheck },
-        { to: '/dv', labelKey: 'help.links.cvcaAdmin.terminal', icon: ListChecks },
-        { to: '/dv/audit', labelKey: 'help.links.cvcaAdmin.audit', icon: ScrollText },
+        { to: '/dv', labelKey: 'help.links.dvAdmin.home', icon: MonitorSmartphone },
+        { to: '/dv/audit', labelKey: 'help.links.dvAdmin.audit', icon: ScrollText },
       ],
     },
   },
   {
-    key: 'selfHosted',
-    icon: Server,
+    key: 'mlAdmin',
+    icon: FileCheck,
     flow: {
-      steps: buildSteps(
-        'selfHosted',
-        ['system', 'external', 'external', 'system', 'system'],
-        [undefined, 'roles = ["dsc"]'],
-      ),
+      steps: buildSteps('mlAdmin', ['system', 'system', 'system', 'system', 'system']),
       links: [
-        { to: '/csca/apply', labelKey: 'help.links.selfHosted.certApply', icon: FilePlus2 },
-        { to: '/dsc/settings', labelKey: 'help.links.selfHosted.settings', icon: Settings },
+        { to: '/ml', labelKey: 'help.links.mlAdmin.home', icon: FileCheck },
+        { to: '/ml/audit', labelKey: 'help.links.mlAdmin.audit', icon: ScrollText },
+        { to: '/pkd', labelKey: 'help.links.mlAdmin.directory', icon: FolderTree },
       ],
     },
   },
@@ -205,7 +230,7 @@ const roles: Role[] = [
     flow: {
       steps: buildSteps(
         'verifier',
-        ['system', 'external', 'external', 'external', 'external', 'system'],
+        ['system', 'external', 'external', 'external', 'external', 'external'],
         [
           'GET /pkd/masterlists · GET /pkd/objects/:id.der',
           undefined,
@@ -230,6 +255,21 @@ const roles: Role[] = [
 
 /** The selected role key; the personalization applicant is the common entry point. */
 const role = ref('applicant')
+
+/** Desktop keeps the role list on the left; narrow screens use a top tab bar. */
+const placement = ref<'left' | 'top'>(
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches ? 'top' : 'left',
+)
+let media: MediaQueryList | null = null
+function syncPlacement(): void {
+  placement.value = media?.matches ? 'top' : 'left'
+}
+onMounted(() => {
+  media = window.matchMedia('(max-width: 768px)')
+  syncPlacement()
+  media.addEventListener('change', syncPlacement)
+})
+onBeforeUnmount(() => media?.removeEventListener('change', syncPlacement))
 </script>
 
 <template>
@@ -240,7 +280,7 @@ const role = ref('applicant')
       {{ $t('help.intro') }}
     </NAlert>
 
-    <NTabs v-model:value="role" type="line" animated>
+    <NTabs v-model:value="role" type="line" :placement="placement" animated class="help-tabs">
       <NTabPane v-for="item in roles" :key="item.key" :name="item.key">
         <template #tab>
           <NSpace align="center" :size="6">

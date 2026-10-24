@@ -38,6 +38,11 @@ export default {
   privateKeyWarning: '私钥仅可下载一次。请立即妥善保存：下载后即被删除，无法再次获取。',
   signingPaused: 'IS 证书签发已暂停',
   niaDvTitle: 'NIA 文档验证者（NIA DV）',
+  cvcaTitle: 'CVCA 证书',
+  cvcaExpiredWarning:
+    '签发该 NIA DV 的 CVCA 证书已于 {date} 过期，新的 IS 证书签发已暂停。请管理员先轮换 CVCA 密钥。',
+  terminalValidity: '终端证书有效期',
+  signingDvTitle: '签发 DV 有效期',
   niaDvReference: '持有者引用',
   niaDvExpired: 'NIA DV 已于 {date} 过期。新的 IS 证书签发已暂停，请管理员轮换 NIA DV。',
   niaDvMissing: '当前没有可用的 NIA DV，新的 IS 证书签发已暂停。',

@@ -23,16 +23,37 @@ import { isValidSubjectName, type DvClass, type DvPermissions } from '@epass42/s
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { usePkdConfig } from '~/composables/usePkdConfig'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { expiryDescription, useCvcaStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
 const api = useApi()
 const { auth, state, ensureLoaded } = useRealm('cvca')
 const { t } = useI18n()
+const { formatDate } = useDateTime()
 usePageTitle(() => t('cvca.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
+const { config, load: loadPkdConfig } = usePkdConfig()
+const dvPolicy = computed(() => config.value?.certificatePolicies.dv)
+const { status: lifecycle, refresh: refreshLifecycle } = useCvcaStatus()
+const cvcaExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.cvca ?? null,
+    {
+      missing: t('cvca.expiredTitle'),
+      certificate: (date) => t('cvca.expiredWarning', { date }),
+      privateKey: (date) => t('cvca.expiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
+const requestedNotAfter = computed(() =>
+  new Date(Date.now() + form.validityDays * 86_400_000).toISOString(),
+)
 
 const signedIn = computed(() => state.value.me !== null)
 
@@ -157,6 +178,13 @@ async function submit(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
+  try {
+    await loadPkdConfig()
+    form.validityDays = dvPolicy.value?.defaultValidityDays ?? form.validityDays
+  } catch {
+    // Keep the built-in default when the public config is unavailable.
+  }
 })
 </script>
 
@@ -167,6 +195,11 @@ onMounted(async () => {
       :breadcrumbs="[{ label: $t('nav.cvca'), to: '/cvca' }, { label: $t('nav.apply') }]"
     />
     <NCard v-if="signedIn">
+      <ExpiryAlert
+        v-if="lifecycle?.cvca?.expired"
+        :title="$t('cvca.expiredTitle')"
+        :description="cvcaExpiryText"
+      />
       <NSteps :current="step + 1" size="small" style="margin-bottom: 16px">
         <NStep :title="$t('cvca.stepApplication')" />
         <NStep :title="$t('cvca.stepReview')" />
@@ -219,7 +252,11 @@ onMounted(async () => {
             </NSpace>
           </NFormItem>
           <NFormItem :label="$t('cvca.validityDays')">
-            <NInputNumber v-model:value="form.validityDays" :min="1" :max="92" />
+            <NInputNumber
+              v-model:value="form.validityDays"
+              :min="1"
+              :max="dvPolicy?.maxValidityDays ?? 92"
+            />
           </NFormItem>
           <NFormItem path="applicationUrl" :label="$t('cvca.applicationUrl')">
             <NInput v-model:value="form.applicationUrl" placeholder="https://" />
@@ -251,6 +288,9 @@ onMounted(async () => {
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('cvca.validityDays')">
             {{ form.validityDays }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            {{ formatDate(requestedNotAfter) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('cvca.applicationUrl')">
             {{ form.applicationUrl || '—' }}

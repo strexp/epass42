@@ -20,7 +20,8 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useCscaStatus } from '~/composables/useLifecycleStatus'
+import ValidityCell from '~/components/common/ValidityCell.vue'
+import { expiryDescription, useCscaStatus } from '~/composables/useLifecycleStatus'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { documentTypesLabel } from '~/utils/documentTypes'
@@ -34,9 +35,7 @@ interface Application {
   applicantAccountId: number | null
   ip: string | null
   keyMode: string
-  certificateType?: 'dsc' | 'lds2'
-  /** Legacy field name (pre-rename API responses). */
-  certType?: 'dsc' | 'lds2'
+  certificateType: 'dsc' | 'lds2'
   subjectCn: string | null
   subjectO: string | null
   subjectOu: string | null
@@ -55,6 +54,12 @@ interface Application {
   dscCertId: number | null
   /** Whether the issued signer private key is still available. */
   hasPrivateKey: boolean
+  /** The issued signer certificate, with its validity. */
+  certificate: {
+    notBefore: string | null
+    notAfter: string | null
+    privateKeyNotAfter: string | null
+  } | null
   createdAt: string
 }
 
@@ -68,6 +73,17 @@ const message = useMessage()
 const dialog = useDialog()
 const { ensureLoaded, showAdmin } = useRealm('csca')
 const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
+const cscaExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.csca ?? null,
+    {
+      missing: t('csca.expiredTitle'),
+      certificate: (date) => t('csca.expiredWarning', { date }),
+      privateKey: (date) => t('csca.privateKeyExpiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 
 const id = computed(() => String(route.params.id ?? ''))
 const application = ref<Application | null>(null)
@@ -77,9 +93,7 @@ const rejectReason = ref('')
 
 const canReview = computed(() => showAdmin.value && application.value?.status === 'submitted')
 const canApprove = computed(() => canReview.value && !(lifecycle.value?.csca?.expired ?? false))
-const isLds2 = computed(
-  () => (application.value?.certificateType ?? application.value?.certType) === 'lds2',
-)
+const isLds2 = computed(() => application.value?.certificateType === 'lds2')
 
 /** A system-generated DSC key may be claimed once, from the application. */
 const canDownloadKey = computed(
@@ -241,6 +255,21 @@ onMounted(async () => {
           {{ $t('csca.rejectReason') }}: {{ application.rejectReason }}
         </NText>
 
+        <NDescriptions
+          v-if="application.certificate"
+          :column="2"
+          size="small"
+          style="margin-top: 12px"
+        >
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            <ValidityCell
+              :not-before="application.certificate.notBefore"
+              :not-after="application.certificate.notAfter"
+              :private-key-not-after="application.certificate.privateKeyNotAfter"
+            />
+          </NDescriptionsItem>
+        </NDescriptions>
+
         <template v-if="canDownloadKey">
           <NAlert type="warning" :title="$t('csca.privateKeyTitle')" style="margin-top: 12px">
             {{ $t('csca.privateKeyWarning') }}
@@ -255,7 +284,7 @@ onMounted(async () => {
         <ExpiryAlert
           v-if="lifecycle?.csca?.expired"
           :title="$t('csca.expiredTitle')"
-          :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+          :description="cscaExpiryText"
         />
         <div v-if="canReview" class="epass42-actions" style="margin-top: 12px">
           <NButton type="primary" :loading="busy" :disabled="!canApprove" @click="approve">

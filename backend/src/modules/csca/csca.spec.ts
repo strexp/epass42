@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   certificateCoversDocumentType,
+  createCscaRoot,
   derToPem,
   documentTypesOfCertificate,
   generateRsaKeyPair,
@@ -16,6 +17,7 @@ import type { Db } from '../../db/client'
 import { cscaKey, dscCert } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { currentCscaKey } from './service'
+import type { CscaService } from './service'
 import { privateKeyNotAfter } from '../../util/certificate'
 
 const THIRD_USER = {
@@ -42,6 +44,7 @@ interface Harness {
   userCookie: string
   cscaPem: string
   db: Db
+  csca: CscaService
 }
 
 async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promise<Harness> {
@@ -72,6 +75,7 @@ async function harness(cscaClaims: Record<string, unknown> = CSCA_ADMIN): Promis
     userCookie,
     cscaPem,
     db: built.dbHandle.db,
+    csca: built.csca,
   }
 }
 
@@ -906,6 +910,120 @@ describe('M5 CSCA role', () => {
     const days = (end.getTime() - Date.now()) / 86_400_000
     expect(days).toBeGreaterThan(88)
     expect(days).toBeLessThan(92)
+  })
+
+  it('publishes the certificate and private-key validity in the status', async () => {
+    const { app } = await harness()
+    const status = await app.inject({ method: 'GET', url: '/csca/status' })
+    expect(status.statusCode).toBe(200)
+    const csca = json(status).csca as {
+      notBefore: string | null
+      notAfter: string | null
+      privateKeyNotAfter: string | null
+      effectiveNotAfter: string | null
+      certificateExpired: boolean
+      privateKeyExpired: boolean
+    }
+    expect(csca.notBefore).toBeTruthy()
+    expect(csca.notAfter).toBeTruthy()
+    expect(csca.privateKeyNotAfter).toBeTruthy()
+    expect(csca.certificateExpired).toBe(false)
+    expect(csca.privateKeyExpired).toBe(false)
+    // The default private-key period (4 years) is earlier than the 13-year cert.
+    expect(csca.effectiveNotAfter).toBe(csca.privateKeyNotAfter)
+  })
+
+  it('blocks issuance when the CSCA private-key usage period has ended', async () => {
+    const { app, cscaCookie, db, csca } = await harness()
+    const current = currentCscaKey(db)!
+    const pair = await csca.loadKeyPair(current)
+    const now = new Date()
+    const generated = await createCscaRoot(
+      {
+        commonName: 'Expired-key CSCA',
+        notBefore: new Date(now.getTime() - 86_400_000),
+        notAfter: new Date(now.getTime() + 10 * 365 * 86_400_000),
+        privateKeyNotAfter: new Date(now.getTime() - 86_400_000),
+        crlDistributionPoints: ['ldap://epass42.local/c=XD'],
+        hash: 'SHA-256',
+      },
+      pair,
+    )
+    db.update(cscaKey)
+      .set({
+        certPem: generated.pem,
+        notBefore: generated.certificate.notBefore.toISOString(),
+        notAfter: generated.certificate.notAfter.toISOString(),
+      })
+      .where(eq(cscaKey.id, current.id))
+      .run()
+
+    expect(csca.canIssueCertificates()).toBe(false)
+    const status = await app.inject({ method: 'GET', url: '/csca/status' })
+    expect((json(status).csca as { privateKeyExpired: boolean }).privateKeyExpired).toBe(true)
+    expect(json(status).canIssueCertificates).toBe(false)
+
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Blocked by key period' },
+    })
+    expect(submit.statusCode).toBe(409)
+    expect(json(submit).error).toBe('csca_expired')
+
+    // A CRL also cannot be signed with a key past its usage period.
+    const crl = await app.inject({
+      method: 'POST',
+      url: '/csca/crl/generate',
+      headers: { cookie: cscaCookie },
+    })
+    expect(crl.statusCode).toBe(409)
+    expect(json(crl).error).toBe('csca_expired')
+  })
+
+  it('does not offer an expired owned DSC for maintainer delegation', async () => {
+    const { app, cscaCookie, db } = await harness()
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Delegated but soon expired' },
+    })
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${json(submit).id as number}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const certId = json(approve).id as number
+
+    const before = await app.inject({
+      method: 'GET',
+      url: '/csca/settings/mnt',
+      headers: { cookie: cscaCookie },
+    })
+    expect(json(before).hasActiveDsc).toBe(true)
+
+    db.update(dscCert)
+      .set({ notAfter: '2000-01-01T00:00:00.000Z' })
+      .where(eq(dscCert.id, certId))
+      .run()
+
+    const after = await app.inject({
+      method: 'GET',
+      url: '/csca/settings/mnt',
+      headers: { cookie: cscaCookie },
+    })
+    expect(json(after).hasActiveDsc).toBe(false)
+    const optOut = await app.inject({
+      method: 'PUT',
+      url: '/csca/settings/mnt',
+      headers: { cookie: cscaCookie },
+      payload: { useNiaDsc: false },
+    })
+    expect(optOut.statusCode).toBe(409)
+    expect(json(optOut).error).toBe('no_active_dsc')
   })
 
   it('rejects unsafe subject names and DSC validity above 10 years', async () => {

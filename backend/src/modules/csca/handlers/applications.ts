@@ -1,197 +1,119 @@
 /**
  * CSCA DSC application routes (M5): submission, listing and review.
+ *
+ * The shared workflow owns the submit/list/view/approve/reject skeleton; this
+ * module supplies the signer-specific body, table access and issuance callback.
  */
 import type { FastifyInstance } from 'fastify'
-import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { writeAudit } from '../../../audit/audit'
+import { AppError } from '@epass42/shared'
+
 import { dscApplication, dscCert } from '../../../db/schema'
 import { nowIso } from '../../../util/time'
-import { requireAdmin, requireSession } from '../../auth/middleware'
+import { registerApplicationWorkflow } from '../../../certificates/applicationRoutes'
+import { resolveValidityDays } from '../../../certificates/policy'
 import { applicationBody, certMetadata, type CscaRouteDeps } from '../routeContext'
+
+type DscApplicationRow = typeof dscApplication.$inferSelect
 
 /** Registers the application submission and review routes. */
 export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteDeps): void {
-  const server = app.withTypeProvider<ZodTypeProvider>()
-  const { db, service } = deps
+  const { db, service, config } = deps
 
-  server.post(
-    '/csca/applications',
-    { schema: { body: applicationBody }, preHandler: requireSession(deps, 'csca') },
-    async (request, reply) => {
-      const principal = request.principal!
+  const action = (prefix: 'dsc' | 'lds2') => `${prefix}.application`
+
+  registerApplicationWorkflow<
+    DscApplicationRow,
+    z.infer<typeof applicationBody>,
+    Record<string, never>
+  >(app, deps, {
+    basePath: '/csca/applications',
+    realm: 'csca',
+    targetType: 'dsc_application',
+    bodySchema: applicationBody,
+    approveBodySchema: z.object({}).nullish(),
+    actions: {
+      submit: (body) => `${action(body.certificateType === 'lds2' ? 'lds2' : 'dsc')}.submit`,
+      view: (row) => `${action(row.certificateType === 'lds2' ? 'lds2' : 'dsc')}.view`,
+      approve: (row) => `${action(row.certificateType === 'lds2' ? 'lds2' : 'dsc')}.approve`,
+      reject: (row) => `${action(row.certificateType === 'lds2' ? 'lds2' : 'dsc')}.reject`,
+    },
+    submit(principal, body, ip) {
       // The comparison with the expiry is intentionally strict: when the CSCA
-      // is expired no new DSC/LDS2 application may be accepted.
-      if (!deps.service.canIssueCertificates()) {
-        return reply.code(409).send({ error: 'csca_expired' })
+      // is unusable, no new DSC/LDS2 application may be accepted.
+      if (!service.canIssueCertificates()) {
+        throw new AppError('csca_expired', 'the CSCA certificate has expired', 409)
       }
-      if (
-        request.body.keyMode === 'user_uploaded' &&
-        !request.body.csrPem &&
-        !request.body.publicKeyPem
-      ) {
-        return reply.code(400).send({ error: 'csr_or_public_key_required' })
+      if (body.keyMode === 'user_uploaded' && !body.csrPem && !body.publicKeyPem) {
+        throw new AppError('csr_or_public_key_required', 'csr or public key required', 400)
       }
-      const isLds2 = request.body.certificateType === 'lds2'
+      const isLds2 = body.certificateType === 'lds2'
       const result = db
         .insert(dscApplication)
         .values({
           mnt: principal.account.activeMnt,
           applicantAccountId: principal.account.id,
-          ip: request.ip,
-          keyMode: request.body.keyMode,
-          certificateType: request.body.certificateType,
-          subjectCn: request.body.subjectCn.trim(),
+          ip,
+          keyMode: body.keyMode,
+          certificateType: body.certificateType,
+          subjectCn: body.subjectCn.trim(),
           // LDS2 Signer subjects hold C and CN only (Doc 9303-12 §7.1.2).
-          subjectO: isLds2 ? null : request.body.subjectO?.trim() || null,
-          subjectOu: isLds2 ? null : request.body.subjectOu?.trim() || null,
-          csrPem: request.body.csrPem ?? null,
-          publicKeyPem: request.body.publicKeyPem ?? null,
+          subjectO: isLds2 ? null : body.subjectO?.trim() || null,
+          subjectOu: isLds2 ? null : body.subjectOu?.trim() || null,
+          csrPem: body.csrPem ?? null,
+          publicKeyPem: body.publicKeyPem ?? null,
           // A DSC carries DocumentTypes; an LDS2 Signer carries its roles.
-          documentTypes: isLds2 ? null : request.body.documentTypes,
-          lds2Types: isLds2 ? [...new Set(request.body.lds2Types ?? [])] : null,
-          validityDays:
-            request.body.validityDays ?? (isLds2 ? deps.config.csca.lds2.validityDays : 3650),
-          issuancePolicy: request.body.issuancePolicy ?? null,
-          applicationUrl: request.body.applicationUrl ?? null,
-          notes: request.body.notes ?? null,
+          documentTypes: isLds2 ? null : body.documentTypes,
+          lds2Types: isLds2 ? [...new Set(body.lds2Types ?? [])] : null,
+          validityDays: resolveValidityDays(
+            isLds2 ? 'lds2' : 'dsc',
+            body.validityDays,
+            isLds2 ? config.csca.lds2.validityDays : undefined,
+          ),
+          issuancePolicy: body.issuancePolicy ?? null,
+          applicationUrl: body.applicationUrl ?? null,
+          notes: body.notes ?? null,
           status: 'submitted',
           createdAt: nowIso(),
         })
         .run()
-      const id = Number(result.lastInsertRowid)
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'csca',
-        action: isLds2 ? 'lds2.application.submit' : 'dsc.application.submit',
-        targetType: 'dsc_application',
-        targetId: id,
-        ip: request.ip,
-        detail: { certificateType: request.body.certificateType },
-      })
-      return reply.code(201).send({ id, status: 'submitted' })
+      return Number(result.lastInsertRowid)
     },
-  )
-
-  server.get(
-    '/csca/applications',
-    {
-      schema: {
-        querystring: z.object({
-          status: z.string().optional(),
-          limit: z.coerce.number().int().min(1).max(200).default(50),
-          offset: z.coerce.number().int().min(0).default(0),
-        }),
-      },
-      preHandler: requireSession(deps, 'csca'),
+    find(id) {
+      return db.select().from(dscApplication).where(eq(dscApplication.id, id)).get()
     },
-    async (request) => {
-      const principal = request.principal!
+    list(principal, query) {
       let rows = db.select().from(dscApplication).orderBy(desc(dscApplication.id)).all()
       // Non-admins only see their own applications.
       if (!principal.isAdmin) {
         rows = rows.filter((row) => row.applicantAccountId === principal.account.id)
       }
-      rows = rows.filter((row) => !request.query.status || row.status === request.query.status)
-      const page = rows.slice(request.query.offset, request.query.offset + request.query.limit)
-      return { total: rows.length, items: page, scope: principal.isAdmin ? 'all' : 'own' }
-    },
-  )
-
-  server.get(
-    '/csca/applications/:id',
-    {
-      schema: { params: z.object({ id: z.coerce.number().int().positive() }) },
-      preHandler: requireSession(deps, 'csca'),
-    },
-    async (request, reply) => {
-      const principal = request.principal!
-      const row = db
-        .select()
-        .from(dscApplication)
-        .where(eq(dscApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (!principal.isAdmin && row.applicantAccountId !== principal.account.id) {
-        return reply.code(403).send({ error: 'forbidden' })
+      rows = rows.filter((row) => !query.status || row.status === query.status)
+      return {
+        total: rows.length,
+        items: rows.slice(query.offset, query.offset + query.limit),
+        scope: principal.isAdmin ? 'all' : 'own',
       }
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'csca',
-        action: row.certificateType === 'lds2' ? 'lds2.application.view' : 'dsc.application.view',
-        targetType: 'dsc_application',
-        targetId: row.id,
-        ip: request.ip,
-      })
+    },
+    async approve(row, principal) {
+      const cert = await service.approve(row, principal.account.id)
+      return certMetadata(cert)
+    },
+    reject(row, principal, reason) {
+      service.reject(row, principal.account.id, reason)
+    },
+    detail(row: DscApplicationRow) {
       // Whether the issued DSC's one-time private key is still available.
       const cert =
         row.dscCertId !== null
           ? db.select().from(dscCert).where(eq(dscCert.id, row.dscCertId)).get()
           : undefined
-      return { ...row, hasPrivateKey: cert?.keyRef != null }
+      return { hasPrivateKey: cert?.keyRef != null, certificate: cert ? certMetadata(cert) : null }
     },
-  )
-
-  server.post(
-    '/csca/applications/:id/approve',
-    {
-      schema: { params: z.object({ id: z.coerce.number().int().positive() }) },
-      preHandler: requireAdmin(deps, 'csca'),
+    submitDetail(body) {
+      return { certificateType: body.certificateType }
     },
-    async (request, reply) => {
-      const row = db
-        .select()
-        .from(dscApplication)
-        .where(eq(dscApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (row.status !== 'submitted')
-        return reply.code(409).send({ error: 'application_already_reviewed' })
-      const cert = await service.approve(row, request.principal!.account.id)
-      writeAudit(db, {
-        actorAccountId: request.principal!.account.id,
-        realm: 'csca',
-        action:
-          row.certificateType === 'lds2' ? 'lds2.application.approve' : 'dsc.application.approve',
-        targetType: 'dsc_application',
-        targetId: row.id,
-        ip: request.ip,
-      })
-      return reply.code(201).send(certMetadata(cert))
-    },
-  )
-
-  server.post(
-    '/csca/applications/:id/reject',
-    {
-      schema: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
-        body: z.object({ reason: z.string().min(1).max(2000) }),
-      },
-      preHandler: requireAdmin(deps, 'csca'),
-    },
-    async (request, reply) => {
-      const row = db
-        .select()
-        .from(dscApplication)
-        .where(eq(dscApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (row.status !== 'submitted')
-        return reply.code(409).send({ error: 'application_already_reviewed' })
-      service.reject(row, request.principal!.account.id, request.body.reason)
-      writeAudit(db, {
-        actorAccountId: request.principal!.account.id,
-        realm: 'csca',
-        action:
-          row.certificateType === 'lds2' ? 'lds2.application.reject' : 'dsc.application.reject',
-        targetType: 'dsc_application',
-        targetId: row.id,
-        ip: request.ip,
-      })
-      return reply.code(200).send({ id: row.id, status: 'rejected' })
-    },
-  )
+  })
 }

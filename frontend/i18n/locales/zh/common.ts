@@ -84,6 +84,8 @@ export default {
       separator: '、',
     },
     certificateType: '证书类型',
+    certificateValidity: '证书有效期',
+    privateKeyValidity: '私钥有效期至',
     dsc: 'DSC',
     lds2: 'LDS2',
     lds2Types: {

@@ -7,7 +7,7 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
-import { certificateValidity, signerValidity } from '../../../util/certificate'
+import { lifecycleCertificate } from '../../../certificates/status'
 import { writeAudit } from '../../../audit/audit'
 import { requireAdmin } from '../../auth/middleware'
 import { currentCscaKey, currentNiaDsc } from '../../csca/service'
@@ -21,26 +21,21 @@ export function registerLifecycleRoutes(app: FastifyInstance, deps: DscRouteDeps
   server.get('/dsc/status', async () => {
     const nia = currentNiaDsc(db)
     const csca = currentCscaKey(db)
-    const niaValidity = nia ? signerValidity(nia.notAfter, nia.certPem) : null
-    const cscaValidity = certificateValidity(csca?.notAfter)
+    const niaDsc = nia
+      ? lifecycleCertificate(nia, {
+          format: 'x509',
+          certPem: nia.certPem,
+          parentNotAfter: csca?.notAfter,
+        })
+      : null
+    const cscaStatus = csca
+      ? lifecycleCertificate(csca, { format: 'x509', certPem: csca.certPem })
+      : null
     return {
-      niaDsc: nia
-        ? {
-            id: nia.id,
-            serial: nia.serial,
-            status: nia.status,
-            ...niaValidity,
-          }
-        : null,
-      canIssueDocuments: Boolean(nia && niaValidity && !niaValidity.expired),
-      canRotateNiaDsc: csca !== undefined && !cscaValidity.expired,
-      csca: csca
-        ? {
-            id: csca.id,
-            serial: csca.serial,
-            ...cscaValidity,
-          }
-        : null,
+      niaDsc,
+      canIssueDocuments: Boolean(niaDsc && !niaDsc.expired),
+      canRotateNiaDsc: Boolean(cscaStatus && !cscaStatus.expired),
+      csca: cscaStatus,
     }
   })
 

@@ -16,10 +16,12 @@ import {
   dvPermissionsSchema,
 } from '@epass42/shared'
 
+import { certificatePolicy } from './certificates/policy'
+
 export const realmSchema = z.enum(['csca', 'cvca', 'dv', 'dsc', 'ml'])
 export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dv', 'dsc', 'ml'])
 
-/** The default (insecure) session secret used in development, also a legacy KEK. */
+/** The default (insecure) session secret used in development. */
 export const DEV_SESSION_SECRET = 'dev-insecure-session-secret-change-me'
 
 /** One configured OAuth provider (M4/T4.1). */
@@ -72,8 +74,18 @@ const cscaSchema = z.object({
   /** CSCA key algorithm (Doc 9303-12 §4.1.5 allows RSA/DSA/ECDSA). */
   algorithm: z.enum(['rsa', 'ecdsa']).default('rsa'),
   curve: z.enum(['P-256', 'P-384']).default('P-256'),
-  validityYears: z.number().int().min(1).default(13),
-  privateKeyUsageYears: z.number().int().min(1).default(4),
+  validityYears: z
+    .number()
+    .int()
+    .min(1)
+    .max(certificatePolicy('csca').maxValidityDays / 365)
+    .default(13),
+  privateKeyUsageYears: z
+    .number()
+    .int()
+    .min(1)
+    .max(certificatePolicy('csca').privateKeyUsage!.maxDays / 365)
+    .default(4),
   keyBits: z.number().int().default(4096),
   hash: z.enum(['SHA-256', 'SHA-384', 'SHA-512']).default('SHA-256'),
   pss: z.boolean().default(false),
@@ -93,7 +105,7 @@ const cscaSchema = z.object({
         .number()
         .int()
         .min(1)
-        .max(20 * 365)
+        .max(certificatePolicy('lds2').maxValidityDays)
         .default(3760),
     })
     .prefault({}),
@@ -109,7 +121,8 @@ const cvcaSchema = z.object({
   holderMnemonic: z.string().max(9).default('CVCA'),
   /**
    * CVCA key algorithm.  `ecdsa` (P-256) is required for Terminal
-   * Authentication trust points; `rsa` is kept for legacy use.
+   * Authentication trust points; `rsa` is supported for deployments that do not
+   * use Terminal Authentication.
    */
   algorithm: z.enum(['ecdsa', 'rsa']).default('ecdsa'),
   /** CVCA public key validity (months); the profile caps it at 3 years. */

@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
-import { certificateValidity } from '../../../util/certificate'
+import { lifecycleCertificate } from '../../../certificates/status'
 import { writeAudit } from '../../../audit/audit'
 import { requireAdmin } from '../../auth/middleware'
 import { currentCvcaKey, currentDefaultDv } from '../../cvca/service'
@@ -20,26 +20,18 @@ export function registerLifecycleRoutes(app: FastifyInstance, deps: DvRouteDeps)
   server.get('/dv/status', async () => {
     const dv = currentDefaultDv(db)
     const cvca = currentCvcaKey(db)
-    const dvValidity = certificateValidity(dv?.notAfter)
-    const cvcaValidity = certificateValidity(cvca?.notAfter)
+    const niaDv = dv
+      ? lifecycleCertificate(dv, {
+          format: 'cv',
+          parentNotAfter: cvca?.notAfter,
+        })
+      : null
+    const cvcaStatus = cvca ? lifecycleCertificate(cvca, { format: 'cv' }) : null
     return {
-      niaDv: dv
-        ? {
-            id: dv.id,
-            holderReference: dv.holderReference,
-            status: dv.status,
-            ...dvValidity,
-          }
-        : null,
-      canIssueTerminals: dv !== undefined && !dvValidity.expired,
-      canRotateNiaDv: cvca !== undefined && !cvcaValidity.expired,
-      cvca: cvca
-        ? {
-            id: cvca.id,
-            holderReference: cvca.holderReference,
-            ...cvcaValidity,
-          }
-        : null,
+      niaDv,
+      canIssueTerminals: Boolean(niaDv && !niaDv.expired),
+      canRotateNiaDv: Boolean(cvcaStatus && !cvcaStatus.expired),
+      cvca: cvcaStatus,
     }
   })
 

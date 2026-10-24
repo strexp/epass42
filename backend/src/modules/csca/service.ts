@@ -10,7 +10,7 @@ import type { CscaContext, CscaKeyRow, CrlRow, DscApplicationRow, DscCertRow } f
 import { CscaKeyService, currentCscaKey } from './keys'
 import { DscIssuanceService, currentNiaDsc } from './dscIssuance'
 import { CrlService } from './crlService'
-import { isCertificateExpired, signerValidity } from '../../util/certificate'
+import { effectiveValidity } from '../../util/certificate'
 
 export type { CscaKeyRow, DscCertRow, DscApplicationRow, CrlRow, CscaContext } from './context'
 export { currentCscaKey, currentNiaDsc }
@@ -30,13 +30,24 @@ export class CscaService {
   /** Whether the current CSCA certificate may issue new signer certificates. */
   canIssueCertificates(): boolean {
     const csca = currentCscaKey(this.ctx.db)
-    return Boolean(csca && !isCertificateExpired(csca.notAfter))
+    return Boolean(
+      csca &&
+      !effectiveValidity({ format: 'x509', notAfter: csca.notAfter, certPem: csca.certPem })
+        .expired,
+    )
   }
 
-  /** Whether a valid (existing, unexpired) NIA DSC is available. */
+  /** Whether a usable (existing, unexpired) NIA DSC is available. */
   hasUsableNiaDsc(): boolean {
     const nia = currentNiaDsc(this.ctx.db)
-    return Boolean(nia && !signerValidity(nia.notAfter, nia.certPem).expired)
+    if (!nia) return false
+    const csca = currentCscaKey(this.ctx.db)
+    return !effectiveValidity({
+      format: 'x509',
+      notAfter: nia.notAfter,
+      certPem: nia.certPem,
+      parentNotAfter: csca?.notAfter,
+    }).expired
   }
 
   /* Key lifecycle ------------------------------------------------------ */

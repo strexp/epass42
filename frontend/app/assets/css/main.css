@@ -51,6 +51,20 @@ body {
   align-items: center;
 }
 
+/* Help: role list on the left on desktop; NTabs switches to top on narrow screens. */
+.help-tabs.n-tabs--left .n-tabs-nav {
+  width: 240px;
+}
+.help-tabs.n-tabs--left .n-tabs-tab {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.epass42-validity-key {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
 .epass42-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;

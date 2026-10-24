@@ -27,7 +27,7 @@ import type { SignRequest } from '@epass42/shared'
 import StatusTag from '~/components/common/StatusTag.vue'
 import AdminActionIcon from '~/components/common/AdminActionIcon.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useDscStatus } from '~/composables/useLifecycleStatus'
+import { expiryDescription, useDscStatus } from '~/composables/useLifecycleStatus'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { documentTypeLabel } from '~/utils/documentTypes'
@@ -63,6 +63,18 @@ const dialog = useDialog()
 const notify = useNotify()
 const { auth, state, ensureLoaded, showAdmin } = useRealm('dsc')
 const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
+const niaDscExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.niaDsc ?? null,
+    {
+      missing: t('dsc.niaDscMissing'),
+      certificate: (date) => t('dsc.niaDscExpired', { date }),
+      privateKey: (date) => t('dsc.niaDscKeyExpired', { date }),
+      parent: (date) => t('dsc.cscaExpired', { date }),
+    },
+    formatDate,
+  ),
+)
 
 const reference = computed(() => String(route.params.reference ?? ''))
 const meta = ref<RequestMeta | null>(null)
@@ -385,11 +397,7 @@ onMounted(async () => {
         <ExpiryAlert
           v-if="lifecycle && !lifecycle.canIssueDocuments"
           :title="$t('dsc.signingPaused')"
-          :description="
-            lifecycle.niaDsc
-              ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
-              : $t('dsc.niaDscMissing')
-          "
+          :description="niaDscExpiryText"
         />
         <template v-if="reviewed?.payload">
           <NDescriptions :column="2" size="small" style="margin-top: 8px">

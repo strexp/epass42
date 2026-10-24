@@ -6,20 +6,31 @@ import { mergeSecurity, toSecurityOverlay } from './securityOptions'
 describe('security option normalisation', () => {
   const defaults = securityOptionsSchema.parse({})
 
-  it('maps the legacy flat shape onto the nested options', () => {
+  it('maps a nested partial overlay onto the defaults', () => {
     const overlay = toSecurityOverlay({
-      paceEcdhGm3des: false,
-      paceEcdhGmAes128: true,
-      aa: true,
-      ca: true,
-      caKeyId: 7,
+      pace: { ecdhGm3des: false, ecdhGmAes128: true },
+      aa: { enabled: true },
+      ca: { enabled: true, keyId: 7 },
+      ta: { enabled: true },
     })
     expect(mergeSecurity(defaults, overlay)).toEqual({
       pace: { ecdhGm3des: false, ecdhGmAes128: true },
       aa: { enabled: true, algorithm: 'rsaSha1' },
       ca: { enabled: true, keyId: 7 },
-      ta: defaults.ta,
+      ta: { ...defaults.ta, enabled: true },
     })
+  })
+
+  it('ignores the removed flat shape', () => {
+    expect(
+      toSecurityOverlay({
+        paceEcdhGm3des: false,
+        paceEcdhGmAes128: true,
+        aa: true,
+        ca: true,
+        caKeyId: 7,
+      }),
+    ).toEqual({})
   })
 
   it('merges nested overlays without erasing untouched fields', () => {

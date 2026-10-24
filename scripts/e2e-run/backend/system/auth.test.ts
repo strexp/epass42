@@ -20,11 +20,19 @@ describe('backend e2e — system and authentication', () => {
         roles: string[]
         countryAlpha2: string
         countryAlpha3: string
+        certificatePolicies: Record<
+          'dsc' | 'lds2' | 'dv' | 'terminal',
+          { maxValidityDays: number; defaultValidityDays: number }
+        >
         oauthProviders: Record<string, { id: number; alias: string }[]>
       }>()
       expect(body.roles).toEqual(['pkd', 'csca', 'cvca', 'dv', 'dsc', 'ml'])
       expect(body.countryAlpha2).toBe('XD')
       expect(body.countryAlpha3).toBe('XDN')
+      expect(body.certificatePolicies.dsc.maxValidityDays).toBe(3650)
+      expect(body.certificatePolicies.lds2.maxValidityDays).toBe(3760)
+      expect(body.certificatePolicies.dv.maxValidityDays).toBe(92)
+      expect(body.certificatePolicies.terminal.defaultValidityDays).toBe(90)
       for (const realm of ['csca', 'cvca', 'dv', 'dsc', 'ml']) {
         expect(body.oauthProviders[realm]?.length).toBe(1)
         expect(body.oauthProviders[realm]?.[0]?.alias).toBeTruthy()
@@ -41,6 +49,7 @@ describe('backend e2e — system and authentication', () => {
         '/healthz',
         '/csca/applications',
         '/cvca/applications',
+        '/cvca/status',
         '/dv/terminal-applications',
         '/dsc/requests',
         '/ml/status',

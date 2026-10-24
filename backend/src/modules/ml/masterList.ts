@@ -11,7 +11,7 @@ import { buildMasterList, parseCertificatePem, type HashName } from '@epass42/pk
 import { AppError } from '@epass42/shared'
 
 import { cscaKey, masterList } from '../../db/schema'
-import { certificateValidity } from '../../util/certificate'
+import { effectiveValidity } from '../../util/certificate'
 import { nowIso } from '../../util/time'
 import type { MasterListRow, MlContext } from './context'
 import type { MlSignerService } from './signers'
@@ -34,7 +34,15 @@ export class MlMasterListService {
     if (!signer) {
       throw new AppError('ml_signer_missing', 'no active ML signer; create one first', 409)
     }
-    if (certificateValidity(signer.notAfter).expired) {
+    const csca = this.ctx.db.select().from(cscaKey).where(eq(cscaKey.isCurrent, true)).get()
+    if (
+      effectiveValidity({
+        format: 'x509',
+        notAfter: signer.notAfter,
+        certPem: signer.certPem,
+        parentNotAfter: csca?.notAfter,
+      }).expired
+    ) {
       throw new AppError(
         'ml_signer_expired',
         'the active ML signer has expired; rotate it first',

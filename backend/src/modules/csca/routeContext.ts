@@ -12,6 +12,7 @@ import {
   isValidSubjectName,
 } from '@epass42/shared'
 import type { dscCert } from '../../db/schema'
+import { certificatePolicy } from '../../certificates/policy'
 import { documentTypesOf } from '../../util/cert'
 import { privateKeyNotAfter } from '../../util/certificate'
 import type { AuthContext } from '../auth/middleware'
@@ -59,14 +60,21 @@ export const applicationBody = z
       .number()
       .int()
       .min(1)
-      .max(20 * 365)
+      .max(
+        Math.max(
+          certificatePolicy('dsc').maxValidityDays,
+          certificatePolicy('lds2').maxValidityDays,
+        ),
+      )
       .optional(),
     issuancePolicy: z.string().max(500).optional(),
     applicationUrl: z.string().url().max(2000).optional(),
     notes: z.string().max(2000).optional(),
   })
   .superRefine((body, ctx) => {
-    const maxValidityDays = body.certificateType === 'lds2' ? 3760 : 10 * 365
+    const maxValidityDays = certificatePolicy(
+      body.certificateType === 'lds2' ? 'lds2' : 'dsc',
+    ).maxValidityDays
     if (body.validityDays !== undefined && body.validityDays > maxValidityDays) {
       ctx.addIssue({ code: 'custom', path: ['validityDays'], message: 'validity_too_long' })
     }

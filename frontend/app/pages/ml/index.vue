@@ -19,6 +19,7 @@ import { useRealm } from '~/composables/useRealm'
 import { useMlStatus } from '~/composables/useLifecycleStatus'
 import StatusTag from '~/components/common/StatusTag.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import ValidityCell from '~/components/common/ValidityCell.vue'
 import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 
 definePageMeta({ layout: 'realm' })
@@ -211,7 +212,11 @@ onMounted(async () => {
               <StatusTag :status="signer.status" />
             </NDescriptionsItem>
             <NDescriptionsItem :label="$t('ml.signerValidity')">
-              {{ formatDate(signer.notBefore) }} → {{ formatDate(signer.notAfter) }}
+              <ValidityCell
+                :not-before="signer.notBefore"
+                :not-after="signer.notAfter"
+                :private-key-not-after="signer.privateKeyNotAfter"
+              />
             </NDescriptionsItem>
             <NDescriptionsItem :label="$t('ml.signerKeyAlgorithm')">
               {{ signer.keyAlgorithm ?? '—' }}

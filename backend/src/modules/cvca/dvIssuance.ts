@@ -29,7 +29,8 @@ import {
 } from '@epass42/pki'
 
 import { dvApplication, dvCert, terminalApplication, terminalCert } from '../../db/schema'
-import { isCertificateExpired } from '../../util/certificate'
+import { clampNotAfter, effectiveValidity } from '../../util/certificate'
+import { resolveValidityDays } from '../../certificates/policy'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
 import {
@@ -42,7 +43,7 @@ import {
   type TerminalApplicationRow,
   type TerminalCertRow,
 } from './context'
-import type { CvcaKeyService } from './keys'
+import { currentCvcaKey, type CvcaKeyService } from './keys'
 
 /** Parses stored permissions JSON (falling back to the all-false default). */
 export function parsePermissions(json: string | null): DvPermissions {
@@ -96,7 +97,7 @@ export class DvIssuanceService {
     if (existing) return existing
     const cvca = await this.keys.ensure()
     if (!cvca) return undefined
-    if (isCertificateExpired(cvca.notAfter)) return undefined
+    if (effectiveValidity({ format: 'cv', notAfter: cvca.notAfter }).expired) return undefined
     const cvcaPair = await this.keys.loadKeyPair(cvca)
     const { config } = this.ctx
     return this.issueDv({
@@ -121,7 +122,7 @@ export class DvIssuanceService {
   async rotateDefaultDv(): Promise<{ previous: DvCertRow | null; current: DvCertRow }> {
     const cvca = await this.keys.ensure()
     if (!cvca) throw new Error('no CVCA key available')
-    if (isCertificateExpired(cvca.notAfter)) {
+    if (effectiveValidity({ format: 'cv', notAfter: cvca.notAfter }).expired) {
       throw new AppError(
         'cvca_expired',
         'the CVCA certificate has expired; roll the CVCA key over first',
@@ -194,6 +195,15 @@ export class DvIssuanceService {
   }): Promise<DvCertRow> {
     const { config, db, keks } = this.ctx
     const now = new Date()
+    if (effectiveValidity({ format: 'cv', notAfter: params.cvca.notAfter }).expired) {
+      throw new AppError(
+        'cvca_expired',
+        'the CVCA certificate has expired; roll the CVCA key over first',
+        409,
+      )
+    }
+    // A DV never outlives the CVCA certificate that signs it.
+    const notAfter = clampNotAfter(addDays(now, params.validityDays), params.cvca.notAfter)
 
     let publicKey: CvPublicKey
     let sealedKey: string | null = null
@@ -216,7 +226,7 @@ export class DvIssuanceService {
         dvClass: params.dvClass,
         permissions: params.permissions,
         notBefore: now,
-        notAfter: addDays(now, params.validityDays),
+        notAfter,
         publicKey,
       },
       { authorityReference: params.cvca.holderReference, key: params.cvcaPair },
@@ -277,6 +287,13 @@ export class DvIssuanceService {
   ): Promise<DvCertRow> {
     const cvca = await this.keys.ensure()
     if (!cvca) throw new Error('no CVCA key available')
+    if (effectiveValidity({ format: 'cv', notAfter: cvca.notAfter }).expired) {
+      throw new AppError(
+        'cvca_expired',
+        'the CVCA certificate has expired; roll the CVCA key over first',
+        409,
+      )
+    }
     const cvcaPair = await this.keys.loadKeyPair(cvca)
 
     const requested = parsePermissions(application.permissionsJson)
@@ -293,7 +310,11 @@ export class DvIssuanceService {
       holderMnemonic: holderMnemonicOf(application),
       dvClass,
       permissions,
-      validityDays: application.validityDays ?? this.ctx.config.cvca.dv.validityDays,
+      validityDays: resolveValidityDays(
+        'dv',
+        application.validityDays,
+        this.ctx.config.cvca.dv.validityDays,
+      ),
       mnt: application.mnt,
       keyMode,
       publicKey,
@@ -370,6 +391,21 @@ export class DvIssuanceService {
   ): Promise<TerminalCertRow> {
     const { config, db, keks } = this.ctx
     const now = new Date()
+    const cvca = currentCvcaKey(db)
+    // A terminal certificate must chain to a usable DV and CVCA.
+    if (
+      effectiveValidity({
+        format: 'cv',
+        notAfter: dv.notAfter,
+        parentNotAfter: cvca?.notAfter,
+      }).expired
+    ) {
+      throw new AppError(
+        'dv_expired',
+        'the signing Document Verifier or its CVCA has expired; issue or rotate a DV first',
+        409,
+      )
+    }
     const dvPair = await this.loadDvKeyPair(dv)
     const grant = parsePermissions(dv.permissionsJson)
     // An absent request authorization inherits the DV's grant; an explicit one
@@ -399,7 +435,10 @@ export class DvIssuanceService {
         role: 'terminal',
         permissions,
         notBefore: now,
-        notAfter: addDays(now, params.validityDays),
+        notAfter: clampNotAfter(
+          clampNotAfter(addDays(now, params.validityDays), dv.notAfter),
+          cvca?.notAfter,
+        ),
         publicKey,
       },
       { authorityReference: dv.holderReference, key: dvPair },
@@ -453,7 +492,11 @@ export class DvIssuanceService {
       subjectCn: application.subjectCn,
       holderMnemonic: holderMnemonicOf(application),
       permissions,
-      validityDays: application.validityDays ?? this.ctx.config.cvca.dv.validityDays,
+      validityDays: resolveValidityDays(
+        'terminal',
+        application.validityDays,
+        this.ctx.config.cvca.dv.validityDays,
+      ),
       mnt: application.mnt,
       keyMode,
       publicKey,

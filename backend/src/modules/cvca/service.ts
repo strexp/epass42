@@ -5,10 +5,13 @@
  * single entry point consumed by the routes, the PKD directory and the DSC
  * personalization builder.
  */
+import { and, eq } from 'drizzle-orm'
+
 import { AppError, type DvClass, type DvPermissions } from '@epass42/shared'
 import type { CvKeyPair, CvPublicKey } from '@epass42/pki'
 
-import { isCertificateExpired } from '../../util/certificate'
+import { effectiveValidity } from '../../util/certificate'
+import { dvCert } from '../../db/schema'
 import type {
   CvcaContext,
   CvcaKeyRow,
@@ -19,7 +22,7 @@ import type {
 } from './context'
 import { CvcaKeyService, currentCvcaKey, type CvcaTrustAnchor } from './keys'
 import { DvIssuanceService, currentDefaultDv, parsePermissions } from './dvIssuance'
-import { activeOwnDv, mntDelegatesToDefaultDv } from '../mnt/dvDelegation'
+import { mntDelegatesToDefaultDv } from '../mnt/dvDelegation'
 
 export type {
   CvcaKeyRow,
@@ -108,10 +111,22 @@ export class CvcaService {
     return this.dvs.rotateDefaultDv()
   }
 
-  /** Whether the NIA DV exists and has not expired. */
+  /** Whether the current CVCA certificate may issue new DV certificates. */
+  canIssueDvs(): boolean {
+    const cvca = currentCvcaKey(this.ctx.db)
+    return Boolean(cvca && !effectiveValidity({ format: 'cv', notAfter: cvca.notAfter }).expired)
+  }
+
+  /** Whether the NIA DV exists and is usable under the current CVCA. */
   canIssueTerminals(): boolean {
     const dv = currentDefaultDv(this.ctx.db)
-    return Boolean(dv && !isCertificateExpired(dv.notAfter))
+    if (!dv) return false
+    const cvca = currentCvcaKey(this.ctx.db)
+    return !effectiveValidity({
+      format: 'cv',
+      notAfter: dv.notAfter,
+      parentNotAfter: cvca?.notAfter,
+    }).expired
   }
 
   /** The current default (system) DV certificate, or undefined. */
@@ -125,8 +140,13 @@ export class CvcaService {
    */
   resolveDvSelection(mnt: string | null): DvCertRow | undefined {
     if (mnt !== null && !mntDelegatesToDefaultDv(this.ctx.db, mnt)) {
-      const own = activeOwnDv(this.ctx.db, mnt)
-      if (own) return own
+      // Never silently fall back to the default DV after a maintainer explicitly
+      // opted out: an expired own DV must be renewed or delegation re-enabled.
+      return this.ctx.db
+        .select()
+        .from(dvCert)
+        .where(and(eq(dvCert.mnt, mnt), eq(dvCert.status, 'active')))
+        .get()
     }
     return currentDefaultDv(this.ctx.db)
   }

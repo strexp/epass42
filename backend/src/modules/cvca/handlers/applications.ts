@@ -3,198 +3,119 @@
  *
  * Reviewers may override the applicant's requested LDS2 permissions before
  * approving; the override is recorded on the application and used for issuance.
+ * The shared workflow owns the route skeleton.
  */
 import type { FastifyInstance } from 'fastify'
-import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { dvClassSchema, dvPermissionsSchema } from '@epass42/shared'
+import { AppError, dvClassSchema, dvPermissionsSchema } from '@epass42/shared'
 
-import { writeAudit } from '../../../audit/audit'
 import { dvApplication, dvCert } from '../../../db/schema'
 import { nowIso } from '../../../util/time'
-import { requireAdmin, requireSession } from '../../auth/middleware'
+import { registerApplicationWorkflow } from '../../../certificates/applicationRoutes'
+import { resolveValidityDays } from '../../../certificates/policy'
 import { applicationBody, dvMetadata, type CvcaRouteDeps } from '../routeContext'
+
+type DvApplicationRow = typeof dvApplication.$inferSelect
+
+interface ApprovalBody {
+  permissions?: z.infer<typeof dvPermissionsSchema>
+  dvClass?: z.infer<typeof dvClassSchema>
+}
 
 /** Registers the DV application submission and review routes. */
 export function registerApplicationRoutes(app: FastifyInstance, deps: CvcaRouteDeps): void {
-  const server = app.withTypeProvider<ZodTypeProvider>()
-  const { db, service } = deps
+  const { db, service, config } = deps
 
-  server.post(
-    '/cvca/applications',
-    { schema: { body: applicationBody }, preHandler: requireSession(deps, 'cvca') },
-    async (request, reply) => {
-      const principal = request.principal!
-      if (
-        request.body.keyMode === 'user_uploaded' &&
-        !request.body.csrPem &&
-        !request.body.publicKeyPem
-      ) {
-        return reply.code(400).send({ error: 'csr_or_public_key_required' })
-      }
-      const result = db
-        .insert(dvApplication)
-        .values({
-          mnt: principal.account.activeMnt,
-          applicantAccountId: principal.account.id,
-          ip: request.ip,
-          keyMode: request.body.keyMode,
-          subjectCn: request.body.subjectCn.trim(),
-          holderMnemonic: request.body.holderMnemonic ?? null,
-          csrPem: request.body.csrPem ?? null,
-          publicKeyPem: request.body.publicKeyPem ?? null,
-          dvClass: request.body.dvClass,
-          permissionsJson: JSON.stringify(request.body.permissions),
-          validityDays: request.body.validityDays ?? null,
-          applicationUrl: request.body.applicationUrl ?? null,
-          notes: request.body.notes ?? null,
-          status: 'submitted',
-          createdAt: nowIso(),
+  registerApplicationWorkflow<DvApplicationRow, z.infer<typeof applicationBody>, ApprovalBody>(
+    app,
+    deps,
+    {
+      basePath: '/cvca/applications',
+      realm: 'cvca',
+      targetType: 'dv_application',
+      bodySchema: applicationBody,
+      approveBodySchema: z
+        .object({
+          permissions: dvPermissionsSchema.optional(),
+          dvClass: dvClassSchema.optional(),
         })
-        .run()
-      const id = Number(result.lastInsertRowid)
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'cvca',
-        action: 'dv.application.submit',
-        targetType: 'dv_application',
-        targetId: id,
-        ip: request.ip,
-      })
-      return reply.code(201).send({ id, status: 'submitted' })
-    },
-  )
-
-  server.get(
-    '/cvca/applications',
-    {
-      schema: {
-        querystring: z.object({
-          status: z.string().optional(),
-          limit: z.coerce.number().int().min(1).max(200).default(50),
-          offset: z.coerce.number().int().min(0).default(0),
-        }),
+        .nullish(),
+      actions: {
+        submit: 'dv.application.submit',
+        view: 'dv.application.view',
+        approve: 'dv.application.approve',
+        reject: 'dv.application.reject',
       },
-      preHandler: requireSession(deps, 'cvca'),
-    },
-    async (request) => {
-      const principal = request.principal!
-      let rows = db.select().from(dvApplication).orderBy(desc(dvApplication.id)).all()
-      // Non-admins only see their own applications.
-      if (!principal.isAdmin) {
-        rows = rows.filter((row) => row.applicantAccountId === principal.account.id)
-      }
-      rows = rows.filter((row) => !request.query.status || row.status === request.query.status)
-      const page = rows.slice(request.query.offset, request.query.offset + request.query.limit)
-      return { total: rows.length, items: page, scope: principal.isAdmin ? 'all' : 'own' }
-    },
-  )
-
-  server.get(
-    '/cvca/applications/:id',
-    {
-      schema: { params: z.object({ id: z.coerce.number().int().positive() }) },
-      preHandler: requireSession(deps, 'cvca'),
-    },
-    async (request, reply) => {
-      const principal = request.principal!
-      const row = db
-        .select()
-        .from(dvApplication)
-        .where(eq(dvApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (!principal.isAdmin && row.applicantAccountId !== principal.account.id) {
-        return reply.code(403).send({ error: 'forbidden' })
-      }
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'cvca',
-        action: 'dv.application.view',
-        targetType: 'dv_application',
-        targetId: row.id,
-        ip: request.ip,
-      })
-      // Whether the issued DV's one-time private key is still available.
-      const cert =
-        row.dvCertId !== null
-          ? db.select().from(dvCert).where(eq(dvCert.id, row.dvCertId)).get()
-          : undefined
-      return { ...row, hasPrivateKey: cert?.keyRef != null }
-    },
-  )
-
-  server.post(
-    '/cvca/applications/:id/approve',
-    {
-      schema: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
-        body: z
-          .object({
-            permissions: dvPermissionsSchema.optional(),
-            dvClass: dvClassSchema.optional(),
+      submit(principal, body, ip) {
+        if (!service.canIssueDvs()) {
+          throw new AppError('cvca_expired', 'the CVCA certificate has expired', 409)
+        }
+        if (body.keyMode === 'user_uploaded' && !body.csrPem && !body.publicKeyPem) {
+          throw new AppError('csr_or_public_key_required', 'csr or public key required', 400)
+        }
+        const result = db
+          .insert(dvApplication)
+          .values({
+            mnt: principal.account.activeMnt,
+            applicantAccountId: principal.account.id,
+            ip,
+            keyMode: body.keyMode,
+            subjectCn: body.subjectCn.trim(),
+            holderMnemonic: body.holderMnemonic ?? null,
+            csrPem: body.csrPem ?? null,
+            publicKeyPem: body.publicKeyPem ?? null,
+            dvClass: body.dvClass,
+            permissionsJson: JSON.stringify(body.permissions),
+            validityDays: resolveValidityDays('dv', body.validityDays, config.cvca.dv.validityDays),
+            applicationUrl: body.applicationUrl ?? null,
+            notes: body.notes ?? null,
+            status: 'submitted',
+            createdAt: nowIso(),
           })
-          .nullish(),
+          .run()
+        return Number(result.lastInsertRowid)
       },
-      preHandler: requireAdmin(deps, 'cvca'),
-    },
-    async (request, reply) => {
-      const row = db
-        .select()
-        .from(dvApplication)
-        .where(eq(dvApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (row.status !== 'submitted')
-        return reply.code(409).send({ error: 'application_already_reviewed' })
-      const override = {
-        permissions: request.body?.permissions,
-        dvClass: request.body?.dvClass,
-      }
-      const cert = await service.approve(row, request.principal!.account.id, override)
-      writeAudit(db, {
-        actorAccountId: request.principal!.account.id,
-        realm: 'cvca',
-        action: 'dv.application.approve',
-        targetType: 'dv_application',
-        targetId: row.id,
-        ip: request.ip,
-        detail: override.permissions || override.dvClass ? { override: true } : undefined,
-      })
-      return reply.code(201).send(dvMetadata(cert))
-    },
-  )
-
-  server.post(
-    '/cvca/applications/:id/reject',
-    {
-      schema: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
-        body: z.object({ reason: z.string().min(1).max(2000) }),
+      find(id) {
+        return db.select().from(dvApplication).where(eq(dvApplication.id, id)).get()
       },
-      preHandler: requireAdmin(deps, 'cvca'),
-    },
-    async (request, reply) => {
-      const row = db
-        .select()
-        .from(dvApplication)
-        .where(eq(dvApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (row.status !== 'submitted')
-        return reply.code(409).send({ error: 'application_already_reviewed' })
-      service.reject(row, request.principal!.account.id, request.body.reason)
-      writeAudit(db, {
-        actorAccountId: request.principal!.account.id,
-        realm: 'cvca',
-        action: 'dv.application.reject',
-        targetType: 'dv_application',
-        targetId: row.id,
-        ip: request.ip,
-      })
-      return reply.code(200).send({ id: row.id, status: 'rejected' })
+      list(principal, query) {
+        let rows = db.select().from(dvApplication).orderBy(desc(dvApplication.id)).all()
+        // Non-admins only see their own applications.
+        if (!principal.isAdmin) {
+          rows = rows.filter((row) => row.applicantAccountId === principal.account.id)
+        }
+        rows = rows.filter((row) => !query.status || row.status === query.status)
+        return {
+          total: rows.length,
+          items: rows.slice(query.offset, query.offset + query.limit),
+          scope: principal.isAdmin ? 'all' : 'own',
+        }
+      },
+      async approve(row, principal, body) {
+        const override = {
+          permissions: (body as ApprovalBody | null | undefined)?.permissions,
+          dvClass: (body as ApprovalBody | null | undefined)?.dvClass,
+        }
+        const cert = await service.approve(row, principal.account.id, override)
+        return dvMetadata(cert)
+      },
+      reject(row, principal, reason) {
+        service.reject(row, principal.account.id, reason)
+      },
+      detail(row) {
+        // Whether the issued DV's one-time private key is still available.
+        const cert =
+          row.dvCertId !== null
+            ? db.select().from(dvCert).where(eq(dvCert.id, row.dvCertId)).get()
+            : undefined
+        return { hasPrivateKey: cert?.keyRef != null, certificate: cert ? dvMetadata(cert) : null }
+      },
+      approveDetail(body) {
+        const override = body as ApprovalBody | null | undefined
+        return override?.permissions || override?.dvClass ? { override: true } : undefined
+      },
     },
   )
 }

@@ -76,6 +76,9 @@ export default {
   rollover: 'Roll over CVCA key',
   rolloverWarning:
     'This creates a new CVCA key and publishes a link certificate from the previous key. Already-issued certificates stay valid, but the change cannot be undone. Continue?',
-  adminActionsHint:
-    'Authority-level operations. Each one asks for confirmation and cannot be undone.',
+  caTitle: 'CVCA certificate',
+  defaultDvTitle: 'Default DV',
+  expiredTitle: 'CVCA expired',
+  expiredWarning:
+    'The CVCA certificate expired on {date}. DV and terminal issuance is paused; roll the CVCA key over.',
 } as const

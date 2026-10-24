@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { writeAudit } from '../../../audit/audit'
 import { dvCert } from '../../../db/schema'
 import { requireAdmin, requireSession } from '../../auth/middleware'
+import { sendPrivateKeyOnce } from '../../../certificates/privateKey'
 import { dvMetadata, type CvcaRouteDeps } from '../routeContext'
 
 /** Registers the CVCA certificate management routes. */
@@ -49,32 +50,26 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CvcaRouteD
       if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
       const own = row.mnt !== null && row.mnt === principal.account.activeMnt
       if (!principal.isAdmin && !own) return reply.code(403).send({ error: 'forbidden' })
-      if (!row.keyRef) {
-        const uploaded = row.keyMode === 'user_uploaded'
-        return reply
-          .code(uploaded ? 404 : 410)
-          .send({ error: uploaded ? 'no_private_key' : 'private_key_consumed' })
-      }
-      const pem = service.exportDvPrivateKey(row)
-      const cleared = db
-        .update(dvCert)
-        .set({ keyRef: null })
-        .where(and(eq(dvCert.id, row.id), isNotNull(dvCert.keyRef)))
-        .run()
-      if (cleared.changes === 0) {
-        return reply.code(410).send({ error: 'private_key_consumed' })
-      }
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'cvca',
-        action: 'dv.certificate.key',
+      return sendPrivateKeyOnce({
+        reply,
+        db,
+        principal,
+        row,
+        keyRef: row.keyRef,
+        keyMode: row.keyMode,
+        exportKey: (target) => service.exportDvPrivateKey(target),
+        consume: (target) =>
+          db
+            .update(dvCert)
+            .set({ keyRef: null })
+            .where(and(eq(dvCert.id, target.id), isNotNull(dvCert.keyRef)))
+            .run().changes > 0,
         targetType: 'dv_cert',
+        action: 'dv.certificate.key',
         targetId: row.id,
+        filename: `dv-${row.id}.key`,
         ip: request.ip,
       })
-      reply.header('cache-control', 'no-store')
-      reply.header('content-disposition', `attachment; filename="dv-${row.id}.key"`)
-      return reply.type('application/x-pem-file').send(pem)
     },
   )
 

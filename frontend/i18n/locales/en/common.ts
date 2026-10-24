@@ -86,6 +86,8 @@ export default {
       separator: ', ',
     },
     certificateType: 'Certificate type',
+    certificateValidity: 'Certificate validity',
+    privateKeyValidity: 'Private key valid until',
     dsc: 'DSC',
     lds2: 'LDS2',
     lds2Types: {

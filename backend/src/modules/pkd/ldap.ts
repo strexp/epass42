@@ -1,5 +1,5 @@
 /**
- * Read-only LDAP compatibility layer (M9/T9.4).
+ * Read-only LDAP directory (M9/T9.4).
  *
  * Exposes the same DIT as the REST/LDIF surfaces using `ldapjs`: only Bind and
  * Search are implemented, no write operations.  Started by the entrypoint when

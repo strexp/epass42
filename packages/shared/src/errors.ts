@@ -18,6 +18,7 @@ export const ERROR_CODES = [
   // CSCA / DSC
   'application_not_found',
   'application_already_reviewed',
+  'csr_or_public_key_required',
   'certificate_not_found',
   'mrz_invalid',
   'document_number_conflict',
@@ -30,6 +31,7 @@ export const ERROR_CODES = [
   'nia_dsc_expired',
   'dsc_expired',
   'nia_dv_expired',
+  'dv_expired',
   'cvca_expired',
   'certificate_not_active',
   'no_private_key',

@@ -10,9 +10,11 @@
 import { and, desc, eq, ne } from 'drizzle-orm'
 
 import { createCrl, parseCertificatePem, type HashName } from '@epass42/pki'
+import { AppError } from '@epass42/shared'
 
 import { crl, cscaKey, dscCert } from '../../db/schema'
 import { nowIso } from '../../util/time'
+import { effectiveValidity } from '../../util/certificate'
 import type { CscaContext, CscaKeyRow, CrlRow } from './context'
 import type { CscaKeyService } from './keys'
 import { currentCscaKey } from './keys'
@@ -70,6 +72,13 @@ export class CrlService {
    * interval has elapsed.
    */
   scheduleForKey(key: CscaKeyRow, now: Date = new Date()): CrlSchedule {
+    // A CRL cannot be signed after the CA certificate or its key period ends.
+    if (
+      effectiveValidity({ format: 'x509', notAfter: key.notAfter, certPem: key.certPem }, now)
+        .expired
+    ) {
+      return { issue: false, reason: 'expired' }
+    }
     const last = this.latestForKey(key.id)
     if (!last) return { issue: true, reason: 'none' }
     const revoked = this.ctx.db
@@ -110,6 +119,16 @@ export class CrlService {
    */
   async generateForKey(key: CscaKeyRow, now: Date = new Date()): Promise<CrlRow> {
     if (key.status === 'link') throw new Error('a link certificate does not issue a CRL')
+    if (
+      effectiveValidity({ format: 'x509', notAfter: key.notAfter, certPem: key.certPem }, now)
+        .expired
+    ) {
+      throw new AppError(
+        'csca_expired',
+        'the CSCA certificate or its private key has expired; a CRL cannot be signed',
+        409,
+      )
+    }
     const { db } = this.ctx
     const keyPair = await this.keys.loadKeyPair(key, this.ctx.config.csca.hash as HashName)
     const issuerCertificate = parseCertificatePem(key.certPem)

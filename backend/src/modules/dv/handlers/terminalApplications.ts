@@ -12,139 +12,132 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { dvPermissionsSchema } from '@epass42/shared'
+import { AppError, dvPermissionsSchema } from '@epass42/shared'
 
-import { writeAudit } from '../../../audit/audit'
 import { terminalApplication, terminalCert } from '../../../db/schema'
 import { nowIso } from '../../../util/time'
-import { certificateValidity } from '../../../util/certificate'
-import { requireAdmin, requireSession } from '../../auth/middleware'
+import { registerApplicationWorkflow } from '../../../certificates/applicationRoutes'
+import { resolveValidityDays } from '../../../certificates/policy'
+import { sendPrivateKeyOnce } from '../../../certificates/privateKey'
+import { lifecycleCertificate } from '../../../certificates/status'
+import { requireSession } from '../../auth/middleware'
 import { terminalMetadata } from '../../cvca/routeContext'
+import { currentCvcaKey } from '../../cvca/service'
 import { terminalApplicationBody, type DvRouteDeps } from '../routeContext'
+
+type TerminalApplicationRow = typeof terminalApplication.$inferSelect
 
 /** Registers the DV terminal application submission and review routes. */
 export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: DvRouteDeps): void {
-  const server = app.withTypeProvider<ZodTypeProvider>()
-  const { db, service } = deps
+  const { db, service, config } = deps
 
-  server.post(
-    '/dv/terminal-applications',
-    { schema: { body: terminalApplicationBody }, preHandler: requireSession(deps, 'dv') },
-    async (request, reply) => {
-      const principal = request.principal!
+  registerApplicationWorkflow<
+    TerminalApplicationRow,
+    z.infer<typeof terminalApplicationBody>,
+    { permissions?: z.infer<typeof dvPermissionsSchema> }
+  >(app, deps, {
+    basePath: '/dv/terminal-applications',
+    realm: 'dv',
+    targetType: 'terminal_application',
+    bodySchema: terminalApplicationBody,
+    approveBodySchema: z
+      .object({
+        permissions: dvPermissionsSchema.optional(),
+      })
+      .nullish(),
+    actions: {
+      submit: 'terminal.application.submit',
+      view: 'terminal.application.view',
+      approve: 'terminal.application.approve',
+      reject: 'terminal.application.reject',
+    },
+    submit(principal, body, ip) {
       // Strict lifecycle gate: no new IS application while the NIA DV is
       // expired or missing.
       if (!service.canIssueTerminals()) {
-        return reply.code(409).send({ error: 'nia_dv_expired' })
+        throw new AppError('nia_dv_expired', 'the NIA DV has expired', 409)
       }
-      if (
-        request.body.keyMode === 'user_uploaded' &&
-        !request.body.csrPem &&
-        !request.body.publicKeyPem
-      ) {
-        return reply.code(400).send({ error: 'csr_or_public_key_required' })
+      if (body.keyMode === 'user_uploaded' && !body.csrPem && !body.publicKeyPem) {
+        throw new AppError('csr_or_public_key_required', 'csr or public key required', 400)
       }
       const result = db
         .insert(terminalApplication)
         .values({
           mnt: principal.account.activeMnt,
           applicantAccountId: principal.account.id,
-          ip: request.ip,
-          keyMode: request.body.keyMode,
-          subjectCn: request.body.subjectCn.trim(),
-          holderMnemonic: request.body.holderMnemonic ?? null,
-          csrPem: request.body.csrPem ?? null,
-          publicKeyPem: request.body.publicKeyPem ?? null,
-          permissionsJson: JSON.stringify(request.body.permissions),
-          validityDays: request.body.validityDays ?? null,
-          notes: request.body.notes ?? null,
+          ip,
+          keyMode: body.keyMode,
+          subjectCn: body.subjectCn.trim(),
+          holderMnemonic: body.holderMnemonic ?? null,
+          csrPem: body.csrPem ?? null,
+          publicKeyPem: body.publicKeyPem ?? null,
+          permissionsJson: JSON.stringify(body.permissions),
+          validityDays: resolveValidityDays(
+            'terminal',
+            body.validityDays,
+            config.cvca.dv.validityDays,
+          ),
+          notes: body.notes ?? null,
           status: 'submitted',
           createdAt: nowIso(),
         })
         .run()
-      const id = Number(result.lastInsertRowid)
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'dv',
-        action: 'terminal.application.submit',
-        targetType: 'terminal_application',
-        targetId: id,
-        ip: request.ip,
-      })
-      return reply.code(201).send({ id, status: 'submitted' })
+      return Number(result.lastInsertRowid)
     },
-  )
-
-  server.get(
-    '/dv/terminal-applications',
-    {
-      schema: {
-        querystring: z.object({
-          status: z.string().optional(),
-          limit: z.coerce.number().int().min(1).max(200).default(50),
-          offset: z.coerce.number().int().min(0).default(0),
-        }),
-      },
-      preHandler: requireSession(deps, 'dv'),
+    find(id) {
+      return db.select().from(terminalApplication).where(eq(terminalApplication.id, id)).get()
     },
-    async (request) => {
-      const principal = request.principal!
+    list(principal, query) {
       let rows = db.select().from(terminalApplication).orderBy(desc(terminalApplication.id)).all()
       // Non-admins only see their own applications.
       if (!principal.isAdmin) {
         rows = rows.filter((row) => row.applicantAccountId === principal.account.id)
       }
-      rows = rows.filter((row) => !request.query.status || row.status === request.query.status)
-      const page = rows.slice(request.query.offset, request.query.offset + request.query.limit)
-      return { total: rows.length, items: page, scope: principal.isAdmin ? 'all' : 'own' }
-    },
-  )
-
-  server.get(
-    '/dv/terminal-applications/:id',
-    {
-      schema: { params: z.object({ id: z.coerce.number().int().positive() }) },
-      preHandler: requireSession(deps, 'dv'),
-    },
-    async (request, reply) => {
-      const principal = request.principal!
-      const row = db
-        .select()
-        .from(terminalApplication)
-        .where(eq(terminalApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (!principal.isAdmin && row.applicantAccountId !== principal.account.id) {
-        return reply.code(403).send({ error: 'forbidden' })
+      rows = rows.filter((row) => !query.status || row.status === query.status)
+      return {
+        total: rows.length,
+        items: rows.slice(query.offset, query.offset + query.limit),
+        scope: principal.isAdmin ? 'all' : 'own',
       }
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'dv',
-        action: 'terminal.application.view',
-        targetType: 'terminal_application',
-        targetId: row.id,
-        ip: request.ip,
-      })
-      // Whether the issued terminal's one-time private key is still available.
+    },
+    async approve(row, principal, body) {
+      const override = {
+        permissions: (body as { permissions?: z.infer<typeof dvPermissionsSchema> } | null)
+          ?.permissions,
+      }
+      const cert = await service.approveTerminal(row, principal.account.id, override)
+      return terminalMetadata(cert)
+    },
+    reject(row, principal, reason) {
+      service.rejectTerminal(row, principal.account.id, reason)
+    },
+    approveDetail(body) {
+      return body?.permissions ? { override: true } : undefined
+    },
+    detail(row) {
       const cert =
         row.terminalCertId !== null
           ? db.select().from(terminalCert).where(eq(terminalCert.id, row.terminalCertId)).get()
           : undefined
       const dv = service.resolveDvSelection(row.mnt)
+      const cvca = currentCvcaKey(db)
       return {
-        ...row,
         hasPrivateKey: cert?.keyRef != null,
         signingDv: dv
           ? {
-              id: dv.id,
               source: dv.source,
-              holderReference: dv.holderReference,
-              ...certificateValidity(dv.notAfter),
+              ...lifecycleCertificate(dv, {
+                format: 'cv',
+                parentNotAfter: cvca?.notAfter,
+              }),
             }
           : null,
+        terminal: cert ? terminalMetadata(cert) : null,
       }
     },
-  )
+  })
+
+  const server = app.withTypeProvider<ZodTypeProvider>()
 
   server.get(
     '/dv/terminal-applications/:id/certificate',
@@ -204,100 +197,26 @@ export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: Dv
         .where(eq(terminalCert.id, row.terminalCertId))
         .get()
       if (!cert) return reply.code(404).send({ error: 'certificate_not_found' })
-      if (!cert.keyRef) {
-        const uploaded = cert.keyMode === 'user_uploaded'
-        return reply
-          .code(uploaded ? 404 : 410)
-          .send({ error: uploaded ? 'no_private_key' : 'private_key_consumed' })
-      }
-      const pem = service.exportTerminalPrivateKey(cert)
-      const cleared = db
-        .update(terminalCert)
-        .set({ keyRef: null })
-        .where(and(eq(terminalCert.id, cert.id), isNotNull(terminalCert.keyRef)))
-        .run()
-      if (cleared.changes === 0) {
-        return reply.code(410).send({ error: 'private_key_consumed' })
-      }
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'dv',
-        action: 'terminal.certificate.key',
+      return sendPrivateKeyOnce({
+        reply,
+        db,
+        principal,
+        row: cert,
+        keyRef: cert.keyRef,
+        keyMode: cert.keyMode,
+        exportKey: (target) => service.exportTerminalPrivateKey(target),
+        consume: (target) =>
+          db
+            .update(terminalCert)
+            .set({ keyRef: null })
+            .where(and(eq(terminalCert.id, target.id), isNotNull(terminalCert.keyRef)))
+            .run().changes > 0,
         targetType: 'terminal_cert',
+        action: 'terminal.certificate.key',
         targetId: cert.id,
+        filename: `terminal-${cert.id}.key`,
         ip: request.ip,
       })
-      reply.header('cache-control', 'no-store')
-      reply.header('content-disposition', `attachment; filename="terminal-${cert.id}.key"`)
-      return reply.type('application/x-pem-file').send(pem)
-    },
-  )
-
-  server.post(
-    '/dv/terminal-applications/:id/approve',
-    {
-      schema: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
-        body: z
-          .object({
-            permissions: dvPermissionsSchema.optional(),
-          })
-          .nullish(),
-      },
-      preHandler: requireAdmin(deps, 'dv'),
-    },
-    async (request, reply) => {
-      const row = db
-        .select()
-        .from(terminalApplication)
-        .where(eq(terminalApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (row.status !== 'submitted')
-        return reply.code(409).send({ error: 'application_already_reviewed' })
-      const override = { permissions: request.body?.permissions }
-      const cert = await service.approveTerminal(row, request.principal!.account.id, override)
-      writeAudit(db, {
-        actorAccountId: request.principal!.account.id,
-        realm: 'dv',
-        action: 'terminal.application.approve',
-        targetType: 'terminal_application',
-        targetId: row.id,
-        ip: request.ip,
-        detail: override.permissions ? { override: true } : undefined,
-      })
-      return reply.code(201).send(terminalMetadata(cert))
-    },
-  )
-
-  server.post(
-    '/dv/terminal-applications/:id/reject',
-    {
-      schema: {
-        params: z.object({ id: z.coerce.number().int().positive() }),
-        body: z.object({ reason: z.string().min(1).max(2000) }),
-      },
-      preHandler: requireAdmin(deps, 'dv'),
-    },
-    async (request, reply) => {
-      const row = db
-        .select()
-        .from(terminalApplication)
-        .where(eq(terminalApplication.id, request.params.id))
-        .get()
-      if (!row) return reply.code(404).send({ error: 'application_not_found' })
-      if (row.status !== 'submitted')
-        return reply.code(409).send({ error: 'application_already_reviewed' })
-      service.rejectTerminal(row, request.principal!.account.id, request.body.reason)
-      writeAudit(db, {
-        actorAccountId: request.principal!.account.id,
-        realm: 'dv',
-        action: 'terminal.application.reject',
-        targetType: 'terminal_application',
-        targetId: row.id,
-        ip: request.ip,
-      })
-      return reply.code(200).send({ id: row.id, status: 'rejected' })
     },
   )
 }

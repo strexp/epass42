@@ -75,6 +75,18 @@ describe('backend e2e — PKD publication', () => {
       }
       expect(new Set(ids).size).toBe(ids.length)
 
+      const cscaCertificates = (await backend.client.get('/pkd/certificates')).json<{
+        items: { fingerprintSha256?: string; status?: string }[]
+      }>()
+      expect(cscaCertificates.items[0]?.fingerprintSha256).toMatch(/^[0-9a-f]{64}$/)
+      expect(cscaCertificates.items[0]?.status).toBe('active')
+
+      const crls = (await backend.client.get('/pkd/crls')).json<{
+        items: { cscaFingerprintSha256?: string; cscaStatus?: string }[]
+      }>()
+      expect(crls.items[0]?.cscaFingerprintSha256).toMatch(/^[0-9a-f]{64}$/)
+      expect(crls.items[0]?.cscaStatus).toBe('active')
+
       for (const id of ids) {
         const der = await backend.client.get(`/pkd/objects/${id}.der`)
         expect(der.status, id).toBe(200)

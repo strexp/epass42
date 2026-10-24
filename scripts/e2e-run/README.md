@@ -47,7 +47,7 @@ e2e-run/
 │   ├── dv/                   terminal applications, clamping, NIA DV lifecycle
 │   ├── ml/                   Master List Signer and Master List generation
 │   └── pkd/                  REST directory, object downloads, revocations, LDIF
-└── card42/                   cross-project suite (+ legacy manual harness)
+└── card42/                   cross-project suite (+ manual harness)
     ├── e2e.test.ts           backend → perso → simulator → CLI/ReadAll
     └── harness.ts            throws-away simulator, deploy, perso, CLI driver
 ```
@@ -98,6 +98,8 @@ because expiry gates read the database column, not the certificate bytes.
   (old revocations stay under the old issuer);
 - NIA DSC rotation and `retired` publication;
 - maintainer delegation (own DSC vs. NIA DSC) shared by the CSCA and DSC realms;
+- exact-day DSC validity, certificate + private-key validity in `/csca/status`;
+- expired owned DSCs are not offered as a delegation target;
 - expired-CSCA gates for applications, approvals, NIA rotation and ML rotation.
 
 ### `dsc/`
@@ -124,8 +126,10 @@ because expiry gates read the database column, not the certificate bytes.
 - CVCA rollover with link certificate verification, trust-anchor publication and
   `/pkd/cvca` history;
 - default (system) DV rotation, maintainer delegation and `cvca_expired` gate;
+- `/cvca/status` and the CVCA-expiry gate on DV applications and approvals;
 - terminal (IS) application, approval override, certificate/key delivery;
 - terminal authorization clamped to the signing DV's grant;
+- terminal validity clamped to the signing DV's expiry;
 - NIA DV lifecycle gate, including when terminals are delegated to an own DV;
 - DV audit trail.
 
@@ -136,6 +140,10 @@ because expiry gates read the database column, not the certificate bytes.
 - signer rotation (old signer retired), new lists signed by the new key;
 - Master List includes every CSCA after a CSCA rollover;
 - `ml_signer_expired` (generation) and `csca_expired` (rotation) gates.
+
+### `system/`
+
+- `/api/config` publishes the shared certificate validity limits used by the forms.
 
 ### `pkd/`
 

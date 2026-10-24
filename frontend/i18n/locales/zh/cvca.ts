@@ -70,5 +70,8 @@ export default {
   rollover: '轮换 CVCA 密钥',
   rolloverWarning:
     '将生成新的 CVCA 密钥，并发布一张链接证书把它与旧密钥相连。已签发的证书仍然有效，但此操作不可撤销。是否继续？',
-  adminActionsHint: '证书颁发机构级别的操作。每一项都需要确认，且不可撤销。',
+  caTitle: 'CVCA 证书',
+  defaultDvTitle: '默认 DV',
+  expiredTitle: 'CVCA 已过期',
+  expiredWarning: 'CVCA 证书已于 {date} 过期。DV 与终端证书签发已暂停，请管理员轮换 CVCA 密钥。',
 } as const

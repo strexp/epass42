@@ -1,6 +1,6 @@
 import { defineNuxtConfig } from 'nuxt/config'
 
-// ePass 42 frontend (Nuxt 4 + Naive UI).  English-only i18n; all copy goes through
+// ePass 42 frontend (Nuxt 4 + Naive UI).  Bilingual (en/zh) i18n; all copy goes through
 // i18n keys (never hard-coded).
 //
 // The API runs on a separate origin in development (backend :3000, frontend

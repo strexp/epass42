@@ -4,7 +4,7 @@
  * Composes the signer lifecycle and master-list generation behind the single
  * entry point consumed by the ML routes and the backend entrypoint.
  */
-import { certificateValidity } from '../../util/certificate'
+import { lifecycleCertificate, type LifecycleCertificate } from '../../certificates/status'
 import { currentCscaKey, type CscaService } from '../csca/service'
 import type { MasterListRow, MlContext, MlSignerRow } from './context'
 import { MlMasterListService } from './masterList'
@@ -15,7 +15,7 @@ export type { MlSignerMetadata } from './signers'
 
 /** The ML lifecycle status returned to the administrator UI. */
 export interface MlStatus {
-  signer: (MlSignerMetadata & ReturnType<typeof certificateValidity>) | null
+  signer: (MlSignerMetadata & LifecycleCertificate) | null
   latestMasterList: {
     id: number
     objectId: string
@@ -24,17 +24,11 @@ export interface MlStatus {
     signerSerial: string | null
     signerStatus: string | null
     signerExpired: boolean | null
+    signerNotAfter: string | null
   } | null
   canGenerateMasterList: boolean
   canRotateSigner: boolean
-  csca: {
-    id: number
-    serial: string
-    status: string
-    notAfter: string | null
-    expired: boolean
-    daysRemaining: number | null
-  } | null
+  csca: LifecycleCertificate | null
 }
 
 /** Master List service. */
@@ -83,12 +77,26 @@ export class MlService {
   /** The signer/master-list lifecycle summary used by the ML UI. */
   status(): MlStatus {
     const signer = this.signers.current()
-    const signerValidity = signer ? certificateValidity(signer.notAfter) : null
     const latest = this.masterLists.latest()
     const latestSigner = latest?.signerDscId ? this.signers.byId(latest.signerDscId) : undefined
-    const latestSignerValidity = latestSigner ? certificateValidity(latestSigner.notAfter) : null
     const csca = currentCscaKey(this.ctx.db)
-    const cscaValidity = csca ? certificateValidity(csca.notAfter) : null
+    const signerValidity = signer
+      ? lifecycleCertificate(signer, {
+          format: 'x509',
+          certPem: signer.certPem,
+          parentNotAfter: csca?.notAfter,
+        })
+      : null
+    const latestSignerValidity = latestSigner
+      ? lifecycleCertificate(latestSigner, {
+          format: 'x509',
+          certPem: latestSigner.certPem,
+          parentNotAfter: csca?.notAfter,
+        })
+      : null
+    const cscaValidity = csca
+      ? lifecycleCertificate(csca, { format: 'x509', certPem: csca.certPem })
+      : null
 
     return {
       signer: signer && signerValidity ? { ...signerMetadata(signer), ...signerValidity } : null,
@@ -101,20 +109,12 @@ export class MlService {
             signerSerial: latestSigner?.serial ?? null,
             signerStatus: latestSigner?.status ?? null,
             signerExpired: latestSignerValidity?.expired ?? null,
+            signerNotAfter: latestSignerValidity?.notAfter ?? null,
           }
         : null,
-      canGenerateMasterList: Boolean(signer && signerValidity && !signerValidity.expired),
-      canRotateSigner: Boolean(csca && cscaValidity && !cscaValidity.expired),
-      csca: csca
-        ? {
-            id: csca.id,
-            serial: csca.serial,
-            status: csca.status,
-            notAfter: csca.notAfter,
-            expired: cscaValidity?.expired ?? true,
-            daysRemaining: cscaValidity?.daysRemaining ?? null,
-          }
-        : null,
+      canGenerateMasterList: Boolean(signerValidity && !signerValidity.expired),
+      canRotateSigner: Boolean(cscaValidity && !cscaValidity.expired),
+      csca: cscaValidity,
     }
   }
 }

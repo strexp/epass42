@@ -19,9 +19,10 @@ import { computed, h, onMounted, ref } from 'vue'
 import { useRealm } from '~/composables/useRealm'
 import DateTimeText from '~/components/common/DateTimeText.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import ValidityCell from '~/components/common/ValidityCell.vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
-import { useDscStatus } from '~/composables/useLifecycleStatus'
+import { expiryDescription, useDscStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -42,6 +43,18 @@ const { formatDate } = useDateTime()
 const message = useMessage()
 const dialog = useDialog()
 const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
+const niaDscExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.niaDsc ?? null,
+    {
+      missing: t('dsc.niaDscMissing'),
+      certificate: (date) => t('dsc.niaDscExpired', { date }),
+      privateKey: (date) => t('dsc.niaDscKeyExpired', { date }),
+      parent: (date) => t('dsc.cscaExpired', { date }),
+    },
+    formatDate,
+  ),
+)
 const rotateBusy = ref(false)
 usePageTitle(() => t('nav.dsc'))
 const requests = ref<RequestRow[]>([])
@@ -170,11 +183,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle && !lifecycle.canIssueDocuments"
         :title="$t('dsc.signingPaused')"
-        :description="
-          lifecycle.niaDsc
-            ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
-            : $t('dsc.niaDscMissing')
-        "
+        :description="niaDscExpiryText"
       />
 
       <NCard v-if="signedIn" :title="$t('dsc.applyTitle')" size="small">
@@ -223,42 +232,6 @@ onMounted(async () => {
         </template>
       </NCard>
 
-      <NCard v-if="showAdmin" size="small" :title="$t('dsc.niaDscTitle')">
-        <template #header-extra><AdminOnlyBadge /></template>
-        <NDescriptions v-if="lifecycle?.niaDsc" :column="3" size="small">
-          <NDescriptionsItem :label="$t('dsc.niaDscSerial')">
-            <span class="epass42-mono">{{ lifecycle.niaDsc.serial }}</span>
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('pkd.validity')">
-            {{ formatDate(lifecycle.niaDsc.notAfter) }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('pkd.status')">
-            <StatusTag :status="lifecycle.niaDsc.status ?? 'active'" />
-          </NDescriptionsItem>
-        </NDescriptions>
-        <NText v-else depth="3">{{ $t('dsc.niaDscMissing') }}</NText>
-        <NAlert
-          v-if="lifecycle && !lifecycle.canRotateNiaDsc"
-          type="warning"
-          style="margin-top: 12px"
-        >
-          {{ $t('dsc.cscaExpiredHint') }}
-        </NAlert>
-        <template #action>
-          <NButton
-            type="warning"
-            :loading="rotateBusy"
-            :disabled="!lifecycle?.canRotateNiaDsc"
-            @click="confirmRotateNiaDsc"
-          >
-            <template #icon
-              ><NIcon><RotateCcw /></NIcon
-            ></template>
-            {{ $t('dsc.rotateNiaDsc') }}<AdminActionIcon />
-          </NButton>
-        </template>
-      </NCard>
-
       <NCard v-if="signedIn && activePassport" size="small" :title="$t('dsc.activePassportTitle')">
         <NText depth="3">{{ $t('dsc.activePassportHint') }}</NText>
         <NDescriptions :column="2" size="small" style="margin-top: 8px">
@@ -291,6 +264,45 @@ onMounted(async () => {
       </NCard>
       <NCard v-else size="small">
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'DSC' }) }}</NText>
+      </NCard>
+      <NCard v-if="showAdmin" size="small" :title="$t('dsc.niaDscTitle')">
+        <template #header-extra><AdminOnlyBadge /></template>
+        <NDescriptions v-if="lifecycle?.niaDsc" :column="3" size="small">
+          <NDescriptionsItem :label="$t('dsc.niaDscSerial')">
+            <span class="epass42-mono">{{ lifecycle.niaDsc.serial }}</span>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            <ValidityCell
+              :not-before="lifecycle.niaDsc.notBefore"
+              :not-after="lifecycle.niaDsc.notAfter"
+              :private-key-not-after="lifecycle.niaDsc.privateKeyNotAfter"
+            />
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('pkd.status')">
+            <StatusTag :status="lifecycle.niaDsc.status ?? 'active'" />
+          </NDescriptionsItem>
+        </NDescriptions>
+        <NText v-else depth="3">{{ $t('dsc.niaDscMissing') }}</NText>
+        <NAlert
+          v-if="lifecycle && !lifecycle.canRotateNiaDsc"
+          type="warning"
+          style="margin-top: 12px"
+        >
+          {{ $t('dsc.cscaExpiredHint') }}
+        </NAlert>
+        <template #action>
+          <NButton
+            type="warning"
+            :loading="rotateBusy"
+            :disabled="!lifecycle?.canRotateNiaDsc"
+            @click="confirmRotateNiaDsc"
+          >
+            <template #icon
+              ><NIcon><RotateCcw /></NIcon
+            ></template>
+            {{ $t('dsc.rotateNiaDsc') }}<AdminActionIcon />
+          </NButton>
+        </template>
       </NCard>
     </NSpace>
   </div>

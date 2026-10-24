@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import {
-  NAlert,
   NButton,
   NCard,
   NDataTable,
+  NDescriptions,
+  NDescriptionsItem,
   NEmpty,
   NIcon,
   NSpace,
@@ -17,6 +18,9 @@ import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import StatusTag from '~/components/common/StatusTag.vue'
 import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import ValidityCell from '~/components/common/ValidityCell.vue'
+import { expiryDescription, useCvcaStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -33,6 +37,7 @@ interface Application {
 const { state, ensureLoaded, showAdmin } = useRealm('cvca')
 const api = useApi()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
 usePageTitle(() => t('nav.cvca'))
 const message = useMessage()
 const dialog = useDialog()
@@ -40,6 +45,18 @@ const dialog = useDialog()
 const applications = ref<Application[]>([])
 const loading = ref(false)
 const rolloverBusy = ref(false)
+const { status: lifecycle, refresh: refreshLifecycle } = useCvcaStatus()
+const cvcaExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.cvca ?? null,
+    {
+      missing: t('cvca.expiredTitle'),
+      certificate: (date) => t('cvca.expiredWarning', { date }),
+      privateKey: (date) => t('cvca.expiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 const delegation = ref<{
   mnt: string | null
   useNiaDv: boolean
@@ -157,6 +174,7 @@ async function rollover(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
   if (signedIn.value) await loadApplications()
   if (hasMnt.value) await loadDelegation()
 })
@@ -167,11 +185,17 @@ onMounted(async () => {
     <NSpace vertical size="large">
       <PageHeader :title="$t('nav.cvca')" :subtitle="$t('home.cvcaCard')" />
 
+      <ExpiryAlert
+        v-if="lifecycle?.cvca?.expired"
+        :title="$t('cvca.expiredTitle')"
+        :description="cvcaExpiryText"
+      />
+
       <NCard v-if="signedIn" :title="$t('cvca.applyTitle')" size="small">
         <NText depth="3">{{ $t('cvca.publicHint') }}</NText>
         <template #action>
           <NSpace>
-            <NuxtLink to="/cvca/apply">
+            <NuxtLink v-if="lifecycle?.canIssueDvs !== false" to="/cvca/apply">
               <NButton type="primary">
                 <template #icon
                   ><NIcon><FilePlus2 /></NIcon
@@ -179,6 +203,12 @@ onMounted(async () => {
                 {{ $t('nav.apply') }}
               </NButton>
             </NuxtLink>
+            <NButton v-else type="primary" disabled>
+              <template #icon
+                ><NIcon><FilePlus2 /></NIcon
+              ></template>
+              {{ $t('nav.apply') }}
+            </NButton>
             <NuxtLink v-if="showAdmin" to="/cvca/audit">
               <NButton>
                 <template #icon
@@ -263,17 +293,40 @@ onMounted(async () => {
         <NEmpty v-else :description="$t('cvca.empty')" />
       </NCard>
 
-      <NCard v-if="showAdmin" :title="$t('nav.admin')" size="small">
+      <NCard v-if="showAdmin && lifecycle?.cvca" size="small" :title="$t('cvca.caTitle')">
         <template #header-extra><AdminOnlyBadge /></template>
-        <NAlert type="warning" :show-icon="false">{{ $t('cvca.adminActionsHint') }}</NAlert>
-        <NSpace style="margin-top: 12px">
-          <NButton :loading="rolloverBusy" @click="confirmRollover">
+        <NDescriptions :column="3" size="small">
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            <ValidityCell
+              :not-before="lifecycle.cvca.notBefore"
+              :not-after="lifecycle.cvca.notAfter"
+            />
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('cvca.defaultDvTitle')">
+            <ValidityCell
+              v-if="lifecycle.defaultDv"
+              :not-before="lifecycle.defaultDv.notBefore"
+              :not-after="lifecycle.defaultDv.notAfter"
+            />
+            <span v-else>—</span>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.status')">
+            <StatusTag :status="lifecycle.cvca.status ?? 'active'" />
+          </NDescriptionsItem>
+        </NDescriptions>
+        <template #action>
+          <NButton
+            type="warning"
+            :loading="rolloverBusy"
+            :disabled="lifecycle?.canRotateCvca === false"
+            @click="confirmRollover"
+          >
             <template #icon
               ><NIcon><RotateCcw /></NIcon
             ></template>
             {{ $t('cvca.rollover') }}<AdminActionIcon />
           </NButton>
-        </NSpace>
+        </template>
       </NCard>
     </NSpace>
   </div>

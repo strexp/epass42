@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 import { parseCvCertificate } from '@epass42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
-import { cvcaKey, dvCert } from '../../db/schema'
+import { cvcaKey, dvCert, mntConfig } from '../../db/schema'
 import type { Db } from '../../db/client'
-import { currentDefaultDv, type CvcaService } from '../cvca/service'
+import { currentCvcaKey, currentDefaultDv, type CvcaService } from '../cvca/service'
 
 const DV_ADMIN = {
   sub: 'dv-admin',
@@ -281,5 +281,94 @@ describe('M18 DV realm terminal certificates', () => {
       payload: { confirm: true },
     })
     expect(rotate.statusCode).toBe(403)
+  })
+
+  it('never issues a terminal beyond the signing DV validity', async () => {
+    const { app, oidc, adminCookie, db, service } = await harness()
+    const cvca = currentCvcaKey(db)!
+    const pair = await service.loadKeyPair(cvca)
+    const dv = await service.dvs.issueDv({
+      cvca,
+      cvcaPair: pair,
+      subjectCn: 'Short DV',
+      holderMnemonic: 'SHORTDV',
+      dvClass: 'domestic',
+      permissions: PERMISSIONS,
+      validityDays: 30,
+      mnt: 'DV-MNT',
+      keyMode: 'remote_generated',
+      source: 'owned',
+    })
+    db.insert(mntConfig)
+      .values({ mnt: 'DV-MNT', useNiaDv: false, updatedAt: new Date().toISOString() })
+      .onConflictDoUpdate({ target: mntConfig.mnt, set: { useNiaDv: false } })
+      .run()
+
+    const ownerCookie = await loginDv(app, oidc, DV_USER)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/dv/terminal-applications',
+      headers: { cookie: ownerCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'Thirty Day IS',
+        permissions: PERMISSIONS,
+        validityDays: 92,
+      },
+    })
+    expect(submit.statusCode).toBe(201)
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dv/terminal-applications/${json(submit).id as number}/approve`,
+      headers: { cookie: adminCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    expect(Date.parse(json(approve).notAfter as string)).toBeLessThanOrEqual(
+      Date.parse(dv.notAfter!),
+    )
+  })
+
+  it('refuses a terminal when the selected own DV has expired', async () => {
+    const { app, oidc, adminCookie, db, service } = await harness()
+    const cvca = currentCvcaKey(db)!
+    const pair = await service.loadKeyPair(cvca)
+    const dv = await service.dvs.issueDv({
+      cvca,
+      cvcaPair: pair,
+      subjectCn: 'Expiring DV',
+      holderMnemonic: 'EXPDV',
+      dvClass: 'domestic',
+      permissions: PERMISSIONS,
+      validityDays: 30,
+      mnt: 'DV-MNT',
+      keyMode: 'remote_generated',
+      source: 'owned',
+    })
+    db.insert(mntConfig)
+      .values({ mnt: 'DV-MNT', useNiaDv: false, updatedAt: new Date().toISOString() })
+      .onConflictDoUpdate({ target: mntConfig.mnt, set: { useNiaDv: false } })
+      .run()
+
+    const ownerCookie = await loginDv(app, oidc, DV_USER)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/dv/terminal-applications',
+      headers: { cookie: ownerCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Blocked IS', permissions: PERMISSIONS },
+    })
+    expect(submit.statusCode).toBe(201)
+
+    db.update(dvCert)
+      .set({ notAfter: '2000-01-01T00:00:00.000Z' })
+      .where(eq(dvCert.id, dv.id))
+      .run()
+
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dv/terminal-applications/${json(submit).id as number}/approve`,
+      headers: { cookie: adminCookie },
+    })
+    expect(approve.statusCode).toBe(409)
+    expect(json(approve).error).toBe('dv_expired')
   })
 })

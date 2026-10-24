@@ -20,7 +20,8 @@ import type { DvPermissions } from '@epass42/shared'
 import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useDvStatus } from '~/composables/useLifecycleStatus'
+import ValidityCell from '~/components/common/ValidityCell.vue'
+import { expiryDescription, useDvStatus } from '~/composables/useLifecycleStatus'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
@@ -42,6 +43,20 @@ interface Application {
   terminalCertId: number | null
   /** Whether the issued terminal private key is still available. */
   hasPrivateKey: boolean
+  /** The issued terminal certificate, with its validity. */
+  terminal: {
+    notBefore: string | null
+    notAfter: string | null
+  } | null
+  /** The Document Verifier that signed (or would sign) this terminal. */
+  signingDv: {
+    id: number
+    source: string
+    holderReference: string
+    notBefore: string | null
+    notAfter: string | null
+    expired: boolean
+  } | null
   validityDays: number | null
   notes: string | null
   status: string
@@ -63,6 +78,18 @@ const apiBase = useApiBase()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 const { status: lifecycle, refresh: refreshLifecycle } = useDvStatus()
+const niaDvExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.niaDv ?? null,
+    {
+      missing: t('dv.niaDvMissing'),
+      certificate: (date) => t('dv.niaDvExpired', { date }),
+      privateKey: (date) => t('dv.niaDvExpired', { date }),
+      parent: (date) => t('dv.cvcaExpiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 usePageTitle(() => t('dv.applicationTitle'))
 const message = useMessage()
 const dialog = useDialog()
@@ -255,11 +282,7 @@ onMounted(async () => {
         <ExpiryAlert
           v-if="lifecycle && !lifecycle.canIssueTerminals"
           :title="$t('dv.signingPaused')"
-          :description="
-            lifecycle.niaDv
-              ? $t('dv.niaDvExpired', { date: formatDate(lifecycle.niaDv.notAfter) })
-              : $t('dv.niaDvMissing')
-          "
+          :description="niaDvExpiryText"
         />
         <div v-if="canReview" style="margin-top: 16px">
           <NText strong>{{ $t('dv.approvedPermissions') }}</NText>
@@ -281,6 +304,27 @@ onMounted(async () => {
           <div style="margin-top: 8px">
             <PermissionsSummary :permissions="review" />
           </div>
+          <NDescriptions
+            v-if="application.terminal"
+            :column="2"
+            size="small"
+            style="margin-top: 12px"
+          >
+            <NDescriptionsItem :label="$t('dv.terminalValidity')">
+              <ValidityCell
+                :not-before="application.terminal.notBefore"
+                :not-after="application.terminal.notAfter"
+              />
+            </NDescriptionsItem>
+            <NDescriptionsItem :label="$t('dv.signingDvTitle')">
+              <ValidityCell
+                v-if="application.signingDv"
+                :not-before="application.signingDv.notBefore"
+                :not-after="application.signingDv.notAfter"
+              />
+              <span v-else>—</span>
+            </NDescriptionsItem>
+          </NDescriptions>
           <NButton
             v-if="application.terminalCertId !== null"
             size="small"

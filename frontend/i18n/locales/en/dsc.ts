@@ -200,6 +200,10 @@ export default {
   niaDscSerial: 'Serial',
   niaDscExpired:
     'The NIA DSC expired on {date}. New document issuance is paused; rotate the NIA DSC.',
+  cscaExpired:
+    'The CSCA certificate that issued this NIA DSC expired on {date}. New document issuance is paused; roll the CSCA key over first.',
+  niaDscKeyExpired:
+    'The NIA DSC private-key usage period ended on {date}. New document issuance is paused; rotate the NIA DSC.',
   niaDscMissing: 'No usable NIA DSC is available; new document issuance is paused.',
   rotateNiaDsc: 'Rotate NIA DSC',
   rotateNiaDscWarning:

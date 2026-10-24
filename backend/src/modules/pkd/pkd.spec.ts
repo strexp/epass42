@@ -42,6 +42,12 @@ describe('M9 PKD REST and LDIF', () => {
     const certs = await app.inject({ method: 'GET', url: '/pkd/certificates' })
     expect(certs.statusCode).toBe(200)
     expect(certs.json().total).toBeGreaterThanOrEqual(1)
+    const certItems = certs.json().items as {
+      fingerprintSha256?: string
+      status?: string
+    }[]
+    expect(certItems[0]?.fingerprintSha256).toMatch(/^[0-9a-f]{64}$/)
+    expect(certItems[0]?.status).toBe('active')
 
     const crls = await app.inject({ method: 'GET', url: '/pkd/crls' })
     expect((crls.json().items as { crlNumber: number }[])[0].crlNumber).toBe(1)
@@ -304,9 +310,18 @@ describe('M9 read-only LDAP server', () => {
     expect(items.some((row) => row.source === 'nia' && row.status === 'retired')).toBe(true)
 
     const crls = await app.inject({ method: 'GET', url: '/pkd/crls' })
-    const first = (crls.json().items as { cscaKeyId?: number; cscaSubject?: string }[])[0]!
+    const first = (
+      crls.json().items as {
+        cscaKeyId?: number
+        cscaSubject?: string
+        cscaFingerprintSha256?: string
+        cscaStatus?: string
+      }[]
+    )[0]!
     expect(first.cscaKeyId).toBeTypeOf('number')
     expect(first.cscaSubject).toContain('CN=')
+    expect(first.cscaFingerprintSha256).toMatch(/^[0-9a-f]{64}$/)
+    expect(first.cscaStatus).toBe('active')
   })
   it('publishes DSC certificates as PKD objects and standard LDAP entries', async () => {
     const { app, db, config } = await setup()

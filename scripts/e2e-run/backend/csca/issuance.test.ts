@@ -24,6 +24,7 @@ import {
   OTHER_USER,
 } from '../../fixtures/identities'
 import { publicKeyDerOfPrivateKey } from '../../fixtures/keys'
+import { expireDsc } from '../actions'
 import { loginAs, withBackend, type Backend } from '../harness'
 import type { CertMetadata } from '../types'
 
@@ -296,6 +297,21 @@ describe('backend e2e — CSCA certificate lifecycle', () => {
       const initialDsc = await backend.client.get('/dsc/status')
       expect(initialDsc.json<{ canIssueDocuments: boolean }>().canIssueDocuments).toBe(true)
       const firstId = initialDsc.json<{ niaDsc: { id: number } }>().niaDsc.id
+      expect(
+        initialDsc.json<{
+          niaDsc: {
+            notBefore: string | null
+            notAfter: string | null
+            privateKeyNotAfter: string | null
+            effectiveNotAfter: string | null
+          }
+        }>().niaDsc,
+      ).toMatchObject({
+        notBefore: expect.any(String),
+        notAfter: expect.any(String),
+        privateKeyNotAfter: expect.any(String),
+        effectiveNotAfter: expect.any(String),
+      })
 
       // A csca administrator is not a dsc administrator.
       await loginAs(backend, 'csca', CLIENT_IDS.csca, CSCA_ADMIN)
@@ -370,6 +386,15 @@ describe('backend e2e — CSCA certificate lifecycle', () => {
       const restored = await backend.client.put('/dsc/settings/mnt', { useNiaDsc: true })
       expect(restored.status).toBe(200)
       expect(restored.json<{ useNiaDsc: boolean }>().useNiaDsc).toBe(true)
+
+      // An expired owned DSC is no longer offered as a delegation target.
+      expireDsc(backend, issued.id)
+      await loginAs(backend, 'csca', CLIENT_IDS.csca, CSCA_USER)
+      const expired = await backend.client.get('/csca/settings/mnt')
+      expect(expired.json<{ hasActiveDsc: boolean }>().hasActiveDsc).toBe(false)
+      const cannotOptOut = await backend.client.put('/csca/settings/mnt', { useNiaDsc: false })
+      expect(cannotOptOut.status).toBe(409)
+      expect(cannotOptOut.json<{ error: string }>().error).toBe('no_active_dsc')
     })
   })
 
@@ -430,6 +455,51 @@ describe('backend e2e — CSCA certificate lifecycle', () => {
         403,
       )
       expect((await backend.client.post('/csca/certificates/9999/revoke', {})).status).toBe(404)
+    })
+  })
+
+  it('publishes a CRL manually and records the action in the audit log', async () => {
+    await withBackend(async (backend) => {
+      await loginAs(backend, 'csca', CLIENT_IDS.csca, CSCA_USER)
+      expect((await backend.client.post('/csca/crl/generate', {})).status).toBe(403)
+
+      await loginAs(backend, 'csca', CLIENT_IDS.csca, CSCA_ADMIN)
+      const first = await backend.client.post('/csca/crl/generate', {})
+      expect(first.status).toBe(201)
+      const firstNumber = first.json<{ crlNumber: number }>().crlNumber
+
+      const second = await backend.client.post('/csca/crl/generate', {})
+      expect(second.status).toBe(201)
+      const secondNumber = second.json<{ crlNumber: number }>().crlNumber
+      expect(secondNumber).toBeGreaterThan(firstNumber)
+
+      // The newest CRL is served by the download endpoint and published in PKD.
+      const der = await backend.client.get('/csca/crl.der')
+      expect(der.status).toBe(200)
+      expect(readCrlNumber(parseCrl(der.bytes))).toBe(BigInt(secondNumber))
+
+      const published = (await backend.client.get('/pkd/crls'))
+        .json<{
+          items: {
+            crlNumber: number
+            cscaStatus?: string
+            cscaFingerprintSha256?: string
+          }[]
+        }>()
+        .items.find((row) => row.crlNumber === secondNumber)
+      expect(published).toMatchObject({ cscaStatus: 'active' })
+      expect(published?.cscaFingerprintSha256).toMatch(/^[0-9a-f]{64}$/)
+
+      // Manual publication is audited like every other administrative action.
+      const audit = await backend.client.get('/csca/audit?action=crl.generate')
+      expect(audit.status).toBe(200)
+      expect(
+        audit.json<{ items: { action: string; targetType: string | null }[] }>().items,
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ action: 'crl.generate', targetType: 'crl' }),
+        ]),
+      )
     })
   })
 })

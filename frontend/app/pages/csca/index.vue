@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import {
-  NAlert,
   NButton,
   NCard,
   NDataTable,
+  NDescriptions,
+  NDescriptionsItem,
   NEmpty,
   NIcon,
   NSpace,
@@ -11,7 +12,16 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { Check, FilePlus2, KeyRound, RefreshCw, RotateCcw, ScrollText, X } from '@lucide/vue'
+import {
+  Check,
+  FileCheck,
+  FilePlus2,
+  KeyRound,
+  RefreshCw,
+  RotateCcw,
+  ScrollText,
+  X,
+} from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import type { Lds2SignerType } from '@epass42/shared'
 import { errorMessageKey } from '~/composables/useApi'
@@ -19,8 +29,9 @@ import { useRealm } from '~/composables/useRealm'
 import { signerCertificateLabel } from '~/utils/lds2'
 import StatusTag from '~/components/common/StatusTag.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import ValidityCell from '~/components/common/ValidityCell.vue'
 import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
-import { useCscaStatus } from '~/composables/useLifecycleStatus'
+import { expiryDescription, useCscaStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -31,9 +42,7 @@ interface Application {
   mnt: string | null
   ip: string | null
   keyMode: string
-  certificateType?: 'dsc' | 'lds2'
-  /** Legacy field name (pre-rename API responses). */
-  certType?: 'dsc' | 'lds2'
+  certificateType: 'dsc' | 'lds2'
   lds2Types: Lds2SignerType[] | null
   createdAt: string
 }
@@ -49,7 +58,19 @@ const dialog = useDialog()
 const applications = ref<Application[]>([])
 const loading = ref(false)
 const rolloverBusy = ref(false)
+const crlBusy = ref(false)
 const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
+const cscaExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.csca ?? null,
+    {
+      missing: t('csca.expiredTitle'),
+      certificate: (date) => t('csca.expiredWarning', { date }),
+      privateKey: (date) => t('csca.privateKeyExpiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 const delegation = ref<{
   mnt: string | null
   useNiaDsc: boolean
@@ -119,8 +140,7 @@ const columns = computed(() => [
   {
     title: t('common.certificateType'),
     key: 'certificateType',
-    render: (row: Application) =>
-      signerCertificateLabel(row.certificateType ?? row.certType, row.lds2Types, t),
+    render: (row: Application) => signerCertificateLabel(row.certificateType, row.lds2Types, t),
   },
   { title: t('common.mnt'), key: 'mnt' },
   { title: t('common.ip'), key: 'ip' },
@@ -172,6 +192,29 @@ async function rollover(): Promise<void> {
   }
 }
 
+/** Confirms manual CRL publication; every publication advances the CRL number. */
+function confirmGenerateCrl(): void {
+  dialog.warning({
+    title: t('csca.generateCrl'),
+    content: t('csca.generateCrlWarning'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => void generateCrl(),
+  })
+}
+
+async function generateCrl(): Promise<void> {
+  crlBusy.value = true
+  try {
+    const result = await api<{ crlNumber: number }>('/csca/crl/generate', { method: 'POST' })
+    message.success(t('csca.crlPublished', { number: result.crlNumber }))
+  } catch (error) {
+    message.error(t(errorMessageKey(error)))
+  } finally {
+    crlBusy.value = false
+  }
+}
+
 onMounted(async () => {
   await ensureLoaded()
   await refreshLifecycle()
@@ -189,7 +232,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle?.csca?.expired"
         :title="$t('csca.expiredTitle')"
-        :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+        :description="cscaExpiryText"
       />
 
       <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
@@ -294,17 +337,41 @@ onMounted(async () => {
         <NEmpty v-else :description="$t('csca.empty')" />
       </NCard>
 
-      <NCard v-if="showAdmin" :title="$t('nav.admin')" size="small">
+      <NCard v-if="showAdmin && lifecycle?.csca" size="small" :title="$t('csca.caTitle')">
         <template #header-extra><AdminOnlyBadge /></template>
-        <NAlert type="warning" :show-icon="false">{{ $t('csca.adminActionsHint') }}</NAlert>
-        <NSpace style="margin-top: 12px">
-          <NButton :loading="rolloverBusy" @click="confirmRollover">
-            <template #icon
-              ><NIcon><RotateCcw /></NIcon
-            ></template>
-            {{ $t('csca.rollover') }}<AdminActionIcon />
-          </NButton>
-        </NSpace>
+        <NDescriptions :column="3" size="small">
+          <NDescriptionsItem :label="$t('common.id')">{{ lifecycle.csca.id }}</NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            <ValidityCell
+              :not-before="lifecycle.csca.notBefore"
+              :not-after="lifecycle.csca.notAfter"
+              :private-key-not-after="lifecycle.csca.privateKeyNotAfter"
+            />
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.status')">
+            <StatusTag :status="lifecycle.csca.status ?? 'active'" />
+          </NDescriptionsItem>
+        </NDescriptions>
+        <template #action>
+          <NSpace>
+            <NButton type="warning" :loading="rolloverBusy" @click="confirmRollover">
+              <template #icon
+                ><NIcon><RotateCcw /></NIcon
+              ></template>
+              {{ $t('csca.rollover') }}<AdminActionIcon />
+            </NButton>
+            <NButton
+              :loading="crlBusy"
+              :disabled="lifecycle?.csca?.expired"
+              @click="confirmGenerateCrl"
+            >
+              <template #icon
+                ><NIcon><FileCheck /></NIcon
+              ></template>
+              {{ $t('csca.generateCrl') }}<AdminActionIcon />
+            </NButton>
+          </NSpace>
+        </template>
       </NCard>
     </NSpace>
   </div>

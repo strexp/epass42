@@ -280,4 +280,27 @@ describe('backend e2e — DV terminal certificates', () => {
       expect(actions).toContain('terminal.application.approve')
     })
   })
+
+  it('never issues a terminal beyond the signing DV validity', async () => {
+    await withBackend(async (backend) => {
+      const dv = await issueDv(backend, {
+        subjectCn: 'Short DV',
+        holderMnemonic: 'SHORTDV',
+        validityDays: 30,
+      })
+      await loginAs(backend, 'cvca', CLIENT_IDS.cvca, CVCA_USER)
+      expect((await backend.client.put('/cvca/settings/mnt', { useNiaDv: false })).status).toBe(200)
+
+      const { applicationId, terminal } = await issueTerminalApplication(backend, {
+        subjectCn: 'Long IS',
+        validityDays: 92,
+      })
+      expect(Date.parse(terminal.notAfter)).toBeLessThanOrEqual(Date.parse(dv.notAfter))
+
+      const detail = (await backend.client.get(`/dv/terminal-applications/${applicationId}`)).json<
+        TerminalApplicationDetail & { terminal: { notAfter: string } | null }
+      >()
+      expect(detail.terminal?.notAfter).toBe(terminal.notAfter)
+    })
+  })
 })

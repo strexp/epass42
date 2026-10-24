@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isRevoked, parseCertificatePem, parseCrl, parseCrlPem } from '@epass42/pki'
+import { isRevoked, parseCertificatePem, parseCrl, parseCrlPem, readCrlNumber } from '@epass42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { crl as crlTable } from '../../db/schema'
 import { eq } from 'drizzle-orm'
@@ -136,6 +136,19 @@ describe('M6 CRL', () => {
     const der = await app.inject({ method: 'GET', url: '/csca/crl.der' })
     expect(der.statusCode).toBe(200)
     expect(der.rawPayload[0]).toBe(0x30)
+    expect(readCrlNumber(parseCrl(new Uint8Array(der.rawPayload)))).toBe(1n)
+
+    // A second manual publication advances the CRL number and replaces the
+    // object served by the download endpoints.
+    const second = await app.inject({
+      method: 'POST',
+      url: '/csca/crl/generate',
+      headers: { cookie },
+    })
+    expect(second.statusCode).toBe(201)
+    expect(second.json().crlNumber).toBe(2)
+    const secondDer = await app.inject({ method: 'GET', url: '/csca/crl.der' })
+    expect(readCrlNumber(parseCrl(new Uint8Array(secondDer.rawPayload)))).toBe(2n)
   })
 
   it('regenerates the CRL automatically when a certificate is revoked', async () => {

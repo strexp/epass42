@@ -23,8 +23,9 @@ import { isValidSubjectName, type DvPermissions } from '@epass42/shared'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { usePkdConfig } from '~/composables/usePkdConfig'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useDvStatus } from '~/composables/useLifecycleStatus'
+import { expiryDescription, useDvStatus } from '~/composables/useLifecycleStatus'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 
 definePageMeta({ layout: 'realm' })
@@ -34,9 +35,26 @@ const { auth, state, ensureLoaded } = useRealm('dv')
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 const { status: lifecycle, refresh: refreshLifecycle } = useDvStatus()
+const niaDvExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.niaDv ?? null,
+    {
+      missing: t('dv.niaDvMissing'),
+      certificate: (date) => t('dv.niaDvExpired', { date }),
+      privateKey: (date) => t('dv.niaDvExpired', { date }),
+      parent: (date) => t('dv.cvcaExpiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 usePageTitle(() => t('dv.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
+const { config, load: loadPkdConfig } = usePkdConfig()
+const terminalPolicy = computed(() => config.value?.certificatePolicies.terminal)
+const requestedNotAfter = computed(() =>
+  new Date(Date.now() + form.validityDays * 86_400_000).toISOString(),
+)
 
 const signedIn = computed(() => state.value.me !== null)
 
@@ -142,6 +160,12 @@ async function submit(): Promise<void> {
 onMounted(async () => {
   await ensureLoaded()
   await refreshLifecycle()
+  try {
+    await loadPkdConfig()
+    form.validityDays = terminalPolicy.value?.defaultValidityDays ?? form.validityDays
+  } catch {
+    // Keep the built-in default when the public config is unavailable.
+  }
 })
 </script>
 
@@ -155,11 +179,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle && !lifecycle.canIssueTerminals"
         :title="$t('dv.signingPaused')"
-        :description="
-          lifecycle.niaDv
-            ? $t('dv.niaDvExpired', { date: formatDate(lifecycle.niaDv.notAfter) })
-            : $t('dv.niaDvMissing')
-        "
+        :description="niaDvExpiryText"
       />
       <NSteps :current="step + 1" size="small" style="margin-bottom: 16px">
         <NStep :title="$t('dv.stepApplication')" />
@@ -207,7 +227,11 @@ onMounted(async () => {
             </NSpace>
           </NFormItem>
           <NFormItem :label="$t('dv.validityDays')">
-            <NInputNumber v-model:value="form.validityDays" :min="1" :max="92" />
+            <NInputNumber
+              v-model:value="form.validityDays"
+              :min="1"
+              :max="terminalPolicy?.maxValidityDays ?? 92"
+            />
           </NFormItem>
           <NFormItem :label="$t('dv.notes')">
             <NInput v-model:value="form.notes" type="textarea" />
@@ -231,6 +255,9 @@ onMounted(async () => {
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('dv.validityDays')">
             {{ form.validityDays }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            {{ formatDate(requestedNotAfter) }}
           </NDescriptionsItem>
         </NDescriptions>
         <div style="margin-top: 12px">

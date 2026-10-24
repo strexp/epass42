@@ -12,6 +12,7 @@ import { parseCertificatePem } from '@epass42/pki'
 import { writeAudit } from '../../../audit/audit'
 import { dscCert } from '../../../db/schema'
 import { requireAdmin, requireSession } from '../../auth/middleware'
+import { sendPrivateKeyOnce } from '../../../certificates/privateKey'
 import { certMetadata, type CscaRouteDeps } from '../routeContext'
 
 /** Registers the certificate management routes. */
@@ -71,33 +72,26 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CscaRouteD
       if (row.source !== 'owned') return reply.code(403).send({ error: 'forbidden' })
       const own = row.mnt !== null && row.mnt === principal.account.activeMnt
       if (!principal.isAdmin && !own) return reply.code(403).send({ error: 'forbidden' })
-      if (!row.keyRef) {
-        const uploaded = row.keyMode === 'user_uploaded'
-        return reply
-          .code(uploaded ? 404 : 410)
-          .send({ error: uploaded ? 'no_private_key' : 'private_key_consumed' })
-      }
-      // Export, then atomically clear the sealed key so it can be taken once.
-      const pem = service.exportDscPrivateKey(row)
-      const cleared = db
-        .update(dscCert)
-        .set({ keyRef: null })
-        .where(and(eq(dscCert.id, row.id), isNotNull(dscCert.keyRef)))
-        .run()
-      if (cleared.changes === 0) {
-        return reply.code(410).send({ error: 'private_key_consumed' })
-      }
-      writeAudit(db, {
-        actorAccountId: principal.account.id,
-        realm: 'csca',
-        action: 'dsc.certificate.key',
+      return sendPrivateKeyOnce({
+        reply,
+        db,
+        principal,
+        row,
+        keyRef: row.keyRef,
+        keyMode: row.keyMode,
+        exportKey: (target) => service.exportDscPrivateKey(target),
+        consume: (target) =>
+          db
+            .update(dscCert)
+            .set({ keyRef: null })
+            .where(and(eq(dscCert.id, target.id), isNotNull(dscCert.keyRef)))
+            .run().changes > 0,
         targetType: 'dsc_cert',
+        action: 'dsc.certificate.key',
         targetId: row.id,
+        filename: `dsc-${row.id}.key`,
         ip: request.ip,
       })
-      reply.header('cache-control', 'no-store')
-      reply.header('content-disposition', `attachment; filename="dsc-${row.id}.key"`)
-      return reply.type('application/x-pem-file').send(pem)
     },
   )
 

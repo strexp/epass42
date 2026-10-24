@@ -43,6 +43,11 @@ export default {
     'The private key can be downloaded only once. Save it securely now: it is deleted after this download and cannot be retrieved again.',
   signingPaused: 'IS certificate issuance paused',
   niaDvTitle: 'NIA Document Verifier (NIA DV)',
+  cvcaTitle: 'CVCA certificate',
+  cvcaExpiredWarning:
+    'The CVCA certificate that issued this NIA DV expired on {date}. New IS certificate issuance is paused; roll the CVCA key over first.',
+  terminalValidity: 'Terminal certificate validity',
+  signingDvTitle: 'Signing DV validity',
   niaDvReference: 'Holder reference',
   niaDvExpired:
     'The NIA DV expired on {date}. New IS certificate issuance is paused; rotate the NIA DV.',

@@ -1,4 +1,5 @@
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify'
+import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -11,7 +12,7 @@ import {
 import type { Db } from '../../db/client'
 import { cvcaKey } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
-import { currentCvcaKey } from './service'
+import { currentCvcaKey, type CvcaService } from './service'
 
 const CVCA_ADMIN = {
   sub: 'cvca-admin',
@@ -42,6 +43,7 @@ interface Harness {
   oidc: FakeOidc
   adminCookie: string
   db: Db
+  service: CvcaService
 }
 
 async function harness(adminClaims: Record<string, unknown> = CVCA_ADMIN): Promise<Harness> {
@@ -51,7 +53,7 @@ async function harness(adminClaims: Record<string, unknown> = CVCA_ADMIN): Promi
   const built = await makeTestApp(oidc, { cvca: { bootstrap: true } })
   const app = built.app
   const adminCookie = await loginCvca(app, oidc, adminClaims)
-  return { app, oidc, adminCookie, db: built.dbHandle.db }
+  return { app, oidc, adminCookie, db: built.dbHandle.db, service: built.cvca }
 }
 
 /** Logs in to the CVCA realm as a specific identity (switching the provider). */
@@ -484,6 +486,91 @@ describe('M17 CVCA role', () => {
     const items = json(cvca).items as { id: string; status: string }[]
     expect(items.some((row) => row.status === 'link')).toBe(true)
     expect(items.some((row) => row.status === 'current')).toBe(true)
+  })
+
+  it('enforces the DV validity cap and issues the requested number of days', async () => {
+    const { app, adminCookie } = await harness()
+    const tooLong = await app.inject({
+      method: 'POST',
+      url: '/cvca/applications',
+      headers: { cookie: adminCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'Too Long DV',
+        permissions: PERMISSIONS,
+        validityDays: 93,
+      },
+    })
+    expect(tooLong.statusCode).toBe(400)
+
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/cvca/applications',
+      headers: { cookie: adminCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'Thirty Day DV',
+        permissions: PERMISSIONS,
+        validityDays: 30,
+      },
+    })
+    expect(submit.statusCode).toBe(201)
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/cvca/applications/${json(submit).id as number}/approve`,
+      headers: { cookie: adminCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const notBefore = Date.parse(json(approve).notBefore as string)
+    const notAfter = Date.parse(json(approve).notAfter as string)
+    expect((notAfter - notBefore) / 86_400_000).toBeCloseTo(30, 5)
+  })
+
+  it('blocks new DV applications and approvals when the CVCA has expired', async () => {
+    const { app, adminCookie, db } = await harness()
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/cvca/applications',
+      headers: { cookie: adminCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'Pending DV',
+        permissions: PERMISSIONS,
+      },
+    })
+    expect(submit.statusCode).toBe(201)
+    const id = json(submit).id as number
+
+    db.update(cvcaKey)
+      .set({ notAfter: '2000-01-01T00:00:00.000Z' })
+      .where(eq(cvcaKey.isCurrent, true))
+      .run()
+
+    const status = await app.inject({ method: 'GET', url: '/cvca/status' })
+    expect(status.statusCode).toBe(200)
+    expect(json(status).canIssueDvs).toBe(false)
+    expect((json(status).cvca as { expired: boolean }).expired).toBe(true)
+
+    const blockedSubmit = await app.inject({
+      method: 'POST',
+      url: '/cvca/applications',
+      headers: { cookie: adminCookie },
+      payload: {
+        keyMode: 'remote_generated',
+        subjectCn: 'Too Late DV',
+        permissions: PERMISSIONS,
+      },
+    })
+    expect(blockedSubmit.statusCode).toBe(409)
+    expect(json(blockedSubmit).error).toBe('cvca_expired')
+
+    const blockedApprove = await app.inject({
+      method: 'POST',
+      url: `/cvca/applications/${id}/approve`,
+      headers: { cookie: adminCookie },
+    })
+    expect(blockedApprove.statusCode).toBe(409)
+    expect(json(blockedApprove).error).toBe('cvca_expired')
   })
 
   it('bootstrap the CVCA with an ECDSA key and exposes a trust anchor', async () => {

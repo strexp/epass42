@@ -20,7 +20,8 @@ import { useRealm } from '~/composables/useRealm'
 import StatusTag from '~/components/common/StatusTag.vue'
 import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useDvStatus } from '~/composables/useLifecycleStatus'
+import ValidityCell from '~/components/common/ValidityCell.vue'
+import { expiryDescription, useDvStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -39,6 +40,18 @@ const api = useApi()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 const { status: lifecycle, refresh: refreshLifecycle } = useDvStatus()
+const niaDvExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.niaDv ?? null,
+    {
+      missing: t('dv.niaDvMissing'),
+      certificate: (date) => t('dv.niaDvExpired', { date }),
+      privateKey: (date) => t('dv.niaDvExpired', { date }),
+      parent: (date) => t('dv.cvcaExpiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 const dialog = useDialog()
 const rotateBusy = ref(false)
 usePageTitle(() => t('nav.dv'))
@@ -144,11 +157,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle && !lifecycle.canIssueTerminals"
         :title="$t('dv.signingPaused')"
-        :description="
-          lifecycle.niaDv
-            ? $t('dv.niaDvExpired', { date: formatDate(lifecycle.niaDv.notAfter) })
-            : $t('dv.niaDvMissing')
-        "
+        :description="niaDvExpiryText"
       />
 
       <NCard v-if="signedIn" :title="$t('dv.applyTitle')" size="small">
@@ -185,42 +194,6 @@ onMounted(async () => {
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'DV' }) }}</NText>
       </NCard>
 
-      <NCard v-if="showAdmin" size="small" :title="$t('dv.niaDvTitle')">
-        <template #header-extra><AdminOnlyBadge /></template>
-        <NDescriptions v-if="lifecycle?.niaDv" :column="3" size="small">
-          <NDescriptionsItem :label="$t('dv.niaDvReference')">
-            <span class="epass42-mono">{{ lifecycle.niaDv.holderReference }}</span>
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('pkd.validity')">
-            {{ formatDate(lifecycle.niaDv.notAfter) }}
-          </NDescriptionsItem>
-          <NDescriptionsItem :label="$t('pkd.status')">
-            <StatusTag :status="lifecycle.niaDv.status ?? 'active'" />
-          </NDescriptionsItem>
-        </NDescriptions>
-        <NText v-else depth="3">{{ $t('dv.niaDvMissing') }}</NText>
-        <NAlert
-          v-if="lifecycle && !lifecycle.canRotateNiaDv"
-          type="warning"
-          style="margin-top: 12px"
-        >
-          {{ $t('dv.cvcaExpiredHint') }}
-        </NAlert>
-        <template #action>
-          <NButton
-            type="warning"
-            :loading="rotateBusy"
-            :disabled="!lifecycle?.canRotateNiaDv"
-            @click="confirmRotateNiaDv"
-          >
-            <template #icon
-              ><NIcon><RotateCcw /></NIcon
-            ></template>
-            {{ $t('dv.rotateNiaDv') }}<AdminActionIcon />
-          </NButton>
-        </template>
-      </NCard>
-
       <NCard
         v-if="signedIn"
         :title="isAdmin ? $t('dv.adminTitle') : $t('dv.myApplications')"
@@ -247,6 +220,52 @@ onMounted(async () => {
           />
         </div>
         <NEmpty v-else :description="$t('dv.empty')" />
+      </NCard>
+      <NCard v-if="showAdmin" size="small" :title="$t('dv.niaDvTitle')">
+        <template #header-extra><AdminOnlyBadge /></template>
+        <NDescriptions v-if="lifecycle?.niaDv" :column="3" size="small">
+          <NDescriptionsItem :label="$t('dv.niaDvReference')">
+            <span class="epass42-mono">{{ lifecycle.niaDv.holderReference }}</span>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            <ValidityCell
+              :not-before="lifecycle.niaDv.notBefore"
+              :not-after="lifecycle.niaDv.notAfter"
+            />
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('dv.cvcaTitle')">
+            <ValidityCell
+              v-if="lifecycle.cvca"
+              :not-before="lifecycle.cvca.notBefore"
+              :not-after="lifecycle.cvca.notAfter"
+            />
+            <span v-else>—</span>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('pkd.status')">
+            <StatusTag :status="lifecycle.niaDv.status ?? 'active'" />
+          </NDescriptionsItem>
+        </NDescriptions>
+        <NText v-else depth="3">{{ $t('dv.niaDvMissing') }}</NText>
+        <NAlert
+          v-if="lifecycle && !lifecycle.canRotateNiaDv"
+          type="warning"
+          style="margin-top: 12px"
+        >
+          {{ $t('dv.cvcaExpiredHint') }}
+        </NAlert>
+        <template #action>
+          <NButton
+            type="warning"
+            :loading="rotateBusy"
+            :disabled="!lifecycle?.canRotateNiaDv"
+            @click="confirmRotateNiaDv"
+          >
+            <template #icon
+              ><NIcon><RotateCcw /></NIcon
+            ></template>
+            {{ $t('dv.rotateNiaDv') }}<AdminActionIcon />
+          </NButton>
+        </template>
       </NCard>
     </NSpace>
   </div>

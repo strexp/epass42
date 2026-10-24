@@ -8,7 +8,8 @@
 import { and, eq } from 'drizzle-orm'
 
 import type { Db } from '../../db/client'
-import { dscCert, mntConfig } from '../../db/schema'
+import { effectiveValidity } from '../../util/certificate'
+import { cscaKey, dscCert, mntConfig } from '../../db/schema'
 import { nowIso } from '../../util/time'
 import { recordAsAdmin, removeAsAdmin, type AccountRow } from '../auth/authorization'
 
@@ -19,15 +20,28 @@ export interface MntDelegation {
   hasActiveDsc: boolean
 }
 
-/** The maintainer's own active DSC certificate, or undefined (LDS2 excluded). */
+/**
+ * The maintainer's own usable DSC certificate, or undefined (LDS2 excluded).
+ * A certificate whose key period or issuing CSCA has expired is not usable.
+ */
 export function activeOwnDsc(db: Db, mnt: string) {
-  return db
+  const cert = db
     .select()
     .from(dscCert)
     .where(
       and(eq(dscCert.mnt, mnt), eq(dscCert.certificateType, 'dsc'), eq(dscCert.status, 'active')),
     )
     .get()
+  if (!cert) return undefined
+  const csca = db.select().from(cscaKey).where(eq(cscaKey.isCurrent, true)).get()
+  return effectiveValidity({
+    format: 'x509',
+    notAfter: cert.notAfter,
+    certPem: cert.certPem,
+    parentNotAfter: csca?.notAfter,
+  }).expired
+    ? undefined
+    : cert
 }
 
 /** Reads the delegation state for an account's maintainer. */

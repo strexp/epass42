@@ -5,7 +5,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
-import { certificateValidity } from '../../../util/certificate'
+import { lifecycleCertificate } from '../../../certificates/status'
 import type { CscaRouteDeps } from '../routeContext'
 import { currentCscaKey } from '../service'
 
@@ -16,17 +16,9 @@ export function registerStatusRoutes(app: FastifyInstance, deps: CscaRouteDeps):
 
   server.get('/csca/status', async () => {
     const csca = currentCscaKey(db)
-    const validity = certificateValidity(csca?.notAfter)
     return {
-      csca: csca
-        ? {
-            id: csca.id,
-            serial: csca.serial,
-            status: csca.status,
-            ...validity,
-          }
-        : null,
-      canIssueCertificates: csca !== undefined && !validity.expired,
+      csca: csca ? lifecycleCertificate(csca, { format: 'x509', certPem: csca.certPem }) : null,
+      canIssueCertificates: deps.service.canIssueCertificates(),
     }
   })
 }

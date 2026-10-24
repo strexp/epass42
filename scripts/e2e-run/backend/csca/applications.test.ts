@@ -306,9 +306,9 @@ describe('backend e2e — CSCA applications', () => {
 
       await loginAs(backend, 'csca', CLIENT_IDS.csca, CSCA_ADMIN)
       const cert = await approveApplication(backend.client, id)
-      const years = (Date.parse(cert.notAfter) - Date.parse(cert.notBefore)) / (365.25 * 86_400_000)
-      expect(years).toBeGreaterThan(10)
-      expect(years).toBeLessThan(11)
+      const days = (Date.parse(cert.notAfter) - Date.parse(cert.notBefore)) / 86_400_000
+      // The requested day count is now issued exactly (no year rounding).
+      expect(days).toBeCloseTo(3650, 5)
     })
   })
 })

@@ -25,7 +25,7 @@ import {
 
 import { dscCert } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
-import { isCertificateExpired } from '../../util/certificate'
+import { clampNotAfter, effectiveValidity } from '../../util/certificate'
 import { addYears, nowIso } from '../../util/time'
 import type { CscaService } from '../csca/service'
 import { currentCscaKey } from '../csca/service'
@@ -164,7 +164,8 @@ export class MlSignerService {
         organization: signerConfig.organization ?? config.csca.organization,
         organizationalUnit: signerConfig.organizationalUnit ?? config.csca.organizationalUnit,
         notBefore: now,
-        notAfter: addYears(now, signerConfig.validityYears),
+        // A signer never outlives the CSCA certificate that signs it.
+        notAfter: clampNotAfter(addYears(now, signerConfig.validityYears), csca.notAfter),
         crlDistributionPoints: config.csca.crlDistributionPoints,
         hash: signerConfig.hash as HashName,
       },
@@ -226,10 +227,12 @@ export class MlSignerService {
     if (!csca) {
       throw new AppError('csca_missing', 'no CSCA key available to issue the ML signer', 409)
     }
-    if (isCertificateExpired(csca.notAfter)) {
+    if (
+      effectiveValidity({ format: 'x509', notAfter: csca.notAfter, certPem: csca.certPem }).expired
+    ) {
       throw new AppError(
         'csca_expired',
-        'the CSCA certificate has expired; roll the CSCA key over first',
+        'the CSCA certificate or its private key has expired; roll the CSCA key over first',
         409,
       )
     }

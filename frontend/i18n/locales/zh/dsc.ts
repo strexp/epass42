@@ -195,6 +195,10 @@ export default {
   niaDscTitle: 'NIA 文档签名证书（NIA DSC）',
   niaDscSerial: '序列号',
   niaDscExpired: 'NIA DSC 已于 {date} 过期。新的证件签发已暂停，请管理员轮换 NIA DSC。',
+  cscaExpired:
+    '签发该 NIA DSC 的 CSCA 证书已于 {date} 过期，新的证件签发已暂停。请管理员先轮换 CSCA 密钥。',
+  niaDscKeyExpired:
+    'NIA DSC 私钥使用期已于 {date} 结束。新的证件签发已暂停，请管理员轮换 NIA DSC。',
   niaDscMissing: '当前没有可用的 NIA DSC，新的证件签发已暂停。',
   rotateNiaDsc: '轮换 NIA DSC',
   rotateNiaDscWarning:

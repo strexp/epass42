@@ -15,8 +15,8 @@ import type { Db } from '../../db/client'
 import { artifact, dscCert, signRequest } from '../../db/schema'
 import { randomToken } from '../../crypto/secret'
 import { nowIso } from '../../util/time'
-import { signerValidity } from '../../util/certificate'
-import { currentNiaDsc, type CscaService } from '../csca/service'
+import { effectiveValidity } from '../../util/certificate'
+import { currentCscaKey, currentNiaDsc, type CscaService } from '../csca/service'
 import type { CvcaService } from '../cvca/service'
 import { mntIncludes } from '../jurisdiction/whois'
 import {
@@ -68,7 +68,15 @@ export class DscArtifactService {
           403,
         )
       }
-      if (signerValidity(cert.notAfter, cert.certPem).expired) {
+      const csca = currentCscaKey(this.db)
+      if (
+        effectiveValidity({
+          format: 'x509',
+          notAfter: cert.notAfter,
+          certPem: cert.certPem,
+          parentNotAfter: csca?.notAfter,
+        }).expired
+      ) {
         throw new AppError(
           'dsc_expired',
           'the owned DSC has expired; request or rotate a new DSC before issuing documents',

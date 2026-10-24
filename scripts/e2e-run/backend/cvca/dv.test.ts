@@ -321,4 +321,32 @@ describe('backend e2e — CVCA and DV lifecycle', () => {
       expect(rotate.json<{ error: string }>().error).toBe('cvca_expired')
     })
   })
+
+  it('blocks DV applications and approvals when the CVCA has expired', async () => {
+    await withBackend(async (backend) => {
+      const pending = await submitDvApplication(backend, { subjectCn: 'Pending DV' })
+
+      expireCvca(backend)
+      const status = await backend.client.get('/cvca/status')
+      expect(status.status).toBe(200)
+      expect(status.json<{ canIssueDvs: boolean }>().canIssueDvs).toBe(false)
+      expect(
+        status.json<{ cvca: { expired: boolean; privateKeyNotAfter: null } }>().cvca.expired,
+      ).toBe(true)
+
+      await loginAs(backend, 'cvca', CLIENT_IDS.cvca, CVCA_USER)
+      const blockedSubmit = await backend.client.post('/cvca/applications', {
+        keyMode: 'remote_generated',
+        subjectCn: 'Too Late DV',
+        permissions: allPermissions(),
+      })
+      expect(blockedSubmit.status).toBe(409)
+      expect(blockedSubmit.json<{ error: string }>().error).toBe('cvca_expired')
+
+      await loginAs(backend, 'cvca', CLIENT_IDS.cvca, CVCA_ADMIN)
+      const blockedApprove = await backend.client.post(`/cvca/applications/${pending}/approve`, {})
+      expect(blockedApprove.status).toBe(409)
+      expect(blockedApprove.json<{ error: string }>().error).toBe('cvca_expired')
+    })
+  })
 })

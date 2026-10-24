@@ -1,10 +1,8 @@
 /**
  * Security-option normalisation (M7).
  *
- * `SecurityOptions` is nested (`pace` / `aa` / `ca`) since the LDS1/LDS2 split.
- * Older database profiles and signing requests still carry the flat shape
- * (`paceEcdhGm3des`, `paceEcdhGmAes128`, `aa`, `ca`, `caKeyId`), so this module
- * converts those legacy objects into a partial overlay and deep-merges
+ * `SecurityOptions` is nested (`pace` / `aa` / `ca` / `ta`).  This module
+ * converts a stored or submitted object into a partial overlay and deep-merges
  * overlays onto a full base.
  */
 import { securityOptionsSchema, type SecurityOptions } from '@epass42/shared'
@@ -26,59 +24,37 @@ function defined<T extends object>(value: T): T {
   return out as T
 }
 
-/** Converts a stored / legacy security object into a partial overlay. */
+/** Converts a stored security object into a partial overlay. */
 export function toSecurityOverlay(raw: unknown): SecurityOptionsOverlay {
   if (!raw || typeof raw !== 'object') return {}
-  const source = raw as Record<string, unknown>
+  const source = raw as Partial<SecurityOptions>
   const overlay: SecurityOptionsOverlay = {}
 
-  const pace = source.pace
-  if (pace && typeof pace === 'object') {
-    const value = pace as Record<string, unknown>
+  if (source.pace && typeof source.pace === 'object') {
     overlay.pace = defined({
-      ecdhGm3des: value.ecdhGm3des as boolean | undefined,
-      ecdhGmAes128: value.ecdhGmAes128 as boolean | undefined,
-    })
-  } else if (
-    typeof source.paceEcdhGm3des === 'boolean' ||
-    typeof source.paceEcdhGmAes128 === 'boolean'
-  ) {
-    overlay.pace = defined({
-      ecdhGm3des: source.paceEcdhGm3des as boolean | undefined,
-      ecdhGmAes128: source.paceEcdhGmAes128 as boolean | undefined,
+      ecdhGm3des: source.pace.ecdhGm3des,
+      ecdhGmAes128: source.pace.ecdhGmAes128,
     })
   }
 
-  const aa = source.aa
-  if (typeof aa === 'boolean') {
-    overlay.aa = { enabled: aa }
-  } else if (aa && typeof aa === 'object') {
-    const value = aa as Record<string, unknown>
+  if (source.aa && typeof source.aa === 'object') {
     overlay.aa = defined({
-      enabled: value.enabled as boolean | undefined,
-      algorithm: value.algorithm as SecurityOptions['aa']['algorithm'] | undefined,
+      enabled: source.aa.enabled,
+      algorithm: source.aa.algorithm,
     })
   }
 
-  const ca = source.ca
-  const caOverlay: Partial<SecurityOptions['ca']> = {}
-  if (typeof ca === 'boolean') {
-    caOverlay.enabled = ca
-  } else if (ca && typeof ca === 'object') {
-    const value = ca as Record<string, unknown>
-    if (typeof value.enabled === 'boolean') caOverlay.enabled = value.enabled
-    if (typeof value.keyId === 'number') caOverlay.keyId = value.keyId
+  if (source.ca && typeof source.ca === 'object') {
+    overlay.ca = defined({
+      enabled: source.ca.enabled,
+      keyId: source.ca.keyId,
+    })
   }
-  // Legacy profiles stored the CA key id at the top level.
-  if (typeof source.caKeyId === 'number') caOverlay.keyId = source.caKeyId
-  if (Object.keys(caOverlay).length > 0) overlay.ca = caOverlay
 
-  const ta = source.ta
-  if (ta && typeof ta === 'object') {
-    const value = ta as Record<string, unknown>
+  if (source.ta && typeof source.ta === 'object') {
     overlay.ta = defined({
-      enabled: value.enabled as boolean | undefined,
-      authorization: value.authorization as SecurityOptions['ta']['authorization'],
+      enabled: source.ta.enabled,
+      authorization: source.ta.authorization,
     })
   }
 

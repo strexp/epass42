@@ -31,8 +31,6 @@ export class DscSettingsService {
     const extra = row?.defaultsJson
       ? (JSON.parse(row.defaultsJson) as Partial<IssuingDefaults>)
       : {}
-    // Older profiles stored the Chip Authentication key id under `lds2`.
-    const legacyLds2CaKeyId = (extra.lds2 as unknown as { caKeyId?: number } | undefined)?.caKeyId
     return {
       countryAlpha3: this.config.countryAlpha3,
       issuingAuthority:
@@ -63,7 +61,6 @@ export class DscSettingsService {
       endorsements: overrides.endorsements ?? row?.endorsementsJson ?? extra.endorsements,
       security: mergeSecurity(
         this.config.issuing.security,
-        typeof legacyLds2CaKeyId === 'number' ? { ca: { keyId: legacyLds2CaKeyId } } : undefined,
         toSecurityOverlay(extra.security),
         overrides.security,
       ),

@@ -87,7 +87,7 @@ adminIncludeMntBy = false
 [pkd]
 # baseDn = "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int"
 
-# Read-only LDAP compatibility layer (M9).
+# Read-only LDAP directory (M9).
 [ldap]
 enabled = false
 host = "127.0.0.1"

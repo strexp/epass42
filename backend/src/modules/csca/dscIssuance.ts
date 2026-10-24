@@ -27,7 +27,12 @@ import {
 import { dscApplication, dscCert } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
-import { isCertificateExpired } from '../../util/certificate'
+import { clampNotAfter, effectiveValidity } from '../../util/certificate'
+import {
+  certificatePolicy,
+  resolvePrivateKeyUsageDays,
+  resolveValidityDays,
+} from '../../certificates/policy'
 import {
   addDays,
   addYears,
@@ -67,9 +72,13 @@ export class DscIssuanceService {
     if (existing) return existing
     const csca = await this.keys.ensure()
     if (!csca) return undefined
-    // Do not create a certificate under an expired CA: it could never be
+    // Do not create a certificate under an unusable CA: it could never be
     // trusted, and the operator must roll the CSCA over first.
-    if (isCertificateExpired(csca.notAfter)) return undefined
+    if (
+      effectiveValidity({ format: 'x509', notAfter: csca.notAfter, certPem: csca.certPem }).expired
+    ) {
+      return undefined
+    }
     const cscaPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
     return this.issueDsc({
       csca,
@@ -93,10 +102,12 @@ export class DscIssuanceService {
   async rotateNiaDsc(): Promise<{ previous: DscCertRow | null; current: DscCertRow }> {
     const csca = currentCscaKey(this.ctx.db)
     if (!csca) throw new AppError('certificate_not_found', 'no CSCA key available', 409)
-    if (isCertificateExpired(csca.notAfter)) {
+    if (
+      effectiveValidity({ format: 'x509', notAfter: csca.notAfter, certPem: csca.certPem }).expired
+    ) {
       throw new AppError(
         'csca_expired',
-        'the CSCA certificate has expired; roll the CSCA key over first',
+        'the CSCA certificate or its private key has expired; roll the CSCA key over first',
         409,
       )
     }
@@ -144,7 +155,10 @@ export class DscIssuanceService {
     organization?: string | null
     organizationalUnit?: string | null
     documentTypes: string[]
-    validityYears: number
+    /** Exact validity in days (application-issued DSCs). */
+    validityDays?: number
+    /** Validity in whole years (system signers and direct callers). */
+    validityYears?: number
     privateKeyUsageDays: number
     source: 'nia' | 'owned'
     mnt: string | null
@@ -155,8 +169,23 @@ export class DscIssuanceService {
   }): Promise<DscCertRow> {
     const { config, db, keks } = this.ctx
     const now = new Date()
+    if (
+      effectiveValidity({
+        format: 'x509',
+        notAfter: params.csca.notAfter,
+        certPem: params.csca.certPem,
+      }).expired
+    ) {
+      throw new AppError('csca_expired', 'the CSCA certificate or its private key has expired', 409)
+    }
     const issuerCert = parseCertificatePem(params.csca.certPem)
     const nia = config.csca.niaDsc
+    const requestedNotAfter =
+      params.validityDays !== undefined
+        ? addDays(now, params.validityDays)
+        : addYears(now, params.validityYears ?? 10)
+    // A signer never outlives the CSCA certificate that signs it.
+    const notAfter = clampNotAfter(requestedNotAfter, params.csca.notAfter)
 
     let subject: SubjectPublicKey
     let sealedKey: string | null = null
@@ -192,7 +221,7 @@ export class DscIssuanceService {
         documentTypes: params.documentTypes,
         locality: config.countryAlpha3,
         notBefore: now,
-        notAfter: addYears(now, params.validityYears),
+        notAfter,
         privateKeyNotAfter: addDays(now, params.privateKeyUsageDays),
         crlDistributionPoints: config.csca.crlDistributionPoints,
         issuancePolicy: params.issuancePolicy ?? undefined,
@@ -251,6 +280,15 @@ export class DscIssuanceService {
   }): Promise<DscCertRow> {
     const { config, db, keks } = this.ctx
     const now = new Date()
+    if (
+      effectiveValidity({
+        format: 'x509',
+        notAfter: params.csca.notAfter,
+        certPem: params.csca.certPem,
+      }).expired
+    ) {
+      throw new AppError('csca_expired', 'the CSCA certificate or its private key has expired', 409)
+    }
     const types = [...new Set(params.lds2Types)]
     if (types.length === 0) throw new Error('an LDS2 Signer needs at least one role')
     const commonName = params.commonName.slice(0, 9)
@@ -278,13 +316,15 @@ export class DscIssuanceService {
     }
 
     const issuerCert = parseCertificatePem(params.csca.certPem)
+    // A signer never outlives the CSCA certificate that signs it.
+    const notAfter = clampNotAfter(addDays(now, params.validityDays), params.csca.notAfter)
     const generated = await createLds2Signer(
       {
         commonName,
         country: config.countryAlpha2,
         lds2Types: types,
         notBefore: now,
-        notAfter: addDays(now, params.validityDays),
+        notAfter,
         hash: config.csca.hash as HashName,
       },
       subjectPublicKey,
@@ -352,10 +392,12 @@ export class DscIssuanceService {
   ): Promise<DscCertRow> {
     const csca = await this.keys.ensure()
     if (!csca) throw new Error('no CSCA key available')
-    if (isCertificateExpired(csca.notAfter)) {
+    if (
+      effectiveValidity({ format: 'x509', notAfter: csca.notAfter, certPem: csca.certPem }).expired
+    ) {
       throw new AppError(
         'csca_expired',
-        'the CSCA certificate has expired; roll the CSCA key over first',
+        'the CSCA certificate or its private key has expired; roll the CSCA key over first',
         409,
       )
     }
@@ -375,7 +417,11 @@ export class DscIssuanceService {
         cscaPair,
         commonName: application.subjectCn ?? `LDS2${application.mnt ?? ''}`.slice(0, 9),
         lds2Types,
-        validityDays: application.validityDays ?? this.ctx.config.csca.lds2.validityDays,
+        validityDays: resolveValidityDays(
+          'lds2',
+          application.validityDays,
+          this.ctx.config.csca.lds2.validityDays,
+        ),
         source: 'owned',
         mnt: application.mnt,
         keyMode,
@@ -397,8 +443,13 @@ export class DscIssuanceService {
           application.documentTypes && application.documentTypes.length > 0
             ? application.documentTypes
             : ['P'],
-        validityYears: Math.max(1, Math.round((application.validityDays ?? 3650) / 365)),
-        privateKeyUsageDays: this.ctx.config.csca.niaDsc.privateKeyUsageDays,
+        validityDays: resolveValidityDays('dsc', application.validityDays),
+        privateKeyUsageDays:
+          resolvePrivateKeyUsageDays(
+            'dsc',
+            undefined,
+            this.ctx.config.csca.niaDsc.privateKeyUsageDays,
+          ) ?? certificatePolicy('dsc').privateKeyUsage!.defaultDays,
         source: 'owned',
         mnt: application.mnt,
         keyMode,

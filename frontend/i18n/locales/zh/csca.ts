@@ -54,8 +54,10 @@ export default {
   rollover: '轮换 CSCA 密钥',
   rolloverWarning:
     '将生成新的 CSCA 密钥，并发布一张链接证书把它与旧密钥相连。已签发的证书仍然有效，但此操作不可撤销。是否继续？',
-  adminActionsHint: '证书颁发机构级别的操作。每一项都需要确认，且不可撤销。',
   crl: 'CRL',
+  generateCrl: '发布 CRL',
+  generateCrlWarning: '将立即生成并发布新的 CRL，CRL 编号将递增。是否继续？',
+  crlPublished: '已发布 CRL #{number}',
   privateKey: '私钥',
   privateKeyTitle: '下载私钥',
   privateKeyWarning: '私钥仅可下载一次。请立即妥善保存：下载后即被删除，无法再次获取。',
@@ -71,6 +73,8 @@ export default {
   policyStrict: '受限（仅限明确授权）',
   expiredTitle: 'CSCA 已过期',
   expiredWarning: 'CSCA 证书已于 {date} 过期。DSC/LDS2 证书签发已暂停，请管理员轮换 CSCA 密钥。',
-  privateKeyValidity: '私钥有效期至',
+  privateKeyExpiredWarning:
+    'CSCA 私钥使用期已于 {date} 结束。DSC/LDS2 证书签发和 CRL 签名已暂停，请管理员轮换 CSCA 密钥。',
+  caTitle: 'CSCA 证书',
   revokeReason: '吊销原因（可选）',
 } as const

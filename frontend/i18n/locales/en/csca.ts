@@ -57,9 +57,11 @@ export default {
   rollover: 'Roll over CSCA key',
   rolloverWarning:
     'This creates a new CSCA key and publishes a link certificate from the previous key. Already-issued certificates stay valid, but the change cannot be undone. Continue?',
-  adminActionsHint:
-    'Authority-level operations. Each one asks for confirmation and cannot be undone.',
   crl: 'CRL',
+  generateCrl: 'Publish CRL',
+  generateCrlWarning:
+    'A new CRL will be generated and published immediately, and the CRL number will increment. Continue?',
+  crlPublished: 'CRL #{number} published',
   privateKey: 'Private key',
   privateKeyTitle: 'Download private key',
   privateKeyWarning:
@@ -77,6 +79,8 @@ export default {
   expiredTitle: 'CSCA expired',
   expiredWarning:
     'The CSCA certificate expired on {date}. DSC/LDS2 issuance is paused; roll the CSCA key over.',
-  privateKeyValidity: 'Private key valid until',
+  privateKeyExpiredWarning:
+    'The CSCA private-key usage period ended on {date}. DSC/LDS2 issuance and CRL signing are paused; roll the CSCA key over.',
+  caTitle: 'CSCA certificate',
   revokeReason: 'Revocation reason (optional)',
 } as const

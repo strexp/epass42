@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify'
 
 import type { Realm } from '@epass42/shared'
 import type { AppConfig } from '../../config'
+import { publicCertificatePolicies } from '../../certificates/policy'
 import type { AuthProviders } from '../auth/provider'
 
 /** Registers `GET /api/config`. */
@@ -23,6 +24,7 @@ export function registerConfigRoutes(
       roles: deps.config.roles,
       countryAlpha2: deps.config.countryAlpha2,
       countryAlpha3: deps.config.countryAlpha3,
+      certificatePolicies: publicCertificatePolicies(deps.config),
       oauthProviders: {
         csca: providersFor('csca'),
         cvca: providersFor('cvca'),

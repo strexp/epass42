@@ -23,6 +23,7 @@ import { signerCertificateLabel } from '~/utils/lds2'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
+import ValidityCell from '~/components/common/ValidityCell.vue'
 
 interface PkdCertificate {
   id: string
@@ -30,6 +31,7 @@ interface PkdCertificate {
   cn: string
   subject?: string
   status?: string
+  fingerprintSha256?: string
 }
 interface PkdCrl {
   id: string
@@ -37,6 +39,10 @@ interface PkdCrl {
   cscaKeyId?: number
   cscaSerial?: string
   cscaSubject?: string
+  /** SHA-256 of the issuing CSCA certificate. */
+  cscaFingerprintSha256?: string
+  /** Status of the issuing CSCA certificate (`active`, `retired`, …). */
+  cscaStatus?: string
   thisUpdate?: string
   nextUpdate?: string
 }
@@ -66,6 +72,7 @@ interface PkdDsc {
   applicationUrl: string | null
   notBefore: string | null
   notAfter: string | null
+  privateKeyNotAfter?: string | null
 }
 interface PkdMlSigner {
   id: string
@@ -91,7 +98,7 @@ usePageTitle(() => t('pkd.title'))
 
 const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
-const crlCscaFilter = ref<number>(0)
+const crlCscaFilter = ref<string>('')
 const masterlists = ref<{ id: string; latest?: boolean }[]>([])
 const mlSigners = ref<PkdMlSigner[]>([])
 const dscs = ref<PkdDsc[]>([])
@@ -146,27 +153,39 @@ function downloadLinks(id: string) {
   )
 }
 
-/** CSCA-key filter options for the CRL tab (only keys that publish a CRL). */
+/** The short form of a SHA-256 fingerprint used in compact select options. */
+function shortFingerprint(hash: string): string {
+  return `${hash.slice(0, 16)}…`
+}
+
+/** CSCA-certificate filter options for the CRL tab, keyed by SHA-256 fingerprint. */
 const crlCscaOptions = computed(() => {
-  const issuers = new Set(
-    crls.value.map((crl) => crl.cscaKeyId).filter((id): id is number => id !== undefined),
-  )
-  return [
-    { label: t('pkd.allCscas'), value: 0 },
-    ...certificates.value
-      .filter((cert) => cert.cscaKeyId !== undefined && issuers.has(cert.cscaKeyId))
-      .map((cert) => ({
-        label: cert.subject ?? cert.cn,
-        value: cert.cscaKeyId as number,
-      })),
-  ]
+  const issuers = new Map<string, string | undefined>()
+  for (const crl of crls.value) {
+    if (crl.cscaFingerprintSha256) {
+      issuers.set(crl.cscaFingerprintSha256, crl.cscaStatus)
+    }
+  }
+  const options = [...issuers.entries()]
+    .sort(([aHash, aStatus], [bHash, bStatus]) => {
+      const active = Number(bStatus === 'active') - Number(aStatus === 'active')
+      return active !== 0 ? active : aHash.localeCompare(bHash)
+    })
+    .map(([hash, status]) => ({
+      label:
+        status === 'active'
+          ? `${shortFingerprint(hash)} · ${t('status.active.label')}`
+          : shortFingerprint(hash),
+      value: hash,
+    }))
+  return [{ label: t('pkd.allCscas'), value: '' }, ...options]
 })
 
-/** CRLs of the selected CSCA key (all when no filter is selected). */
+/** CRLs of the selected CSCA certificate (all when no filter is selected). */
 const filteredCrls = computed(() =>
-  crlCscaFilter.value === 0
+  crlCscaFilter.value === ''
     ? crls.value
-    : crls.value.filter((crl) => crl.cscaKeyId === crlCscaFilter.value),
+    : crls.value.filter((crl) => crl.cscaFingerprintSha256 === crlCscaFilter.value),
 )
 
 const certColumns = computed(() => [
@@ -178,10 +197,15 @@ const certColumns = computed(() => [
 const crlColumns = computed(() => [
   { title: t('pkd.crlNumber'), key: 'crlNumber' },
   {
-    title: t('pkd.csca'),
-    key: 'cscaSubject',
+    title: t('pkd.cscaFingerprint'),
+    key: 'cscaFingerprintSha256',
     ellipsis: { tooltip: true },
-    render: (row: PkdCrl) => row.cscaSubject ?? row.cscaSerial ?? '—',
+    render: (row: PkdCrl) => h('span', { class: 'epass42-mono' }, row.cscaFingerprintSha256 ?? '—'),
+  },
+  {
+    title: t('common.status'),
+    key: 'cscaStatus',
+    render: (row: PkdCrl) => (row.cscaStatus ? h(StatusTag, { status: row.cscaStatus }) : '—'),
   },
   {
     title: t('pkd.thisUpdate'),
@@ -223,7 +247,8 @@ const mlSignerColumns = computed(() => [
   {
     title: t('pkd.validity'),
     key: 'validity',
-    render: (row: PkdMlSigner) => `${formatDate(row.notBefore)} → ${formatDate(row.notAfter)}`,
+    render: (row: PkdMlSigner) =>
+      h(ValidityCell, { notBefore: row.notBefore, notAfter: row.notAfter }),
   },
   {
     title: t('common.sha256'),
@@ -272,7 +297,7 @@ const dvColumns = computed(() => [
   {
     title: t('pkd.validity'),
     key: 'validity',
-    render: (row: PkdDv) => `${formatDate(row.notBefore)} → ${formatDate(row.notAfter)}`,
+    render: (row: PkdDv) => h(ValidityCell, { notBefore: row.notBefore, notAfter: row.notAfter }),
   },
   {
     title: t('pkd.status'),
@@ -304,7 +329,12 @@ const dscColumns = computed(() => [
   {
     title: t('pkd.validity'),
     key: 'validity',
-    render: (row: PkdDsc) => `${formatDate(row.notBefore)} → ${formatDate(row.notAfter)}`,
+    render: (row: PkdDsc) =>
+      h(ValidityCell, {
+        notBefore: row.notBefore,
+        notAfter: row.notAfter,
+        privateKeyNotAfter: row.privateKeyNotAfter,
+      }),
   },
   {
     title: t('pkd.url'),

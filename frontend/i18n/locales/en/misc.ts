@@ -54,6 +54,7 @@ export default {
     passport_not_active: 'This document is not active.',
     application_not_found: 'This application no longer exists.',
     application_already_reviewed: 'This application has already been reviewed.',
+    csr_or_public_key_required: 'Provide a CSR or a public key (either one is enough).',
     certificate_not_found: 'This certificate no longer exists.',
     mrz_invalid: 'The document number or date of birth is not valid.',
     request_not_found: 'This request no longer exists.',
@@ -72,6 +73,8 @@ export default {
       'The DSC certificate or its private key usage period has expired. It cannot sign documents; request or rotate a DSC.',
     nia_dv_expired:
       'The NIA DV has expired. New IS certificate issuance is paused; rotate the NIA DV.',
+    dv_expired:
+      'The Document Verifier or its CVCA has expired and cannot issue terminal certificates.',
     cvca_expired:
       'The CVCA certificate has expired. Rotate the CVCA key before rotating the NIA DV.',
     certificate_not_active: 'This certificate is not active and cannot be revoked.',

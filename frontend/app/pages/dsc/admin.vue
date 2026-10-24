@@ -3,6 +3,8 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDescriptions,
+  NDescriptionsItem,
   NEmpty,
   NIcon,
   NPopconfirm,
@@ -18,7 +20,8 @@ import StatusTag from '~/components/common/StatusTag.vue'
 import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 import AdminActionIcon from '~/components/common/AdminActionIcon.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useDscStatus } from '~/composables/useLifecycleStatus'
+import ValidityCell from '~/components/common/ValidityCell.vue'
+import { expiryDescription, useDscStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -36,6 +39,18 @@ const api = useApi()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
+const niaDscExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.niaDsc ?? null,
+    {
+      missing: t('dsc.niaDscMissing'),
+      certificate: (date) => t('dsc.niaDscExpired', { date }),
+      privateKey: (date) => t('dsc.niaDscKeyExpired', { date }),
+      parent: (date) => t('dsc.cscaExpired', { date }),
+    },
+    formatDate,
+  ),
+)
 usePageTitle(() => t('dsc.adminTitle'))
 const message = useMessage()
 
@@ -191,11 +206,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle && !lifecycle.canIssueDocuments"
         :title="$t('dsc.signingPaused')"
-        :description="
-          lifecycle.niaDsc
-            ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
-            : $t('dsc.niaDscMissing')
-        "
+        :description="niaDscExpiryText"
       />
       <NCard :title="$t('dsc.reviewQueue')" size="small">
         <template #action>
@@ -232,6 +243,24 @@ onMounted(async () => {
           />
         </div>
         <NEmpty v-else :description="$t('dsc.emptyPending')" />
+      </NCard>
+      <NCard v-if="showAdmin && lifecycle?.niaDsc" :title="$t('dsc.niaDscTitle')" size="small">
+        <template #header-extra><AdminOnlyBadge /></template>
+        <NDescriptions :column="3" size="small">
+          <NDescriptionsItem :label="$t('dsc.niaDscSerial')">
+            <span class="epass42-mono">{{ lifecycle.niaDsc.serial }}</span>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            <ValidityCell
+              :not-before="lifecycle.niaDsc.notBefore"
+              :not-after="lifecycle.niaDsc.notAfter"
+              :private-key-not-after="lifecycle.niaDsc.privateKeyNotAfter"
+            />
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.status')">
+            <StatusTag :status="lifecycle.niaDsc.status ?? 'active'" />
+          </NDescriptionsItem>
+        </NDescriptions>
       </NCard>
     </NSpace>
   </div>

@@ -22,7 +22,8 @@ import { signerCertificateLabel } from '~/utils/lds2'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useCscaStatus } from '~/composables/useLifecycleStatus'
+import ValidityCell from '~/components/common/ValidityCell.vue'
+import { expiryDescription, useCscaStatus } from '~/composables/useLifecycleStatus'
 
 interface Certificate {
   id: number
@@ -35,6 +36,8 @@ interface Certificate {
   lds2Types: Lds2SignerType[] | null
   fingerprintSha256: string
   hasPrivateKey: boolean
+  notBefore: string | null
+  notAfter: string | null
   privateKeyNotAfter: string | null
 }
 
@@ -52,6 +55,17 @@ const revokeOpen = ref(false)
 const revokeTarget = ref<Certificate | null>(null)
 const revokeReason = ref('')
 const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
+const cscaExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.csca ?? null,
+    {
+      missing: t('csca.expiredTitle'),
+      certificate: (date) => t('csca.expiredWarning', { date }),
+      privateKey: (date) => t('csca.privateKeyExpiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 
 const myMnt = computed(() => state.value.me?.account.activeMnt ?? null)
 
@@ -177,17 +191,14 @@ const columns = computed(() => [
     render: (row: Certificate) => h(StatusTag, { status: row.status }),
   },
   {
-    title: t('csca.privateKeyValidity'),
-    key: 'privateKeyNotAfter',
-    render: (row: Certificate) => {
-      if (!row.privateKeyNotAfter) return '—'
-      const expired = Date.parse(row.privateKeyNotAfter) <= Date.now()
-      return h(
-        NText,
-        { type: expired ? 'error' : undefined },
-        { default: () => formatDate(row.privateKeyNotAfter) },
-      )
-    },
+    title: t('common.certificateValidity'),
+    key: 'validity',
+    render: (row: Certificate) =>
+      h(ValidityCell, {
+        notBefore: row.notBefore,
+        notAfter: row.notAfter,
+        privateKeyNotAfter: row.privateKeyNotAfter,
+      }),
   },
   { title: t('common.sha256'), key: 'fingerprintSha256', ellipsis: { tooltip: true } },
   {
@@ -213,7 +224,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle?.csca?.expired"
         :title="$t('csca.expiredTitle')"
-        :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+        :description="cscaExpiryText"
       />
       <template #header-extra>
         <NButton size="small" @click="downloadUrl(`${apiBase}/csca/crl.pem`, 'crl.pem')">

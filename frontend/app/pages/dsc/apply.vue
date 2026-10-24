@@ -12,6 +12,7 @@ import {
   NFormItem,
   NIcon,
   NInput,
+  NInputOtp,
   NModal,
   NResult,
   NSelect,
@@ -32,8 +33,8 @@ import { errorMessageKey } from '~/composables/useApi'
 import { usePkdConfig } from '~/composables/usePkdConfig'
 import { useRealm } from '~/composables/useRealm'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useDscStatus } from '~/composables/useLifecycleStatus'
-import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
+import { expiryDescription, useDscStatus } from '~/composables/useLifecycleStatus'
+import { canIsValid, randomCan } from '~/utils/can'
 import { documentTypeLabel, documentTypeValues } from '~/utils/documentTypes'
 
 definePageMeta({ layout: 'realm' })
@@ -42,6 +43,18 @@ const api = useApi()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
+const niaDscExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.niaDsc ?? null,
+    {
+      missing: t('dsc.niaDscMissing'),
+      certificate: (date) => t('dsc.niaDscExpired', { date }),
+      privateKey: (date) => t('dsc.niaDscKeyExpired', { date }),
+      parent: (date) => t('dsc.cscaExpired', { date }),
+    },
+    formatDate,
+  ),
+)
 usePageTitle(() => t('dsc.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
@@ -69,8 +82,12 @@ const dg5 = ref<EncodedFile | null>(null)
 const dg7 = ref<EncodedFile | null>(null)
 const dg3 = ref<EncodedFile | null>(null)
 const dg4 = ref<EncodedFile | null>(null)
-/** Optional PACE Card Access Number (six digits). */
-const can = ref('')
+/**
+ * Six CAN digits; empty boxes stay empty so editing a middle digit preserves
+ * position. An empty value means "use the MRZ".
+ */
+const canDigits = ref<string[]>(Array.from({ length: 6 }, () => ''))
+const can = computed(() => canDigits.value.join(''))
 const fullName = ref('')
 const placeOfBirth = ref('')
 const address = ref('')
@@ -221,12 +238,8 @@ function prevStep(): void {
   if (step.value > 0) step.value -= 1
 }
 
-function setCan(value: string): void {
-  can.value = normaliseCan(value)
-}
-
 function generateCan(): void {
-  can.value = randomCan()
+  canDigits.value = randomCan().split('')
 }
 
 function addPerson(): void {
@@ -325,11 +338,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle && !lifecycle.canIssueDocuments"
         :title="$t('dsc.signingPaused')"
-        :description="
-          lifecycle.niaDsc
-            ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
-            : $t('dsc.niaDscMissing')
-        "
+        :description="niaDscExpiryText"
       />
       <NResult
         v-if="reference"
@@ -473,15 +482,11 @@ onMounted(async () => {
               <NForm label-placement="top">
                 <NFormItem :label="$t('dsc.can')">
                   <NSpace align="center" :size="8">
-                    <NInput
-                      :value="can"
-                      maxlength="6"
-                      :placeholder="$t('dsc.canPlaceholder')"
+                    <NInputOtp
+                      v-model:value="canDigits"
+                      :length="6"
                       :status="canValid ? undefined : 'error'"
-                      style="max-width: 160px"
-                      :input-props="{ inputmode: 'numeric' }"
-                      :allow-input="(value: string) => /^\d*$/.test(value)"
-                      @update:value="setCan"
+                      :allow-input="(value: string) => /^\d$/.test(value)"
                     />
                     <NButton @click="generateCan">
                       <template #icon

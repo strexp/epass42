@@ -9,10 +9,11 @@ import { AppError } from '@epass42/shared'
 import { buildDg2, fromBase64, validateDg2 } from '@epass42/pki'
 
 import type { Db } from '../../db/client'
-import { dscCert, signRequest } from '../../db/schema'
+import { signRequest } from '../../db/schema'
 import { randomToken } from '../../crypto/secret'
 import { nowIso } from '../../util/time'
 import { mntDelegatesToNia, canReview, type DscScope } from '../auth/authorization'
+import { activeOwnDsc } from '../mnt/delegation'
 import { mrzExpiry } from './build'
 import type { DscSettingsService } from './settings'
 import { buildPreview, type RequestPreview } from './preview'
@@ -67,17 +68,7 @@ export class DscRequestService {
       }
     }
     if (requester.mnt !== null && !mntDelegatesToNia(this.db, requester.mnt)) {
-      const own = this.db
-        .select()
-        .from(dscCert)
-        .where(
-          and(
-            eq(dscCert.mnt, requester.mnt),
-            eq(dscCert.certificateType, 'dsc'),
-            eq(dscCert.status, 'active'),
-          ),
-        )
-        .get()
+      const own = activeOwnDsc(this.db, requester.mnt)
       if (own) return { mode: 'owned', certId: own.id }
     }
     return { mode: 'nia', certId: null }

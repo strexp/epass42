@@ -11,6 +11,7 @@ import {
   type DvClass,
 } from '@epass42/shared'
 import type { dvCert, terminalCert } from '../../db/schema'
+import { certificatePolicy } from '../../certificates/policy'
 import type { AuthContext } from '../auth/middleware'
 import type { CvcaService } from './service'
 import { parsePermissions } from './dvIssuance'
@@ -41,7 +42,7 @@ export const applicationBody = z.object({
   dvClass: dvClassSchema,
   /** The requested LDS2 read/write authorization. */
   permissions: dvPermissionsSchema,
-  validityDays: z.number().int().min(1).max(92).optional(),
+  validityDays: z.number().int().min(1).max(certificatePolicy('dv').maxValidityDays).optional(),
   applicationUrl: z.string().url().max(2000).optional(),
   notes: z.string().max(2000).optional(),
 })

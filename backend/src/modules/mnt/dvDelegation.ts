@@ -9,8 +9,9 @@
 import { and, eq } from 'drizzle-orm'
 
 import type { Db } from '../../db/client'
-import { dvCert, mntConfig } from '../../db/schema'
+import { cvcaKey, dvCert, mntConfig } from '../../db/schema'
 import { nowIso } from '../../util/time'
+import { effectiveValidity } from '../../util/certificate'
 import type { AccountRow } from '../auth/authorization'
 
 /** The DV delegation state of a maintainer, as exposed to the UI. */
@@ -20,13 +21,25 @@ export interface DvDelegation {
   hasActiveDv: boolean
 }
 
-/** The maintainer's own active DV certificate, or undefined. */
+/**
+ * The maintainer's own usable DV certificate, or undefined.  A DV whose
+ * certificate or issuing CVCA has expired is not usable.
+ */
 export function activeOwnDv(db: Db, mnt: string) {
-  return db
+  const cert = db
     .select()
     .from(dvCert)
     .where(and(eq(dvCert.mnt, mnt), eq(dvCert.status, 'active')))
     .get()
+  if (!cert) return undefined
+  const cvca = db.select().from(cvcaKey).where(eq(cvcaKey.isCurrent, true)).get()
+  return effectiveValidity({
+    format: 'cv',
+    notAfter: cert.notAfter,
+    parentNotAfter: cvca?.notAfter,
+  }).expired
+    ? undefined
+    : cert
 }
 
 /** Reads the DV delegation state for an account's maintainer. */

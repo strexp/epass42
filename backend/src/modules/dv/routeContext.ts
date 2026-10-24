@@ -8,6 +8,8 @@
 import { z } from 'zod'
 
 import { SUBJECT_NAME_MAX, dvPermissionsSchema, isValidSubjectName } from '@epass42/shared'
+
+import { certificatePolicy } from '../../certificates/policy'
 import type { AuthContext } from '../auth/middleware'
 import type { CvcaService } from '../cvca/service'
 
@@ -35,6 +37,11 @@ export const terminalApplicationBody = z.object({
   publicKeyPem: z.string().max(20_000).optional(),
   /** The requested LDS2 read/write authorization. */
   permissions: dvPermissionsSchema,
-  validityDays: z.number().int().min(1).max(92).optional(),
+  validityDays: z
+    .number()
+    .int()
+    .min(1)
+    .max(certificatePolicy('terminal').maxValidityDays)
+    .optional(),
   notes: z.string().max(2000).optional(),
 })

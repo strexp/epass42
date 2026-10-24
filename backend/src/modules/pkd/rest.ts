@@ -15,7 +15,7 @@ import type { Db } from '../../db/client'
 import { dscCert, dvCert, masterList } from '../../db/schema'
 import { certMetadata } from '../csca/routeContext'
 import { parsePermissions } from '../cvca/service'
-import { listObjects } from './directory'
+import { listObjects, type PkdObject } from './directory'
 import { buildLdif } from './ldif'
 import {
   REVOKE_HASH_ALGORITHM,
@@ -31,6 +31,11 @@ import {
 export interface PkdRouteDeps {
   config: AppConfig
   db: Db
+}
+
+/** The SHA-256 fingerprint of a published certificate. */
+function fingerprintOf(object: PkdObject | undefined): string | undefined {
+  return object ? Buffer.from(sha256(new Uint8Array(object.der))).toString('hex') : undefined
 }
 
 /** The MRZ lookup fields a relying party supplies to check revocation. */
@@ -55,22 +60,35 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
         cn: object.cn,
         subject: object.subject,
         status: object.status,
+        fingerprintSha256: fingerprintOf(object),
       }))
     return { total: items.length, items }
   })
 
   server.get('/pkd/crls', async () => {
-    const items = listObjects(db, config)
+    const objects = listObjects(db, config)
+    const cscaByKeyId = new Map(
+      objects
+        .filter((object) => object.kind === 'csca' && object.cscaKeyId !== undefined)
+        .map((object) => [object.cscaKeyId as number, object]),
+    )
+    const items = objects
       .filter((object) => object.kind === 'crl')
-      .map((object) => ({
-        id: object.id,
-        crlNumber: Number(object.cn),
-        cscaKeyId: object.cscaKeyId,
-        cscaSerial: object.cscaSerial,
-        cscaSubject: object.cscaSubject,
-        thisUpdate: object.thisUpdate,
-        nextUpdate: object.nextUpdate,
-      }))
+      .map((object) => {
+        const issuer =
+          object.cscaKeyId !== undefined ? cscaByKeyId.get(object.cscaKeyId) : undefined
+        return {
+          id: object.id,
+          crlNumber: Number(object.cn),
+          cscaKeyId: object.cscaKeyId,
+          cscaSerial: object.cscaSerial,
+          cscaSubject: object.cscaSubject,
+          cscaFingerprintSha256: fingerprintOf(issuer),
+          cscaStatus: issuer?.status,
+          thisUpdate: object.thisUpdate,
+          nextUpdate: object.nextUpdate,
+        }
+      })
     return { total: items.length, items }
   })
 

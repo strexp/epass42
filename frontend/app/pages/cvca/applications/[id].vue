@@ -23,6 +23,7 @@ import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
+import ValidityCell from '~/components/common/ValidityCell.vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { downloadUrl } from '~/utils/download'
@@ -51,6 +52,11 @@ interface Application {
   dvCertId: number | null
   /** Whether the issued DV private key is still available. */
   hasPrivateKey: boolean
+  /** The issued DV certificate, with its validity. */
+  certificate: {
+    notBefore: string | null
+    notAfter: string | null
+  } | null
   createdAt: string
 }
 
@@ -266,6 +272,20 @@ onMounted(async () => {
         <NText v-if="application.rejectReason" depth="3" style="display: block; margin-top: 8px">
           {{ $t('cvca.rejectReason') }}: {{ application.rejectReason }}
         </NText>
+
+        <NDescriptions
+          v-if="application.certificate"
+          :column="2"
+          size="small"
+          style="margin-top: 12px"
+        >
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            <ValidityCell
+              :not-before="application.certificate.notBefore"
+              :not-after="application.certificate.notAfter"
+            />
+          </NDescriptionsItem>
+        </NDescriptions>
 
         <template v-if="canDownloadKey">
           <NAlert type="warning" :title="$t('cvca.privateKeyTitle')" style="margin-top: 12px">

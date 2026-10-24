@@ -22,8 +22,9 @@ import { LogIn, Save } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import { usePkdConfig } from '~/composables/usePkdConfig'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
-import { useCscaStatus } from '~/composables/useLifecycleStatus'
+import { expiryDescription, useCscaStatus } from '~/composables/useLifecycleStatus'
 import { isValidSubjectName, type DocumentTypeCode, type Lds2SignerType } from '@epass42/shared'
 import { dscDocumentTypeValues, documentTypesLabel } from '~/utils/documentTypes'
 import { lds2SignerTypeValues, lds2SignerTypesLabel } from '~/utils/lds2'
@@ -35,9 +36,30 @@ const { auth, state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
+const cscaExpiryText = computed(() =>
+  expiryDescription(
+    lifecycle.value?.csca ?? null,
+    {
+      missing: t('csca.expiredTitle'),
+      certificate: (date) => t('csca.expiredWarning', { date }),
+      privateKey: (date) => t('csca.privateKeyExpiredWarning', { date }),
+    },
+    formatDate,
+  ),
+)
 usePageTitle(() => t('csca.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
+const { config, load: loadPkdConfig } = usePkdConfig()
+
+const certificatePolicies = computed(() => config.value?.certificatePolicies)
+const dscMaxValidityDays = computed(() => certificatePolicies.value?.dsc.maxValidityDays ?? 3650)
+const lds2MaxValidityDays = computed(() => certificatePolicies.value?.lds2.maxValidityDays ?? 3760)
+const defaultValidityDays = computed(() =>
+  isLds2.value
+    ? (certificatePolicies.value?.lds2.defaultValidityDays ?? 3760)
+    : (certificatePolicies.value?.dsc.defaultValidityDays ?? 3650),
+)
 
 const signedIn = computed(() => state.value.me !== null)
 
@@ -58,9 +80,10 @@ const form = reactive({
 })
 const submitting = ref(false)
 const isLds2 = computed(() => form.certificateType === 'lds2')
-const DEFAULT_DSC_VALIDITY_DAYS = 3650
-/** Doc 9303-12 Table 1: 10-year public-key validity plus 3 months. */
-const DEFAULT_LDS2_VALIDITY_DAYS = 3760
+/** The previewed expiry: the backend now issues the exact day count. */
+const requestedNotAfter = computed(() =>
+  new Date(Date.now() + form.validityDays * 86_400_000).toISOString(),
+)
 
 const keyModeOptions = computed(() => [
   { label: t('csca.keyModeNia'), value: 'remote_generated' },
@@ -94,11 +117,11 @@ function setCertificateType(value: 'dsc' | 'lds2'): void {
     form.subjectO = ''
     form.subjectOu = ''
     form.documentTypes = []
-    form.validityDays = DEFAULT_LDS2_VALIDITY_DAYS
+    form.validityDays = certificatePolicies.value?.lds2.defaultValidityDays ?? 3760
     if (form.lds2Types.length === 0) form.lds2Types = ['ts']
   } else {
     if (form.documentTypes.length === 0) form.documentTypes = ['P']
-    form.validityDays = DEFAULT_DSC_VALIDITY_DAYS
+    form.validityDays = certificatePolicies.value?.dsc.defaultValidityDays ?? 3650
   }
 }
 
@@ -237,6 +260,12 @@ async function submit(): Promise<void> {
 onMounted(async () => {
   await ensureLoaded()
   await refreshLifecycle()
+  try {
+    await loadPkdConfig()
+    form.validityDays = defaultValidityDays.value
+  } catch {
+    // Keep the built-in defaults when the public config is unavailable.
+  }
 })
 </script>
 
@@ -250,7 +279,7 @@ onMounted(async () => {
       <ExpiryAlert
         v-if="lifecycle?.csca?.expired"
         :title="$t('csca.expiredTitle')"
-        :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+        :description="cscaExpiryText"
       />
       <NSteps :current="step + 1" size="small" style="margin-bottom: 16px">
         <NStep :title="$t('csca.stepApplication')" />
@@ -342,7 +371,11 @@ onMounted(async () => {
                 :hint="isLds2 ? $t('csca.lds2ValidityHint') : undefined"
               />
             </template>
-            <NInputNumber v-model:value="form.validityDays" :min="1" :max="isLds2 ? 3760 : 3650" />
+            <NInputNumber
+              v-model:value="form.validityDays"
+              :min="1"
+              :max="isLds2 ? lds2MaxValidityDays : dscMaxValidityDays"
+            />
           </NFormItem>
           <NFormItem :label="$t('csca.issuancePolicy')">
             <NSelect v-model:value="form.issuancePolicy" :options="policyOptions" />
@@ -386,6 +419,9 @@ onMounted(async () => {
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.validityDays')">
             {{ form.validityDays }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('common.certificateValidity')">
+            {{ formatDate(requestedNotAfter) }}
           </NDescriptionsItem>
           <NDescriptionsItem :label="$t('csca.issuancePolicy')">
             {{ form.issuancePolicy }}
