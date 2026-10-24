@@ -11,7 +11,7 @@ epass42/
 ├── packages/
 │   ├── pki/       pure functions: X.509/CRL/CMS/SOD/MasterList/data groups/perso
 │   └── shared/    zod schemas, types, error codes and constants (OIDs, country codes)
-├── scripts/       e2e test suite (packages + backend), plus the manual card42 harness
+├── scripts/       e2e suite (packages + backend + card42 cross-project)
 ├── backend/       Fastify + SQLite/Drizzle (M3–M4)
 ├── frontend/      Nuxt 4 + Naive UI (M11)
 ├── deploy/        docker-compose, Dockerfiles and the OpenLDAP schema (LDIF validation)
@@ -33,13 +33,14 @@ pnpm check          # format:check + lint + typecheck + test
 ### Run the e2e tests
 
 ```bash
-pnpm --filter @epass42/scripts test           # both suites
+pnpm --filter @epass42/scripts test           # packages + backend (card42 skipped)
 pnpm --filter @epass42/scripts test:packages  # library only (no server)
 pnpm --filter @epass42/scripts test:backend   # boots the backend on a random port
+pnpm --filter @epass42/scripts test:card42    # optional: backend → card42 simulator
 ```
 
-See [`scripts/e2e-run/README.md`](scripts/e2e-run/README.md) for what each suite
-covers and for the manual card42 harness.
+See [`scripts/e2e-run/README.md`](scripts/e2e-run/README.md) for the scenario
+layout, the lifecycle covered by each directory and the card42 prerequisites.
 
 ### Run the backend (M3–M4)
 
@@ -74,8 +75,8 @@ pnpm dev    # backend on :3000, frontend on :3001
 
 CSCA generation and certificate verification are done by the backend and
 `packages/pki`; the standalone `scripts/gen-csca` / `scripts/verify` CLIs were
-removed. `scripts/` now holds the e2e test suite and the manual card42 harness
-([`scripts/README.md`](scripts/README.md)).
+removed. `scripts/` now holds the scenario-split e2e suite, including the
+optional card42 cross-project run ([`scripts/README.md`](scripts/README.md)).
 
 ## Design notes
 

@@ -4,7 +4,9 @@
 
 > 说明（2026-10-24）：本报告记录当时的目录布局；card42 夹具与驱动已迁移到
 > `scripts/e2e-run/card42/`，下文路径按迁移后的结构理解（`out/`、`logs/` 均在
-> 该目录下）。本套件为手动联调，不属于 `pnpm test`。
+> 该目录下）。本报告描述的手动 shell 套件仍保留用于调试；新增的自动化跨项目
+> 套件见 `e2e-run/card42/e2e.test.ts`（`pnpm --filter @epass42/scripts test:card42`），
+> 它由后端直接签发证书并生成 perso，再在临时模拟器上执行 LDS1/LDS2/TA 全流程。
 
 测试对象：
 

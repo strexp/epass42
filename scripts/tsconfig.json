@@ -9,6 +9,7 @@
     "e2e-run/fixtures/**/*.ts",
     "e2e-run/packages/**/*.ts",
     "e2e-run/backend/**/*.ts",
+    "e2e-run/card42/**/*.ts",
     "vitest.config.ts",
     "../backend/src/types/fastify.d.ts"
   ]

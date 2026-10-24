@@ -130,11 +130,12 @@ export async function makeTestApp(
   oidc: FakeOidc,
   overrides: RawConfig = {},
   mntResolver: MntResolver = staticMntResolver(),
+  logger = false,
 ): Promise<BuiltApp & { dbHandle: DbHandle }> {
   const config = makeTestConfig(overrides)
   // Keep generated artifacts out of the repository.
   config.dataDir = mkdtempSync(join(tmpdir(), 'epass42-artifacts-'))
   const dbHandle = openDatabase(':memory:')
   runMigrations(dbHandle)
-  return buildApp({ config, dbHandle, driverFactory: oidc.factory, mntResolver, logger: false })
+  return buildApp({ config, dbHandle, driverFactory: oidc.factory, mntResolver, logger })
 }
