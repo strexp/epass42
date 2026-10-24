@@ -8,6 +8,10 @@
 #   include  /etc/ldap/schema/pki.schema          # userCertificate / cRLDistributionPoint
 #   include  /etc/ldap/schema/epass42.schema
 
+# Standard certificate entries use pkiCA/cACertificate (CSCA),
+# pkiUser/userCertificate (DSC) and cRLDistributionPoint (CRL) from pki.schema.
+# This file only adds the ICAO CSCA Master List object class.
+
 # CSCA Master List content (Doc 9303-12 §9).
 attributetype (
   2.23.136.1.1.2

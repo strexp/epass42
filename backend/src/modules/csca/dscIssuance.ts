@@ -77,7 +77,7 @@ export class DscIssuanceService {
       commonName: this.ctx.config.csca.niaDsc.commonName,
       documentTypes: this.ctx.config.csca.niaDsc.documentTypes,
       validityYears: this.ctx.config.csca.niaDsc.validityYears,
-      privateKeyUsageYears: this.ctx.config.csca.niaDsc.privateKeyUsageYears,
+      privateKeyUsageDays: this.ctx.config.csca.niaDsc.privateKeyUsageDays,
       source: 'nia',
       mnt: null,
       keyMode: 'remote_generated',
@@ -116,7 +116,7 @@ export class DscIssuanceService {
         commonName: this.ctx.config.csca.niaDsc.commonName,
         documentTypes: this.ctx.config.csca.niaDsc.documentTypes,
         validityYears: this.ctx.config.csca.niaDsc.validityYears,
-        privateKeyUsageYears: this.ctx.config.csca.niaDsc.privateKeyUsageYears,
+        privateKeyUsageDays: this.ctx.config.csca.niaDsc.privateKeyUsageDays,
         source: 'nia',
         mnt: null,
         keyMode: 'remote_generated',
@@ -145,7 +145,7 @@ export class DscIssuanceService {
     organizationalUnit?: string | null
     documentTypes: string[]
     validityYears: number
-    privateKeyUsageYears: number
+    privateKeyUsageDays: number
     source: 'nia' | 'owned'
     mnt: string | null
     keyMode: 'remote_generated' | 'user_uploaded'
@@ -190,9 +190,10 @@ export class DscIssuanceService {
         organization: params.organization ?? config.csca.organization,
         organizationalUnit: params.organizationalUnit ?? config.csca.organizationalUnit,
         documentTypes: params.documentTypes,
+        locality: config.countryAlpha3,
         notBefore: now,
         notAfter: addYears(now, params.validityYears),
-        privateKeyNotAfter: addYears(now, params.privateKeyUsageYears),
+        privateKeyNotAfter: addDays(now, params.privateKeyUsageDays),
         crlDistributionPoints: config.csca.crlDistributionPoints,
         issuancePolicy: params.issuancePolicy ?? undefined,
         hash: nia.hash as HashName,
@@ -397,7 +398,7 @@ export class DscIssuanceService {
             ? application.documentTypes
             : ['P'],
         validityYears: Math.max(1, Math.round((application.validityDays ?? 3650) / 365)),
-        privateKeyUsageYears: 1,
+        privateKeyUsageDays: this.ctx.config.csca.niaDsc.privateKeyUsageDays,
         source: 'owned',
         mnt: application.mnt,
         keyMode,

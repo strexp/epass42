@@ -33,3 +33,19 @@ export const LIMITS = {
   /** Whole DSC request payload. */
   requestPayload: 2 * 1024 * 1024,
 } as const
+
+/** Maximum length of a subject CN/O/OU attribute accepted by the service. */
+export const SUBJECT_NAME_MAX = 64
+
+/**
+ * Characters allowed in applicant-supplied subject attributes.  Commas, plus
+ * signs, quotes, backslashes, semicolons, angle brackets and equals signs are
+ * excluded so a value cannot inject additional RDNs into the DN.
+ */
+export const SUBJECT_NAME_PATTERN = /^[\p{L}\p{N} ._'()&@-]+$/u
+
+/** True when a subject attribute is non-empty and uses only safe characters. */
+export function isValidSubjectName(value: string): boolean {
+  const trimmed = value.trim()
+  return trimmed.length > 0 && SUBJECT_NAME_PATTERN.test(trimmed)
+}

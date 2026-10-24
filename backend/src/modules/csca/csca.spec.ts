@@ -16,6 +16,7 @@ import type { Db } from '../../db/client'
 import { cscaKey, dscCert } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { currentCscaKey } from './service'
+import { privateKeyNotAfter } from '../../util/certificate'
 
 const THIRD_USER = {
   sub: 'third-user',
@@ -218,7 +219,7 @@ describe('M5 CSCA role', () => {
       headers: { cookie: cscaCookie },
       payload: {
         keyMode: 'remote_generated',
-        subjectCn: 'P+I DSC',
+        subjectCn: 'P and I DSC',
         documentTypes: ['P', 'I'],
       },
     })
@@ -871,5 +872,65 @@ describe('M5 CSCA role', () => {
     })
     expect(blockedApprove.statusCode).toBe(409)
     expect(json(blockedApprove).error).toBe('csca_expired')
+  })
+  it('uses the configured country code in the DSC SAN/IAN', async () => {
+    const built = await makeTestApp(new FakeOidc(), {
+      countryAlpha2: 'ZZ',
+      countryAlpha3: 'ZZZ',
+      csca: { bootstrap: true },
+    })
+    const nia = await built.csca.ensureNiaDsc()
+    const cert = parseCertificatePem(nia!.certPem)
+    const san = cert.getExtension(OIDS.subjectAltName)!
+    const ian = cert.getExtension(OIDS.issuerAltName)!
+    expect(Buffer.from(san.value).includes(Buffer.from('ZZZ'))).toBe(true)
+    expect(Buffer.from(ian.value).includes(Buffer.from('ZZZ'))).toBe(true)
+    expect(Buffer.from(san.value).includes(Buffer.from('XDN'))).toBe(false)
+  })
+
+  it('sets the DSC private-key usage period to 90 days by default', async () => {
+    const { app, cscaCookie } = await harness()
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Short-lived DSC' },
+    })
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${json(submit).id as number}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const end = privateKeyNotAfter(json(approve).certPem as string)!
+    const days = (end.getTime() - Date.now()) / 86_400_000
+    expect(days).toBeGreaterThan(88)
+    expect(days).toBeLessThan(92)
+  })
+
+  it('rejects unsafe subject names and DSC validity above 10 years', async () => {
+    const { app, cscaCookie } = await harness()
+    for (const payload of [
+      { subjectCn: 'Bad, C=ZZ' },
+      { subjectCn: 'Bad;Name' },
+      { subjectCn: 'Bad=Name' },
+      { subjectCn: 'Good DSC', validityDays: 3651 },
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/csca/applications',
+        headers: { cookie: cscaCookie },
+        payload: { keyMode: 'remote_generated', ...payload },
+      })
+      expect(response.statusCode).toBe(400)
+    }
+
+    const accepted = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Good DSC', validityDays: 3650 },
+    })
+    expect(accepted.statusCode).toBe(201)
   })
 })

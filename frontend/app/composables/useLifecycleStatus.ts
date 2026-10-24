@@ -11,6 +11,9 @@ export interface LifecycleCertificate {
   holderReference?: string
   status?: string
   notAfter: string | null
+  privateKeyNotAfter?: string | null
+  certificateExpired?: boolean
+  privateKeyExpired?: boolean
   expired: boolean
   daysRemaining: number | null
 }

@@ -336,7 +336,7 @@ describe('M7 DSC signing service', () => {
       commonName: 'Owned P-only DSC',
       documentTypes: ['P'],
       validityYears: 1,
-      privateKeyUsageYears: 1,
+      privateKeyUsageDays: 90,
       source: 'owned',
       mnt: 'USER-MNT',
       keyMode: 'remote_generated',
@@ -1501,5 +1501,38 @@ describe('M7 DSC signing service', () => {
       payload: { confirm: true },
     })
     expect(rotate.statusCode).toBe(403)
+  })
+  it('refuses to sign with an owned DSC whose certificate has expired', async () => {
+    const { app, oidc, db, csca } = await harness()
+    const cscaKey = currentCscaKey(db)!
+    const pair = await csca.loadKeyPair(cscaKey)
+    const owned = await csca.issueDsc({
+      csca: cscaKey,
+      cscaPair: pair,
+      commonName: 'Expired Owned DSC',
+      documentTypes: ['P'],
+      validityYears: 1,
+      privateKeyUsageDays: 90,
+      source: 'owned',
+      mnt: null,
+      keyMode: 'remote_generated',
+    })
+    db.update(dscCert)
+      .set({ notAfter: '2000-01-01T00:00:00.000Z' })
+      .where(eq(dscCert.id, owned.id))
+      .run()
+
+    const reference = await submit(app, oidc, 'X1122334', {
+      dscSelection: { mode: 'owned', dscCertId: owned.id },
+    })
+    const adminCookie = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: adminCookie },
+      payload: {},
+    })
+    expect(approve.statusCode).toBe(409)
+    expect(approve.json().error).toBe('dsc_expired')
   })
 })

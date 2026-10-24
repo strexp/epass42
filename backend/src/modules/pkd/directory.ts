@@ -9,10 +9,10 @@
 import { parseCertificatePem } from '@epass42/pki'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { crl, cscaKey, cvcaKey, dvCert, masterList } from '../../db/schema'
+import { crl, cscaKey, cvcaKey, dscCert, dvCert, masterList } from '../../db/schema'
 
 /** The kinds of published object. */
-export type PkdObjectKind = 'csca' | 'crl' | 'ml' | 'cvca' | 'dv'
+export type PkdObjectKind = 'csca' | 'crl' | 'ml' | 'cvca' | 'dv' | 'dsc'
 
 /** A published object. */
 export interface PkdObject {
@@ -85,6 +85,19 @@ export function listObjects(db: Db, config: AppConfig): PkdObject[] {
       cscaKeyId: row.id,
       cscaSerial: row.serial,
       cscaSubject: row.subjectDn,
+      der: new Uint8Array(parseCertificatePem(row.certPem).rawData),
+    })
+  }
+  for (const row of db.select().from(dscCert).all()) {
+    if (row.source !== 'nia' && row.source !== 'owned') continue
+    objects.push({
+      id: `dsc-${row.id}`,
+      kind: 'dsc',
+      cn: row.serial,
+      subject: row.subjectDn,
+      status: row.status,
+      cscaKeyId: row.cscaKeyId ?? undefined,
+      cscaSerial: row.cscaKeyId !== null ? cscaById.get(row.cscaKeyId)?.serial : undefined,
       der: new Uint8Array(parseCertificatePem(row.certPem).rawData),
     })
   }

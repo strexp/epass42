@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { dscCert, signRequest } from '../../db/schema'
+import { parseCertificate } from '@epass42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { buildEntries, matchesFilter, startLdapServer, type LdapServerHandle } from './ldap'
 import { baseDn } from './directory'
@@ -267,5 +268,52 @@ describe('M9 read-only LDAP server', () => {
     const first = (crls.json().items as { cscaKeyId?: number; cscaSubject?: string }[])[0]!
     expect(first.cscaKeyId).toBeTypeOf('number')
     expect(first.cscaSubject).toContain('CN=')
+  })
+  it('publishes DSC certificates as PKD objects and standard LDAP entries', async () => {
+    const { app, db, config } = await setup()
+    const nia = db.select().from(dscCert).where(eq(dscCert.source, 'nia')).get()!
+    expect(nia).toBeTruthy()
+
+    const list = await app.inject({ method: 'GET', url: '/pkd/dscs' })
+    const item = (list.json().items as { id: number; objectId: string }[]).find(
+      (row) => row.id === nia.id,
+    )!
+    expect(item.objectId).toBe(`dsc-${nia.id}`)
+
+    const der = await app.inject({ method: 'GET', url: `/pkd/objects/${item.objectId}.der` })
+    expect(der.statusCode).toBe(200)
+    expect(parseCertificate(new Uint8Array(der.rawPayload)).serialNumber).toBe(nia.serial)
+
+    const entries = buildEntries(db, config)
+    expect(entries.some((entry) => entry.dn === `ou=dsc,${baseDn(config)}`)).toBe(true)
+    const dscEntry = entries.find((entry) => entry.dn.startsWith(`cn=${nia.serial},ou=dsc,`))!
+    expect(dscEntry.attributes.objectclass).toEqual(
+      expect.arrayContaining(['inetOrgPerson', 'pkiUser']),
+    )
+    expect(dscEntry.attributes['usercertificate;binary']).toBeTruthy()
+
+    const cscaEntry = entries.find((entry) => entry.dn.includes(',ou=csca,'))!
+    expect(cscaEntry.attributes.objectclass).toEqual(expect.arrayContaining(['pkiCA']))
+    expect(cscaEntry.attributes['cacertificate;binary']).toBeTruthy()
+
+    const crlEntry = entries.find((entry) => entry.dn.includes(',ou=crl,'))!
+    expect(crlEntry.attributes.objectclass).toEqual(
+      expect.arrayContaining(['cRLDistributionPoint']),
+    )
+
+    const ldif = await app.inject({ method: 'GET', url: '/pkd/ldif' })
+    expect(ldif.body).toContain(`dn: ou=dsc,${baseDn(config)}`)
+    expect(ldif.body).toContain('objectClass: pkiCA')
+    expect(ldif.body).toContain('cACertificate;binary::')
+    expect(ldif.body).toContain('objectClass: pkiUser')
+  })
+
+  it('marks only the newest master list as latest', async () => {
+    const { app, csca } = await setup()
+    const newest = await csca.generateMasterList()
+    const list = await app.inject({ method: 'GET', url: '/pkd/masterlists' })
+    const items = list.json().items as { id: string; latest: boolean }[]
+    expect(items.filter((item) => item.latest)).toHaveLength(1)
+    expect(items.find((item) => item.latest)!.id).toBe(`ml-${newest.id}`)
   })
 })

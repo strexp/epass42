@@ -5,7 +5,7 @@
 # 2. Start slapd and query it:
 #      ldapsearch -x -H ldap://127.0.0.1:3890 \
 #        -b "c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int" \
-#        "(objectClass=inetOrgPerson)"
+#        "(objectClass=pkiCA)"
 
 include  /etc/ldap/schema/core.schema
 include  /etc/ldap/schema/cosine.schema
@@ -22,7 +22,7 @@ rootdn   "cn=admin,c=XD,dc=data,dc=download,dc=pkd,dc=icao,dc=int"
 rootpw   change-me
 
 # Read-only publishing: allow anonymous search from anywhere.
-access to attrs=userCertificate,certificateRevocationList,cscaMasterListData
+access to attrs=cACertificate,userCertificate,certificateRevocationList,cscaMasterListData
     by * read
 access to *
     by * read

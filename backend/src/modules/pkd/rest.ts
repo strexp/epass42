@@ -12,7 +12,7 @@ import { derToPem } from '@epass42/pki'
 import { documentIssueTypeSchema } from '@epass42/shared'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { dscCert, dvCert } from '../../db/schema'
+import { dscCert, dvCert, masterList } from '../../db/schema'
 import { writeAudit } from '../../audit/audit'
 import { requireAdmin, type AuthContext } from '../auth/middleware'
 import type { SessionStore } from '../auth/session'
@@ -81,9 +81,14 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
   })
 
   server.get('/pkd/masterlists', async () => {
-    const items = listObjects(db, config)
-      .filter((object) => object.kind === 'ml')
-      .map((object) => ({ id: object.id }))
+    const rows = db.select().from(masterList).orderBy(desc(masterList.id)).all()
+    const latestId = rows[0]?.id
+    const items = rows.map((row) => ({
+      id: `ml-${row.id}`,
+      latest: row.id === latestId,
+      publishedAt: row.publishedAt,
+      createdAt: row.createdAt,
+    }))
     return { total: items.length, items }
   })
 
@@ -143,6 +148,7 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
         const meta = certMetadata(row)
         return {
           id: row.id,
+          objectId: `dsc-${row.id}`,
           serial: row.serial,
           name: row.subjectDn,
           mnt: row.mnt,
@@ -156,6 +162,7 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
           applicationUrl: row.applicationUrl,
           notBefore: row.notBefore,
           notAfter: row.notAfter,
+          privateKeyNotAfter: meta.privateKeyNotAfter,
           revokedAt: row.revokedAt,
           fingerprintSha256: meta.fingerprintSha256,
         }

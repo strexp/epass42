@@ -17,6 +17,8 @@ export default {
   lds2CnHint: 'LDS2 签名者证书的通用名称最多 9 个字符。',
   lds2KeyHint: ' LDS2 签名者证书的公钥必须为 ECDSA（P-256 或 P-384）。',
   lds2ValidityHint: 'LDS2 签名者证书默认有效期为 10 年 3 个月（Doc 9303-12 Table 1）。',
+  subjectNameRule:
+    "只能使用字母、数字、空格及 . _ - ' ( ) & @，不能包含逗号、引号、反斜杠、分号、尖括号或等号。",
   subjectCn: '证书通用名称',
   subjectO: '组织（O）',
   subjectOu: '组织单位（OU）',
@@ -71,5 +73,6 @@ export default {
   policyStrict: '受限（仅限明确授权）',
   expiredTitle: 'CSCA 已过期',
   expiredWarning: 'CSCA 证书已于 {date} 过期。DSC/LDS2 证书签发已暂停，请管理员轮换 CSCA 密钥。',
+  privateKeyValidity: '私钥有效期至',
   revokeReason: '吊销原因（可选）',
 } as const

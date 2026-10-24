@@ -7,7 +7,7 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
-import { certificateValidity } from '../../../util/certificate'
+import { certificateValidity, signerValidity } from '../../../util/certificate'
 import { writeAudit } from '../../../audit/audit'
 import { requireAdmin } from '../../auth/middleware'
 import { currentCscaKey, currentNiaDsc } from '../../csca/service'
@@ -21,7 +21,7 @@ export function registerLifecycleRoutes(app: FastifyInstance, deps: DscRouteDeps
   server.get('/dsc/status', async () => {
     const nia = currentNiaDsc(db)
     const csca = currentCscaKey(db)
-    const niaValidity = certificateValidity(nia?.notAfter)
+    const niaValidity = nia ? signerValidity(nia.notAfter, nia.certPem) : null
     const cscaValidity = certificateValidity(csca?.notAfter)
     return {
       niaDsc: nia
@@ -32,7 +32,7 @@ export function registerLifecycleRoutes(app: FastifyInstance, deps: DscRouteDeps
             ...niaValidity,
           }
         : null,
-      canIssueDocuments: nia !== undefined && !niaValidity.expired,
+      canIssueDocuments: Boolean(nia && niaValidity && !niaValidity.expired),
       canRotateNiaDsc: csca !== undefined && !cscaValidity.expired,
       csca: csca
         ? {

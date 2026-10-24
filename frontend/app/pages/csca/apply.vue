@@ -24,7 +24,7 @@ import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
 import { useCscaStatus } from '~/composables/useLifecycleStatus'
-import type { DocumentTypeCode, Lds2SignerType } from '@epass42/shared'
+import { isValidSubjectName, type DocumentTypeCode, type Lds2SignerType } from '@epass42/shared'
 import { dscDocumentTypeValues, documentTypesLabel } from '~/utils/documentTypes'
 import { lds2SignerTypeValues, lds2SignerTypesLabel } from '~/utils/lds2'
 
@@ -136,8 +136,18 @@ const rules = computed<FormRules>(() => ({
   subjectCn: {
     required: true,
     validator: (_rule: unknown, value: string) =>
-      value.trim() !== '' && (!isLds2.value || value.length <= 9),
-    message: isLds2.value ? t('csca.lds2CnHint') : t('errors.required'),
+      value.trim() !== '' && isValidSubjectName(value) && (!isLds2.value || value.length <= 9),
+    message: t('csca.subjectNameRule'),
+    trigger: ['input', 'blur'],
+  },
+  subjectO: {
+    validator: (_rule: unknown, value: string) => !value || isValidSubjectName(value),
+    message: t('csca.subjectNameRule'),
+    trigger: ['input', 'blur'],
+  },
+  subjectOu: {
+    validator: (_rule: unknown, value: string) => !value || isValidSubjectName(value),
+    message: t('csca.subjectNameRule'),
     trigger: ['input', 'blur'],
   },
   applicationUrl: {
@@ -281,10 +291,10 @@ onMounted(async () => {
             </template>
             <NInput v-model:value="form.subjectCn" :maxlength="isLds2 ? 9 : 64" />
           </NFormItem>
-          <NFormItem v-if="!isLds2" :label="$t('csca.subjectO')">
+          <NFormItem v-if="!isLds2" path="subjectO" :label="$t('csca.subjectO')">
             <NInput v-model:value="form.subjectO" maxlength="64" />
           </NFormItem>
-          <NFormItem v-if="!isLds2" :label="$t('csca.subjectOu')">
+          <NFormItem v-if="!isLds2" path="subjectOu" :label="$t('csca.subjectOu')">
             <NInput v-model:value="form.subjectOu" maxlength="64" />
           </NFormItem>
           <NFormItem v-if="form.keyMode === 'user_uploaded'" path="csrPem" :label="$t('csca.csr')">
@@ -332,7 +342,7 @@ onMounted(async () => {
                 :hint="isLds2 ? $t('csca.lds2ValidityHint') : undefined"
               />
             </template>
-            <NInputNumber v-model:value="form.validityDays" :min="1" :max="7300" />
+            <NInputNumber v-model:value="form.validityDays" :min="1" :max="isLds2 ? 3760 : 3650" />
           </NFormItem>
           <NFormItem :label="$t('csca.issuancePolicy')">
             <NSelect v-model:value="form.issuancePolicy" :options="policyOptions" />

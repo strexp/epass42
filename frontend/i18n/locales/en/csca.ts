@@ -19,6 +19,8 @@ export default {
   lds2KeyHint: ' LDS2 Signer subject keys must be ECDSA (P-256 or P-384).',
   lds2ValidityHint:
     'LDS2 Signer certificates default to 10 years and 3 months (Doc 9303-12 Table 1).',
+  subjectNameRule:
+    "Use only letters, digits, spaces and . _ - ' ( ) & @; commas, quotes, backslashes, semicolons, angle brackets and equals signs are not allowed.",
   subjectCn: 'Certificate common name',
   subjectO: 'Organisation (O)',
   subjectOu: 'Organisational unit (OU)',
@@ -78,5 +80,6 @@ export default {
   expiredTitle: 'CSCA expired',
   expiredWarning:
     'The CSCA certificate expired on {date}. DSC/LDS2 issuance is paused; roll the CSCA key over.',
+  privateKeyValidity: 'Private key valid until',
   revokeReason: 'Revocation reason (optional)',
 } as const

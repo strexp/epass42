@@ -26,9 +26,20 @@ function wrap(value: string): string[] {
 function entryFor(config: AppConfig, object: PkdObject): string {
   const base = baseDn(config)
   const lines: string[] = []
-  if (object.kind === 'csca' || object.kind === 'cvca' || object.kind === 'dv') {
-    const ou = object.kind === 'csca' ? 'csca' : object.kind === 'cvca' ? 'cvca' : 'dv'
-    lines.push(`dn: cn=${object.cn},ou=${ou},${base}`)
+  if (object.kind === 'csca') {
+    lines.push(`dn: cn=${object.cn},ou=csca,${base}`)
+    lines.push('objectClass: top', 'objectClass: inetOrgPerson', 'objectClass: pkiCA')
+    lines.push(`cn: ${object.cn}`, `sn: ${object.cn}`)
+    if (object.subject) lines.push(`description: ${object.subject}`)
+    lines.push(`cACertificate;binary:: ${wrap(base64Value(object.der)).join('\n ')}`)
+  } else if (object.kind === 'dsc') {
+    lines.push(`dn: cn=${object.cn},ou=dsc,${base}`)
+    lines.push('objectClass: top', 'objectClass: inetOrgPerson', 'objectClass: pkiUser')
+    lines.push(`cn: ${object.cn}`, `sn: ${object.cn}`)
+    if (object.subject) lines.push(`description: ${object.subject}`)
+    lines.push(`userCertificate;binary:: ${wrap(base64Value(object.der)).join('\n ')}`)
+  } else if (object.kind === 'cvca' || object.kind === 'dv') {
+    lines.push(`dn: cn=${object.cn},ou=${object.kind},${base}`)
     lines.push(
       'objectClass: top',
       'objectClass: person',
@@ -40,8 +51,13 @@ function entryFor(config: AppConfig, object: PkdObject): string {
     lines.push(`userCertificate;binary:: ${wrap(base64Value(object.der)).join('\n ')}`)
   } else if (object.kind === 'crl') {
     lines.push(`dn: cn=${object.cn},ou=crl,${base}`)
-    lines.push('objectClass: top', 'objectClass: cRLDistributionPoint')
+    lines.push(
+      'objectClass: top',
+      'objectClass: cRLDistributionPoint',
+      'objectClass: extensibleObject',
+    )
     lines.push(`cn: ${object.cn}`)
+    lines.push(`cRLDistributionPoint: cn=${object.cn},ou=crl,${base}`)
     lines.push(`certificateRevocationList;binary:: ${wrap(base64Value(object.der)).join('\n ')}`)
   } else {
     lines.push(`dn: cn=${object.cn},ou=masterlist,${base}`)
@@ -86,6 +102,11 @@ export function buildLdif(db: Db, config: AppConfig): string {
     'objectClass: top',
     'objectClass: organizationalUnit',
     'ou: dv',
+    '',
+    `dn: ou=dsc,${base}`,
+    'objectClass: top',
+    'objectClass: organizationalUnit',
+    'ou: dsc',
     '',
   ]
   const entries = listObjects(db, config).map(entryFor.bind(null, config))

@@ -39,7 +39,7 @@ async function issueDsc(
     commonName: name,
     documentTypes: ['P'],
     validityYears: 5,
-    privateKeyUsageYears: 1,
+    privateKeyUsageDays: 90,
     source: 'owned',
     mnt: 'TEST-MNT',
     keyMode: 'remote_generated',

@@ -50,6 +50,7 @@ const ERROR_KEYS = new Set([
   'no_active_dsc',
   'csca_expired',
   'nia_dsc_expired',
+  'dsc_expired',
   'nia_dv_expired',
   'cvca_expired',
   'certificate_not_active',

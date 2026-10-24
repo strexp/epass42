@@ -65,6 +65,8 @@ export default {
       'The CSCA certificate has expired. New DSC/LDS2 certificates are paused; roll the CSCA key over first.',
     nia_dsc_expired:
       'The NIA DSC has expired. New document issuance is paused; rotate the NIA DSC.',
+    dsc_expired:
+      'The DSC certificate or its private key usage period has expired. It cannot sign documents; request or rotate a DSC.',
     nia_dv_expired:
       'The NIA DV has expired. New IS certificate issuance is paused; rotate the NIA DV.',
     cvca_expired:

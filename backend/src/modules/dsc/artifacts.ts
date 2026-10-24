@@ -15,6 +15,7 @@ import type { Db } from '../../db/client'
 import { artifact, dscCert, signRequest } from '../../db/schema'
 import { randomToken } from '../../crypto/secret'
 import { nowIso } from '../../util/time'
+import { signerValidity } from '../../util/certificate'
 import { currentNiaDsc, type CscaService } from '../csca/service'
 import type { CvcaService } from '../cvca/service'
 import { mntIncludes } from '../jurisdiction/whois'
@@ -65,6 +66,13 @@ export class DscArtifactService {
           'forbidden',
           'owned DSC does not belong to the requester maintainer',
           403,
+        )
+      }
+      if (signerValidity(cert.notAfter, cert.certPem).expired) {
+        throw new AppError(
+          'dsc_expired',
+          'the owned DSC has expired; request or rotate a new DSC before issuing documents',
+          409,
         )
       }
       this.assertDocumentTypeCovered(cert.certPem, documentType)

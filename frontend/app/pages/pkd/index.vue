@@ -54,6 +54,7 @@ interface PkdDv {
 }
 interface PkdDsc {
   id: number
+  objectId: string
   serial: string
   name: string
   mnt: string | null
@@ -81,7 +82,7 @@ usePageTitle(() => t('pkd.title'))
 const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
 const crlCscaFilter = ref<number>(0)
-const masterlists = ref<{ id: string }[]>([])
+const masterlists = ref<{ id: string; latest?: boolean }[]>([])
 const dscs = ref<PkdDsc[]>([])
 const cvca = ref<PkdCertificate[]>([])
 const dvs = ref<PkdDv[]>([])
@@ -185,6 +186,14 @@ const crlColumns = computed(() => [
 ])
 const mlColumns = computed(() => [
   { title: t('common.id'), key: 'id' },
+  {
+    title: t('pkd.latest'),
+    key: 'latest',
+    render: (row: { id: string; latest?: boolean }) =>
+      row.latest
+        ? h(NTag, { size: 'small', type: 'success' }, { default: () => t('pkd.latest') })
+        : '—',
+  },
   { title: '', key: 'download', render: (row: { id: string }) => downloadLinks(row.id) },
 ])
 
@@ -277,6 +286,11 @@ const dscColumns = computed(() => [
     key: 'status',
     render: (row: PkdDsc) => h(StatusTag, { status: row.status }),
   },
+  {
+    title: '',
+    key: 'download',
+    render: (row: PkdDsc) => downloadLinks(row.objectId),
+  },
 ])
 
 const revokedColumns = computed(() => [
@@ -310,7 +324,9 @@ onMounted(async () => {
   try {
     certificates.value = (await api<{ items: PkdCertificate[] }>('/pkd/certificates')).items
     crls.value = (await api<{ items: PkdCrl[] }>('/pkd/crls')).items
-    masterlists.value = (await api<{ items: { id: string }[] }>('/pkd/masterlists')).items
+    masterlists.value = (
+      await api<{ items: { id: string; latest?: boolean }[] }>('/pkd/masterlists')
+    ).items
     dscs.value = (await api<{ items: PkdDsc[] }>('/pkd/dscs')).items
     cvca.value = (await api<{ items: PkdCertificate[] }>('/pkd/cvca')).items
     dvs.value = (await api<{ items: PkdDv[] }>('/pkd/dvs')).items

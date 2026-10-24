@@ -18,7 +18,7 @@ import type {
 import { CscaKeyService, currentCscaKey } from './keys'
 import { DscIssuanceService, currentNiaDsc } from './dscIssuance'
 import { CrlService } from './crlService'
-import { isCertificateExpired } from '../../util/certificate'
+import { isCertificateExpired, signerValidity } from '../../util/certificate'
 import { MasterListService } from './masterListService'
 
 export type { CscaKeyRow, DscCertRow, DscApplicationRow, CrlRow, CscaContext } from './context'
@@ -47,7 +47,7 @@ export class CscaService {
   /** Whether a valid (existing, unexpired) NIA DSC is available. */
   hasUsableNiaDsc(): boolean {
     const nia = currentNiaDsc(this.ctx.db)
-    return Boolean(nia && !isCertificateExpired(nia.notAfter))
+    return Boolean(nia && !signerValidity(nia.notAfter, nia.certPem).expired)
   }
 
   /* Key lifecycle ------------------------------------------------------ */

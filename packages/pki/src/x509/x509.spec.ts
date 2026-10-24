@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { generateEcKeyPair, generateRsaKeyPair } from '../crypto/crypto'
-import { createCscaRoot, createDsc, createLds2Signer } from './x509'
+import { createCscaLink, createCscaRoot, createDsc, createLds2Signer } from './x509'
 import {
   certificateCoversDocumentType,
   documentTypeExtension,
@@ -299,5 +299,38 @@ describe('DocumentType extension', () => {
     expect(() => documentTypeExtension(['P', 'ID', 'IP'])).toThrow()
     // Duplicates collapse to a single SET OF member.
     expect(() => documentTypeExtension(['P', 'P'])).not.toThrow()
+  })
+  it('uses the real old subject in a link certificate NameChange extension', async () => {
+    const oldKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    const { notBefore, notAfter, keyNotAfter } = dates()
+    const old = await createCscaRoot(
+      {
+        commonName: 'Old CSCA Name',
+        notBefore,
+        notAfter,
+        privateKeyNotAfter: keyNotAfter,
+        crlDistributionPoints: CRL_DP,
+      },
+      oldKey,
+    )
+    const newKey = await generateRsaKeyPair({ modulusLength: 2048, pss: false })
+    const link = await createCscaLink(
+      old.certificate,
+      oldKey,
+      {
+        commonName: 'New CSCA Name',
+        notBefore,
+        notAfter,
+        privateKeyNotAfter: keyNotAfter,
+        crlDistributionPoints: CRL_DP,
+      },
+      newKey.publicKey,
+      false,
+    )
+    const nameChange = link.certificate.getExtension(OIDS.idIcaoNameChange)
+    expect(nameChange).toBeTruthy()
+    const value = Buffer.from(nameChange!.value)
+    expect(value.includes(Buffer.from('Old CSCA Name'))).toBe(true)
+    expect(value.includes(Buffer.from('New CSCA Name'))).toBe(true)
   })
 })

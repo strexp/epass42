@@ -25,7 +25,6 @@ import {
   keyUsage,
   nameChangeExtension,
   privateKeyUsagePeriod,
-  simpleNameValue,
   subjectKeyIdentifier,
 } from './profile'
 import * as x509 from './x509lib'
@@ -105,6 +104,10 @@ export interface DscProfile {
   organizationalUnit?: string
   /** Authorised DocumentType values, e.g. `['P', 'I']` (Doc 9303-12 §7.1.1). */
   documentTypes: string[]
+  /** Locality used in the SAN/IAN directoryName (the configured country code). */
+  locality?: string
+  /** Optional state/province when the locality alone is not unique. */
+  state?: string
   notBefore: Date
   notAfter: Date
   privateKeyNotAfter?: Date
@@ -221,8 +224,8 @@ export async function createDsc(
     keyUsage(x509.KeyUsageFlags.digitalSignature),
     privateKeyUsagePeriod(profile.notBefore, profile.privateKeyNotAfter ?? profile.notAfter),
     documentTypeExtension(profile.documentTypes),
-    cscaSubjectAltName(),
-    cscaIssuerAltName(),
+    cscaSubjectAltName(profile.locality, profile.state),
+    cscaIssuerAltName(profile.locality, profile.state),
     crlDistributionPoints(profile.crlDistributionPoints),
   ]
   const subject = nameOf(
@@ -331,17 +334,14 @@ export async function createCscaLink(
     ...(nameChanged
       ? [
           nameChangeExtension(
-            simpleNameValue(
-              '',
-              newProfile.country ?? COUNTRY_ALPHA2,
-              newProfile.organization,
-              newProfile.organizationalUnit,
-            ),
-            simpleNameValue(
-              newProfile.commonName,
-              newProfile.country,
-              newProfile.organization,
-              newProfile.organizationalUnit,
+            new Uint8Array(oldCertificate.subjectName.toArrayBuffer()),
+            new Uint8Array(
+              nameOf(
+                newProfile.commonName,
+                newProfile.country,
+                newProfile.organization,
+                newProfile.organizationalUnit,
+              ).toArrayBuffer(),
             ),
           ),
         ]

@@ -43,10 +43,10 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
           ip: request.ip,
           keyMode: request.body.keyMode,
           certificateType: request.body.certificateType,
-          subjectCn: request.body.subjectCn,
+          subjectCn: request.body.subjectCn.trim(),
           // LDS2 Signer subjects hold C and CN only (Doc 9303-12 §7.1.2).
-          subjectO: isLds2 ? null : (request.body.subjectO ?? null),
-          subjectOu: isLds2 ? null : (request.body.subjectOu ?? null),
+          subjectO: isLds2 ? null : request.body.subjectO?.trim() || null,
+          subjectOu: isLds2 ? null : request.body.subjectOu?.trim() || null,
           csrPem: request.body.csrPem ?? null,
           publicKeyPem: request.body.publicKeyPem ?? null,
           // A DSC carries DocumentTypes; an LDS2 Signer carries its roles.

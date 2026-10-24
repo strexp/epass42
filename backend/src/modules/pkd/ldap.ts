@@ -48,6 +48,10 @@ export function buildEntries(db: Db, config: AppConfig): LdapEntry[] {
       dn: `ou=dv,${base}`,
       attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['dv'] },
     },
+    {
+      dn: `ou=dsc,${base}`,
+      attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['dsc'] },
+    },
   ]
   for (const object of listObjects(db, config)) {
     entries.push(entryFor(base, object))
@@ -56,10 +60,35 @@ export function buildEntries(db: Db, config: AppConfig): LdapEntry[] {
 }
 
 function entryFor(base: string, object: PkdObject): LdapEntry {
-  if (object.kind === 'csca' || object.kind === 'cvca' || object.kind === 'dv') {
-    const ou = object.kind === 'csca' ? 'csca' : object.kind === 'cvca' ? 'cvca' : 'dv'
+  if (object.kind === 'csca') {
     return {
-      dn: `cn=${object.cn},ou=${ou},${base}`,
+      dn: `cn=${object.cn},ou=csca,${base}`,
+      attributes: {
+        // RFC 4523 pkiCA expects cACertificate; extensibleObject keeps the
+        // serial-number RDN (cn) valid without a custom DIT content rule.
+        objectclass: ['top', 'inetOrgPerson', 'pkiCA'],
+        cn: [object.cn],
+        sn: [object.cn],
+        ...(object.subject ? { description: [object.subject] } : {}),
+        'cacertificate;binary': [Buffer.from(object.der)],
+      },
+    }
+  }
+  if (object.kind === 'dsc') {
+    return {
+      dn: `cn=${object.cn},ou=dsc,${base}`,
+      attributes: {
+        objectclass: ['top', 'inetOrgPerson', 'pkiUser'],
+        cn: [object.cn],
+        sn: [object.cn],
+        ...(object.subject ? { description: [object.subject] } : {}),
+        'usercertificate;binary': [Buffer.from(object.der)],
+      },
+    }
+  }
+  if (object.kind === 'cvca' || object.kind === 'dv') {
+    return {
+      dn: `cn=${object.cn},ou=${object.kind},${base}`,
       attributes: {
         objectclass: ['top', 'person', 'organizationalPerson', 'inetOrgPerson'],
         cn: [object.cn],

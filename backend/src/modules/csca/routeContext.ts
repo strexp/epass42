@@ -7,10 +7,13 @@ import { parseCertificatePem, sha256 } from '@epass42/pki'
 import {
   LDS2_SIGNER_TYPES,
   SIGNER_CERTIFICATE_TYPES,
+  SUBJECT_NAME_MAX,
   documentTypeListSchema,
+  isValidSubjectName,
 } from '@epass42/shared'
 import type { dscCert } from '../../db/schema'
 import { documentTypesOf } from '../../util/cert'
+import { privateKeyNotAfter } from '../../util/certificate'
 import type { AuthContext } from '../auth/middleware'
 import type { CscaService } from './service'
 
@@ -28,9 +31,25 @@ export const applicationBody = z
   .object({
     keyMode: z.enum(['remote_generated', 'user_uploaded']).default('remote_generated'),
     certificateType: z.enum(SIGNER_CERTIFICATE_TYPES).default('dsc'),
-    subjectCn: z.string().min(1).max(64),
-    subjectO: z.string().max(64).optional(),
-    subjectOu: z.string().max(64).optional(),
+    subjectCn: z
+      .string()
+      .min(1)
+      .max(SUBJECT_NAME_MAX)
+      .refine(isValidSubjectName, { message: 'invalid_subject_name' }),
+    subjectO: z
+      .string()
+      .max(SUBJECT_NAME_MAX)
+      .refine((value) => value.trim() === '' || isValidSubjectName(value), {
+        message: 'invalid_subject_name',
+      })
+      .optional(),
+    subjectOu: z
+      .string()
+      .max(SUBJECT_NAME_MAX)
+      .refine((value) => value.trim() === '' || isValidSubjectName(value), {
+        message: 'invalid_subject_name',
+      })
+      .optional(),
     csrPem: z.string().max(20_000).optional(),
     publicKeyPem: z.string().max(20_000).optional(),
     documentTypes: documentTypeListSchema.default(['P']),
@@ -47,6 +66,10 @@ export const applicationBody = z
     notes: z.string().max(2000).optional(),
   })
   .superRefine((body, ctx) => {
+    const maxValidityDays = body.certificateType === 'lds2' ? 3760 : 10 * 365
+    if (body.validityDays !== undefined && body.validityDays > maxValidityDays) {
+      ctx.addIssue({ code: 'custom', path: ['validityDays'], message: 'validity_too_long' })
+    }
     if (body.certificateType === 'lds2') {
       if (!body.lds2Types || body.lds2Types.length === 0) {
         ctx.addIssue({
@@ -71,6 +94,13 @@ export function certMetadata(row: typeof dscCert.$inferSelect) {
   const der = new Uint8Array(parseCertificatePem(row.certPem).rawData)
   const fingerprint = Buffer.from(sha256(der)).toString('hex')
   const documentTypes = row.certificateType === 'dsc' ? documentTypesOf(row.certPem) : []
+  const privateKeyEnd = (() => {
+    try {
+      return privateKeyNotAfter(row.certPem)?.toISOString() ?? null
+    } catch {
+      return null
+    }
+  })()
   return {
     id: row.id,
     serial: row.serial,
@@ -90,6 +120,7 @@ export function certMetadata(row: typeof dscCert.$inferSelect) {
     applicationUrl: row.applicationUrl,
     notBefore: row.notBefore,
     notAfter: row.notAfter,
+    privateKeyNotAfter: privateKeyEnd,
     revokedAt: row.revokedAt,
     fingerprintSha256: fingerprint,
     // Only application-issued ("owned") certificates carry an exportable key;

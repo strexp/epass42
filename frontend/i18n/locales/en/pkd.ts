@@ -39,6 +39,7 @@ export default {
   ldif: 'LDIF dump',
   ldifHint: 'Import this into OpenLDAP with slapadd.',
   objectId: 'Object',
+  latest: 'Latest',
   crlNumber: 'CRL number',
   csca: 'Signing CA',
   cscaFilter: 'Filter by CSCA key',

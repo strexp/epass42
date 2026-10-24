@@ -35,6 +35,7 @@ interface Certificate {
   lds2Types: Lds2SignerType[] | null
   fingerprintSha256: string
   hasPrivateKey: boolean
+  privateKeyNotAfter: string | null
 }
 
 const api = useApi()
@@ -175,6 +176,19 @@ const columns = computed(() => [
     title: t('common.status'),
     key: 'status',
     render: (row: Certificate) => h(StatusTag, { status: row.status }),
+  },
+  {
+    title: t('csca.privateKeyValidity'),
+    key: 'privateKeyNotAfter',
+    render: (row: Certificate) => {
+      if (!row.privateKeyNotAfter) return '—'
+      const expired = Date.parse(row.privateKeyNotAfter) <= Date.now()
+      return h(
+        NText,
+        { type: expired ? 'error' : undefined },
+        { default: () => formatDate(row.privateKeyNotAfter) },
+      )
+    },
   },
   { title: t('common.sha256'), key: 'fingerprintSha256', ellipsis: { tooltip: true } },
   {

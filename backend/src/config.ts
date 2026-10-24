@@ -51,8 +51,9 @@ const niaDscSchema = z.object({
    * authorizes both passports and ID-1 documents on the single NIA DSC.
    */
   documentTypes: documentTypeListSchema.default(['P', 'I']),
-  validityYears: z.number().int().min(1).default(10),
-  privateKeyUsageYears: z.number().int().min(1).default(3),
+  validityYears: z.number().int().min(1).max(10).default(10),
+  /** DSC private-key usage period in days (Doc 9303-12 Table 1: at most 3 months). */
+  privateKeyUsageDays: z.number().int().min(1).max(92).default(90),
   /** DSC key algorithm; may differ from the CSCA (Doc 9303-12 §4.1.5). */
   algorithm: z.enum(['rsa', 'ecdsa']).default('rsa'),
   curve: z.enum(['P-256', 'P-384']).default('P-256'),
