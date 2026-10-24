@@ -18,6 +18,7 @@ import type {
 import { CscaKeyService, currentCscaKey } from './keys'
 import { DscIssuanceService, currentNiaDsc } from './dscIssuance'
 import { CrlService } from './crlService'
+import { isCertificateExpired } from '../../util/certificate'
 import { MasterListService } from './masterListService'
 
 export type { CscaKeyRow, DscCertRow, DscApplicationRow, CrlRow, CscaContext } from './context'
@@ -30,11 +31,23 @@ export class CscaService {
   readonly crl: CrlService
   readonly masterList: MasterListService
 
-  constructor(ctx: CscaContext) {
+  constructor(private readonly ctx: CscaContext) {
     this.keys = new CscaKeyService(ctx)
     this.dscIssuance = new DscIssuanceService(ctx, this.keys)
     this.crl = new CrlService(ctx, this.keys)
     this.masterList = new MasterListService(ctx, this.keys, this.dscIssuance)
+  }
+
+  /** Whether the current CSCA certificate may issue new signer certificates. */
+  canIssueCertificates(): boolean {
+    const csca = currentCscaKey(this.ctx.db)
+    return Boolean(csca && !isCertificateExpired(csca.notAfter))
+  }
+
+  /** Whether a valid (existing, unexpired) NIA DSC is available. */
+  hasUsableNiaDsc(): boolean {
+    const nia = currentNiaDsc(this.ctx.db)
+    return Boolean(nia && !isCertificateExpired(nia.notAfter))
   }
 
   /* Key lifecycle ------------------------------------------------------ */
@@ -75,6 +88,11 @@ export class CscaService {
     return this.dscIssuance.ensureNiaDsc()
   }
 
+  /** Manually rotates the NIA DSC, retiring the previous active one. */
+  rotateNiaDsc(): Promise<{ previous: DscCertRow | null; current: DscCertRow }> {
+    return this.dscIssuance.rotateNiaDsc()
+  }
+
   issueDsc(params: Parameters<DscIssuanceService['issueDsc']>[0]): Promise<DscCertRow> {
     return this.dscIssuance.issueDsc(params)
   }
@@ -107,8 +125,14 @@ export class CscaService {
 
   /* CRL ---------------------------------------------------------------- */
 
+  /** The latest CRL of the current CSCA key. */
   latestCrl(): CrlRow | undefined {
-    return this.crl.latest()
+    return this.crl.latestForCurrentKey()
+  }
+
+  /** The latest CRL issued by a specific CSCA key. */
+  latestCrlForKey(cscaKeyId: number): CrlRow | undefined {
+    return this.crl.latestForKey(cscaKeyId)
   }
 
   crlSchedule(now?: Date): { issue: boolean; reason: string } {
@@ -119,7 +143,12 @@ export class CscaService {
     return this.crl.generate(now)
   }
 
-  maybeGenerateCrl(now?: Date): Promise<CrlRow | undefined> {
+  /** Regenerates the CRL for the CSCA key that issued a certificate. */
+  generateCrlForKey(cscaKeyId: number, now?: Date): Promise<CrlRow> {
+    return this.crl.generateForKeyId(cscaKeyId, now)
+  }
+
+  maybeGenerateCrl(now?: Date): Promise<CrlRow[]> {
     return this.crl.maybeGenerate(now)
   }
 

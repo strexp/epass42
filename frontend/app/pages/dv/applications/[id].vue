@@ -19,6 +19,8 @@ import {
 import type { DvPermissions } from '@epass42/shared'
 import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useDvStatus } from '~/composables/useLifecycleStatus'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
@@ -59,6 +61,8 @@ const route = useRoute()
 const api = useApi()
 const apiBase = useApiBase()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
+const { status: lifecycle, refresh: refreshLifecycle } = useDvStatus()
 usePageTitle(() => t('dv.applicationTitle'))
 const message = useMessage()
 const dialog = useDialog()
@@ -74,6 +78,7 @@ const rejectReason = ref('')
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+const canApprove = computed(() => canReview.value && lifecycle.value?.canIssueTerminals !== false)
 const approved = computed(() => application.value?.status === 'approved')
 
 function parse(json: string | null): DvPermissions {
@@ -167,6 +172,7 @@ function confirmDownloadKey(): void {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
   await load()
 })
 </script>
@@ -247,6 +253,15 @@ onMounted(async () => {
           {{ $t('dv.rejectReason') }}: {{ application.rejectReason }}
         </NText>
 
+        <ExpiryAlert
+          v-if="lifecycle && !lifecycle.canIssueTerminals"
+          :title="$t('dv.signingPaused')"
+          :description="
+            lifecycle.niaDv
+              ? $t('dv.niaDvExpired', { date: formatDate(lifecycle.niaDv.notAfter) })
+              : $t('dv.niaDvMissing')
+          "
+        />
         <div v-if="canReview" style="margin-top: 16px">
           <NText strong>{{ $t('dv.approvedPermissions') }}</NText>
           <NText depth="3" style="display: block; font-size: 12px; margin: 4px 0 8px">
@@ -254,7 +269,7 @@ onMounted(async () => {
           </NText>
           <PermissionsEditor v-model="review" />
           <div class="epass42-actions" style="margin-top: 12px">
-            <NButton type="primary" :loading="busy" @click="approve">
+            <NButton type="primary" :loading="busy" :disabled="!canApprove" @click="approve">
               {{ $t('dv.approve') }}
             </NButton>
             <NButton @click="rejectOpen = true">{{ $t('common.reject') }}</NButton>

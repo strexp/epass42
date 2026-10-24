@@ -193,4 +193,15 @@ export default {
   revokePassportConfirm:
     'Revoke this document now? It will no longer be usable. A newly approved document replaces it automatically.',
   revokeReason: 'Reason (optional)',
+  signingPaused: 'Document issuance paused',
+  niaDscTitle: 'NIA Document Signer (NIA DSC)',
+  niaDscSerial: 'Serial',
+  niaDscExpired:
+    'The NIA DSC expired on {date}. New document issuance is paused; rotate the NIA DSC.',
+  niaDscMissing: 'No usable NIA DSC is available; new document issuance is paused.',
+  rotateNiaDsc: 'Rotate NIA DSC',
+  rotateNiaDscWarning:
+    'A new NIA DSC key and certificate will be created and the old certificate marked as retired. Historical signatures remain verifiable, but the old certificate will no longer be used. This cannot be undone. Continue?',
+  cscaExpiredHint:
+    'The CSCA certificate has expired, so the NIA DSC cannot be rotated. Roll the CSCA key over first.',
 } as const

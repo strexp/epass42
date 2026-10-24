@@ -1,18 +1,27 @@
 /**
- * CRL generation and scheduling (M6).
+ * CRL generation and scheduling (M6, extended for CSCA key rollover).
  *
- * A CRL is generated with a monotonically increasing number covering every DSC
- * revoked under the current CSCA key.
+ * Every CSCA certificate that has ever signed a DSC can publish its own CRL.
+ * A CRL is signed by the key of the CSCA certificate that issued the listed
+ * DSCs, so a rollover does not orphan the revocation entries of certificates
+ * issued under the previous key.  CRL numbers are allocated from one global
+ * sequence: monotonic per issuer, and unique for the PKD/LDAP `cn`.
  */
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, ne } from 'drizzle-orm'
 
 import { createCrl, parseCertificatePem, type HashName } from '@epass42/pki'
 
-import { crl, dscCert } from '../../db/schema'
+import { crl, cscaKey, dscCert } from '../../db/schema'
 import { nowIso } from '../../util/time'
-import type { CscaContext, CrlRow } from './context'
+import type { CscaContext, CscaKeyRow, CrlRow } from './context'
 import type { CscaKeyService } from './keys'
 import { currentCscaKey } from './keys'
+
+/** The reason a CRL should be issued. */
+export interface CrlSchedule {
+  issue: boolean
+  reason: string
+}
 
 /** CRL generation and schedule evaluation. */
 export class CrlService {
@@ -21,27 +30,53 @@ export class CrlService {
     private readonly keys: CscaKeyService,
   ) {}
 
-  /** The most recently generated CRL, or undefined. */
+  /** The most recently generated CRL across all CSCA keys (number allocation). */
   latest(): CrlRow | undefined {
     return this.ctx.db.select().from(crl).orderBy(desc(crl.crlNumber)).get()
   }
 
+  /** The most recent CRL issued by a specific CSCA key. */
+  latestForKey(cscaKeyId: number): CrlRow | undefined {
+    return this.ctx.db
+      .select()
+      .from(crl)
+      .where(eq(crl.cscaKeyId, cscaKeyId))
+      .orderBy(desc(crl.crlNumber))
+      .get()
+  }
+
+  /** The most recent CRL issued by the current CSCA key. */
+  latestForCurrentKey(): CrlRow | undefined {
+    const current = currentCscaKey(this.ctx.db)
+    return current ? this.latestForKey(current.id) : this.latest()
+  }
+
   /**
-   * Whether a CRL should be issued now (M6/T6.3):
-   * none exists, a revocation post-dates the last CRL, the last CRL is older
-   * than the maximum age, or the minimum refresh interval has elapsed.
+   * The CSCA certificates that can publish a CRL.  Link certificates share the
+   * successor key and are not issuing CAs, so they are excluded.
    */
-  schedule(now: Date = new Date()): { issue: boolean; reason: string } {
-    const last = this.latest()
+  private issuingKeys(): CscaKeyRow[] {
+    return this.ctx.db
+      .select()
+      .from(cscaKey)
+      .where(ne(cscaKey.status, 'link'))
+      .orderBy(cscaKey.id)
+      .all()
+  }
+
+  /**
+   * Whether this CSCA key needs a fresh CRL: no CRL yet, a revocation post-dates
+   * the last one, it is older than the maximum age, or the minimum refresh
+   * interval has elapsed.
+   */
+  scheduleForKey(key: CscaKeyRow, now: Date = new Date()): CrlSchedule {
+    const last = this.latestForKey(key.id)
     if (!last) return { issue: true, reason: 'none' }
-    const csca = currentCscaKey(this.ctx.db)
-    const revoked = csca
-      ? this.ctx.db
-          .select()
-          .from(dscCert)
-          .where(and(eq(dscCert.cscaKeyId, csca.id), eq(dscCert.status, 'revoked')))
-          .all()
-      : []
+    const revoked = this.ctx.db
+      .select()
+      .from(dscCert)
+      .where(and(eq(dscCert.cscaKeyId, key.id), eq(dscCert.status, 'revoked')))
+      .all()
     const lastTime = new Date(last.thisUpdate).getTime()
     if (revoked.some((row) => row.revokedAt && new Date(row.revokedAt).getTime() > lastTime)) {
       return { issue: true, reason: 'revocation' }
@@ -55,22 +90,35 @@ export class CrlService {
   }
 
   /**
-   * Generates a fresh CRL with a monotonically increasing number, covering all
-   * DSCs revoked under the current CSCA key.
+   * Whether any CSCA key needs a fresh CRL.  This is the aggregate view used by
+   * the admin status endpoint and the existing single-CRL tests; the scheduler
+   * regenerates each due key independently.
    */
-  async generate(now: Date = new Date()): Promise<CrlRow> {
+  schedule(now: Date = new Date()): CrlSchedule {
+    const keys = this.issuingKeys()
+    if (keys.length === 0) return { issue: false, reason: 'none' }
+    for (const key of keys) {
+      const result = this.scheduleForKey(key, now)
+      if (result.issue) return result
+    }
+    return { issue: false, reason: 'fresh' }
+  }
+
+  /**
+   * Generates a CRL for one CSCA key, covering exactly the DSCs revoked under
+   * that key.  The global CRL number stays unique for PKD/LDAP entry names.
+   */
+  async generateForKey(key: CscaKeyRow, now: Date = new Date()): Promise<CrlRow> {
+    if (key.status === 'link') throw new Error('a link certificate does not issue a CRL')
     const { db } = this.ctx
-    const csca = await this.keys.ensure()
-    if (!csca) throw new Error('no CSCA key available')
-    const keyPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
-    const issuerCertificate = parseCertificatePem(csca.certPem)
+    const keyPair = await this.keys.loadKeyPair(key, this.ctx.config.csca.hash as HashName)
+    const issuerCertificate = parseCertificatePem(key.certPem)
     const revoked = db
       .select()
       .from(dscCert)
-      .where(and(eq(dscCert.cscaKeyId, csca.id), eq(dscCert.status, 'revoked')))
+      .where(and(eq(dscCert.cscaKeyId, key.id), eq(dscCert.status, 'revoked')))
       .all()
-    const last = this.latest()
-    const crlNumber = (last?.crlNumber ?? 0) + 1
+    const crlNumber = (this.latest()?.crlNumber ?? 0) + 1
     const nextUpdate = new Date(now.getTime() + this.ctx.config.crl.maxAgeDays * 86_400_000)
 
     const generated = await createCrl({
@@ -90,7 +138,7 @@ export class CrlService {
     const result = db
       .insert(crl)
       .values({
-        cscaKeyId: csca.id,
+        cscaKeyId: key.id,
         crlNumber,
         thisUpdate: now.toISOString(),
         nextUpdate: nextUpdate.toISOString(),
@@ -106,9 +154,32 @@ export class CrlService {
       .get() as CrlRow
   }
 
-  /** Generates a CRL only when the schedule says one is due. */
-  async maybeGenerate(now: Date = new Date()): Promise<CrlRow | undefined> {
-    if (!this.ctx.config.crl.autoGenerate) return undefined
-    return this.schedule(now).issue ? this.generate(now) : undefined
+  /** Generates a CRL for the current CSCA key (kept for the existing API). */
+  async generate(now: Date = new Date()): Promise<CrlRow> {
+    const csca = await this.keys.ensure()
+    if (!csca) throw new Error('no CSCA key available')
+    return this.generateForKey(csca, now)
+  }
+
+  /** Generates a CRL for a CSCA key id. */
+  async generateForKeyId(cscaKeyId: number, now: Date = new Date()): Promise<CrlRow> {
+    const key = this.ctx.db.select().from(cscaKey).where(eq(cscaKey.id, cscaKeyId)).get()
+    if (!key) throw new Error('CSCA key not found')
+    return this.generateForKey(key, now)
+  }
+
+  /** Generates a fresh CRL for every issuing CSCA key that is due. */
+  async generateDue(now: Date = new Date()): Promise<CrlRow[]> {
+    const generated: CrlRow[] = []
+    for (const key of this.issuingKeys()) {
+      if (this.scheduleForKey(key, now).issue) generated.push(await this.generateForKey(key, now))
+    }
+    return generated
+  }
+
+  /** Generates due CRLs only when automatic generation is enabled. */
+  async maybeGenerate(now: Date = new Date()): Promise<CrlRow[]> {
+    if (!this.ctx.config.crl.autoGenerate) return []
+    return this.generateDue(now)
   }
 }

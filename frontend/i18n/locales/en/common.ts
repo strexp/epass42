@@ -130,5 +130,9 @@ export default {
     consumed: { label: 'Claimed', description: 'The personalization file has been delivered.' },
     active: { label: 'Active', description: 'Currently valid.' },
     inactive: { label: 'Inactive', description: 'Not currently valid.' },
+    retired: {
+      label: 'Retired',
+      description: 'No longer used for new issuance; historical signatures remain verifiable.',
+    },
   },
 } as const

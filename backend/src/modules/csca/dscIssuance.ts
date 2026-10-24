@@ -27,6 +27,7 @@ import {
 import { dscApplication, dscCert } from '../../db/schema'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
+import { isCertificateExpired } from '../../util/certificate'
 import {
   addDays,
   addYears,
@@ -36,6 +37,7 @@ import {
   type CscaKeyRow,
 } from './context'
 import type { CscaKeyService } from './keys'
+import { currentCscaKey } from './keys'
 
 /** The active NIA Document Signer certificate, or undefined. */
 export function currentNiaDsc(db: CscaContext['db']): DscCertRow | undefined {
@@ -65,6 +67,9 @@ export class DscIssuanceService {
     if (existing) return existing
     const csca = await this.keys.ensure()
     if (!csca) return undefined
+    // Do not create a certificate under an expired CA: it could never be
+    // trusted, and the operator must roll the CSCA over first.
+    if (isCertificateExpired(csca.notAfter)) return undefined
     const cscaPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
     return this.issueDsc({
       csca,
@@ -77,6 +82,57 @@ export class DscIssuanceService {
       mnt: null,
       keyMode: 'remote_generated',
     })
+  }
+
+  /**
+   * Rotates the NIA DSC: issues a new signer under the current CSCA key and
+   * retires the previous one.  There is no link certificate for a DSC; the old
+   * certificate stays published as `retired` so historical signatures remain
+   * verifiable, but it is never selected for new issuance.
+   */
+  async rotateNiaDsc(): Promise<{ previous: DscCertRow | null; current: DscCertRow }> {
+    const csca = currentCscaKey(this.ctx.db)
+    if (!csca) throw new AppError('certificate_not_found', 'no CSCA key available', 409)
+    if (isCertificateExpired(csca.notAfter)) {
+      throw new AppError(
+        'csca_expired',
+        'the CSCA certificate has expired; roll the CSCA key over first',
+        409,
+      )
+    }
+    const previous = currentNiaDsc(this.ctx.db) ?? null
+    const cscaPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
+    if (previous) {
+      this.ctx.db
+        .update(dscCert)
+        .set({ status: 'retired' })
+        .where(eq(dscCert.id, previous.id))
+        .run()
+    }
+    try {
+      const current = await this.issueDsc({
+        csca,
+        cscaPair,
+        commonName: this.ctx.config.csca.niaDsc.commonName,
+        documentTypes: this.ctx.config.csca.niaDsc.documentTypes,
+        validityYears: this.ctx.config.csca.niaDsc.validityYears,
+        privateKeyUsageYears: this.ctx.config.csca.niaDsc.privateKeyUsageYears,
+        source: 'nia',
+        mnt: null,
+        keyMode: 'remote_generated',
+      })
+      return { previous, current }
+    } catch (error) {
+      // Compensate: keep the old signer active if the new one cannot be stored.
+      if (previous) {
+        this.ctx.db
+          .update(dscCert)
+          .set({ status: 'active' })
+          .where(eq(dscCert.id, previous.id))
+          .run()
+      }
+      throw error
+    }
   }
 
   /** Issues a DSC signed by the given CSCA key. */
@@ -295,6 +351,13 @@ export class DscIssuanceService {
   ): Promise<DscCertRow> {
     const csca = await this.keys.ensure()
     if (!csca) throw new Error('no CSCA key available')
+    if (isCertificateExpired(csca.notAfter)) {
+      throw new AppError(
+        'csca_expired',
+        'the CSCA certificate has expired; roll the CSCA key over first',
+        409,
+      )
+    }
     const cscaPair = await this.keys.loadKeyPair(csca, this.ctx.config.csca.hash as HashName)
     const keyMode = application.keyMode === 'user_uploaded' ? 'user_uploaded' : 'remote_generated'
 

@@ -23,6 +23,8 @@ import type { DvPermissions } from '@epass42/shared'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useDvStatus } from '~/composables/useLifecycleStatus'
 import PermissionsEditor from '~/components/cvca/PermissionsEditor.vue'
 
 definePageMeta({ layout: 'realm' })
@@ -30,6 +32,8 @@ definePageMeta({ layout: 'realm' })
 const api = useApi()
 const { auth, state, ensureLoaded } = useRealm('dv')
 const { t } = useI18n()
+const { formatDate } = useDateTime()
+const { status: lifecycle, refresh: refreshLifecycle } = useDvStatus()
 usePageTitle(() => t('dv.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
@@ -100,6 +104,10 @@ function prevStep(): void {
 }
 
 async function submit(): Promise<void> {
+  if (lifecycle.value?.canIssueTerminals === false) {
+    message.error(t('errors.nia_dv_expired'))
+    return
+  }
   try {
     await formRef.value?.validate()
   } catch {
@@ -132,6 +140,7 @@ async function submit(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
 })
 </script>
 
@@ -142,6 +151,15 @@ onMounted(async () => {
       :breadcrumbs="[{ label: $t('nav.dv'), to: '/dv' }, { label: $t('nav.apply') }]"
     />
     <NCard v-if="signedIn">
+      <ExpiryAlert
+        v-if="lifecycle && !lifecycle.canIssueTerminals"
+        :title="$t('dv.signingPaused')"
+        :description="
+          lifecycle.niaDv
+            ? $t('dv.niaDvExpired', { date: formatDate(lifecycle.niaDv.notAfter) })
+            : $t('dv.niaDvMissing')
+        "
+      />
       <NSteps :current="step + 1" size="small" style="margin-bottom: 16px">
         <NStep :title="$t('dv.stepApplication')" />
         <NStep :title="$t('dv.stepReview')" />
@@ -229,7 +247,13 @@ onMounted(async () => {
             <NButton v-if="step < LAST_STEP" type="primary" @click="nextStep">
               {{ $t('common.next') }}
             </NButton>
-            <NButton v-else type="primary" :loading="submitting" @click="submit">
+            <NButton
+              v-else
+              type="primary"
+              :loading="submitting"
+              :disabled="lifecycle?.canIssueTerminals === false"
+              @click="submit"
+            >
               <template #icon
                 ><NIcon><Save /></NIcon
               ></template>

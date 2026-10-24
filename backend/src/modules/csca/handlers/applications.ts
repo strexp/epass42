@@ -22,6 +22,11 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: CscaRouteD
     { schema: { body: applicationBody }, preHandler: requireSession(deps, 'csca') },
     async (request, reply) => {
       const principal = request.principal!
+      // The comparison with the expiry is intentionally strict: when the CSCA
+      // is expired no new DSC/LDS2 application may be accepted.
+      if (!deps.service.canIssueCertificates()) {
+        return reply.code(409).send({ error: 'csca_expired' })
+      }
       if (
         request.body.keyMode === 'user_uploaded' &&
         !request.body.csrPem &&

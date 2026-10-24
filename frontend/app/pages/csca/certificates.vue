@@ -1,7 +1,19 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'realm' })
 
-import { NButton, NCard, NDataTable, NDropdown, useDialog, useMessage } from 'naive-ui'
+import {
+  NButton,
+  NCard,
+  NDataTable,
+  NDropdown,
+  NFormItem,
+  NInput,
+  NModal,
+  NSpace,
+  NText,
+  useDialog,
+  useMessage,
+} from 'naive-ui'
 import type { Lds2SignerType } from '@epass42/shared'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
@@ -9,6 +21,8 @@ import { useRealm } from '~/composables/useRealm'
 import { signerCertificateLabel } from '~/utils/lds2'
 import { downloadUrl } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useCscaStatus } from '~/composables/useLifecycleStatus'
 
 interface Certificate {
   id: number
@@ -27,14 +41,34 @@ const api = useApi()
 const apiBase = useApiBase()
 const { state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
+const { formatDate } = useDateTime()
 usePageTitle(() => t('csca.certificatesTitle'))
 const message = useMessage()
 const dialog = useDialog()
 const certificates = ref<Certificate[]>([])
 const loading = ref(false)
+const revokeOpen = ref(false)
+const revokeTarget = ref<Certificate | null>(null)
+const revokeReason = ref('')
+const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
 
 const isCscaAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const myMnt = computed(() => state.value.me?.account.activeMnt ?? null)
+
+/** Whether the signed-in user owns this certificate's maintainer. */
+function isOwner(row: Certificate): boolean {
+  return row.mnt !== null && row.mnt === myMnt.value
+}
+
+/** Whether the current user may revoke this certificate. */
+function canRevoke(row: Certificate): boolean {
+  return (
+    row.status === 'active' &&
+    row.source === 'owned' &&
+    state.value.me !== null &&
+    (isCscaAdmin.value || isOwner(row))
+  )
+}
 
 /** Whether the current user may download this certificate's private key. */
 function canDownloadKey(row: Certificate): boolean {
@@ -76,13 +110,18 @@ async function load(): Promise<void> {
   }
 }
 
-async function revoke(id: number): Promise<void> {
+async function revoke(): Promise<void> {
+  const row = revokeTarget.value
+  if (!row) return
   try {
-    await api(`/csca/certificates/${id}/revoke`, {
+    await api(`/csca/certificates/${row.id}/revoke`, {
       method: 'POST',
-      body: { reason: 'revoked via UI' },
+      body: { reason: revokeReason.value || undefined },
     })
     message.success(t('common.revoked'))
+    revokeOpen.value = false
+    revokeReason.value = ''
+    revokeTarget.value = null
     await load()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
@@ -95,9 +134,7 @@ function actionMenu(row: Certificate) {
     { label: t('common.pem'), key: 'pem' },
     { label: t('common.der'), key: 'der' },
     ...(canDownloadKey(row) ? [{ label: t('csca.privateKey'), key: 'key' }] : []),
-    ...(isCscaAdmin.value && row.status === 'active' && row.source === 'owned'
-      ? [{ label: t('common.revoke'), key: 'revoke' }]
-      : []),
+    ...(canRevoke(row) ? [{ label: t('common.revoke'), key: 'revoke' }] : []),
   ]
   return h(
     NDropdown,
@@ -106,17 +143,11 @@ function actionMenu(row: Certificate) {
   )
 }
 
-/** Confirms before revoking (the menu item is easy to hit by mistake). */
+/** Opens the reason dialog before revoking. */
 function confirmRevoke(row: Certificate): void {
-  dialog.warning({
-    title: t('common.revoke'),
-    content: t('csca.revokeConfirm'),
-    positiveText: t('common.confirm'),
-    negativeText: t('common.cancel'),
-    onPositiveClick: () => {
-      void revoke(row.id)
-    },
-  })
+  revokeTarget.value = row
+  revokeReason.value = ''
+  revokeOpen.value = true
 }
 
 function onAction(row: Certificate, key: string): void {
@@ -155,7 +186,7 @@ const columns = computed(() => [
 
 onMounted(async () => {
   await ensureLoaded()
-  await load()
+  await Promise.all([load(), refreshLifecycle()])
 })
 </script>
 
@@ -166,6 +197,11 @@ onMounted(async () => {
       :breadcrumbs="[{ label: $t('nav.csca'), to: '/csca' }, { label: $t('nav.certificates') }]"
     />
     <NCard>
+      <ExpiryAlert
+        v-if="lifecycle?.csca?.expired"
+        :title="$t('csca.expiredTitle')"
+        :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+      />
       <template #header-extra>
         <NButton size="small" @click="downloadUrl(`${apiBase}/csca/crl.pem`, 'crl.pem')">
           {{ $t('csca.crl') }} (PEM)
@@ -186,5 +222,23 @@ onMounted(async () => {
         >
       </template>
     </NCard>
+
+    <NModal
+      v-model:show="revokeOpen"
+      preset="card"
+      :title="$t('common.revoke')"
+      style="max-width: 520px"
+    >
+      <NText depth="3">{{ $t('csca.revokeConfirm') }}</NText>
+      <NFormItem :label="$t('csca.revokeReason')" style="margin-top: 12px">
+        <NInput v-model:value="revokeReason" type="textarea" :rows="3" />
+      </NFormItem>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton quaternary @click="revokeOpen = false">{{ $t('common.cancel') }}</NButton>
+          <NButton type="error" @click="revoke">{{ $t('common.revoke') }}</NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>

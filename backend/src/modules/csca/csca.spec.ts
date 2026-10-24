@@ -13,7 +13,7 @@ import {
 } from '@epass42/pki'
 import { OIDS } from '@epass42/shared'
 import type { Db } from '../../db/client'
-import { dscCert } from '../../db/schema'
+import { cscaKey, dscCert } from '../../db/schema'
 import { FakeOidc, makeTestApp } from '../../test-support'
 import { currentCscaKey } from './service'
 
@@ -792,5 +792,84 @@ describe('M5 CSCA role', () => {
       headers: { cookie: cscaCookie },
     })
     expect(approve.statusCode).toBe(400)
+  })
+  it('lets an owner self-revoke an owned DSC and rejects other maintainers', async () => {
+    const { app, oidc, cscaCookie } = await harness()
+    const ownerCookie = await loginAs(app, oidc, 'csca', 'csca-client', OTHER_USER)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: ownerCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Self Revocable DSC' },
+    })
+    expect(submit.statusCode).toBe(201)
+    const id = json(submit).id as number
+    const approve = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${id}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(approve.statusCode).toBe(201)
+    const certId = json(approve).id as number
+
+    const otherCookie = await loginAs(app, oidc, 'csca', 'csca-client', THIRD_USER)
+    const refused = await app.inject({
+      method: 'POST',
+      url: `/csca/certificates/${certId}/revoke`,
+      headers: { cookie: otherCookie },
+    })
+    expect(refused.statusCode).toBe(403)
+
+    const revoke = await app.inject({
+      method: 'POST',
+      url: `/csca/certificates/${certId}/revoke`,
+      headers: { cookie: ownerCookie },
+      payload: { reason: 'lost key' },
+    })
+    expect(revoke.statusCode).toBe(200)
+    expect(json(revoke).status).toBe('revoked')
+
+    const again = await app.inject({
+      method: 'POST',
+      url: `/csca/certificates/${certId}/revoke`,
+      headers: { cookie: ownerCookie },
+    })
+    expect(again.statusCode).toBe(409)
+    expect(json(again).error).toBe('certificate_not_active')
+  })
+
+  it('blocks new DSC/LDS2 applications and approval when the CSCA has expired', async () => {
+    const { app, cscaCookie, db } = await harness()
+    // Create a pending application before expiry.
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Pending DSC' },
+    })
+    const id = json(submit).id as number
+
+    db.update(cscaKey).set({ notAfter: '2000-01-01T00:00:00.000Z' }).run()
+
+    const status = await app.inject({ method: 'GET', url: '/csca/status' })
+    expect(json(status).canIssueCertificates).toBe(false)
+    expect((json(status).csca as { expired: boolean }).expired).toBe(true)
+
+    const blockedSubmit = await app.inject({
+      method: 'POST',
+      url: '/csca/applications',
+      headers: { cookie: cscaCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Blocked DSC' },
+    })
+    expect(blockedSubmit.statusCode).toBe(409)
+    expect(json(blockedSubmit).error).toBe('csca_expired')
+
+    const blockedApprove = await app.inject({
+      method: 'POST',
+      url: `/csca/applications/${id}/approve`,
+      headers: { cookie: cscaCookie },
+    })
+    expect(blockedApprove.statusCode).toBe(409)
+    expect(json(blockedApprove).error).toBe('csca_expired')
   })
 })

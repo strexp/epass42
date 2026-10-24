@@ -127,5 +127,6 @@ export default {
     consumed: { label: '已领取', description: '个性化文件已交付。' },
     active: { label: '有效', description: '当前有效。' },
     inactive: { label: '无效', description: '当前无效。' },
+    retired: { label: '已退役', description: '已停止用于新签发，历史签名仍可验证。' },
   },
 } as const

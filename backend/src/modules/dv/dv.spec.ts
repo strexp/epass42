@@ -1,8 +1,12 @@
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify'
+import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import { parseCvCertificate } from '@epass42/pki'
 import { FakeOidc, makeTestApp } from '../../test-support'
+import { cvcaKey, dvCert } from '../../db/schema'
+import type { Db } from '../../db/client'
+import { currentDefaultDv, type CvcaService } from '../cvca/service'
 
 const DV_ADMIN = {
   sub: 'dv-admin',
@@ -26,6 +30,8 @@ interface Harness {
   app: FastifyInstance
   oidc: FakeOidc
   adminCookie: string
+  db: Db
+  service: CvcaService
 }
 
 async function harness(): Promise<Harness> {
@@ -34,7 +40,7 @@ async function harness(): Promise<Harness> {
   const built = await makeTestApp(oidc, { cvca: { bootstrap: true } })
   const app = built.app
   const adminCookie = await loginDv(app, oidc, DV_ADMIN)
-  return { app, oidc, adminCookie }
+  return { app, oidc, adminCookie, db: built.dbHandle.db, service: built.cvca }
 }
 
 /** Logs in to the DV realm as a specific identity. */
@@ -192,5 +198,88 @@ describe('M18 DV realm terminal certificates', () => {
     const { app } = await harness()
     const anonymous = await app.inject({ method: 'GET', url: '/dv/terminal-applications' })
     expect(anonymous.statusCode).toBe(401)
+  })
+  it('rotates the NIA DV and retires the previous certificate', async () => {
+    const { app, adminCookie, db } = await harness()
+    const before = currentDefaultDv(db)!
+    const rotate = await app.inject({
+      method: 'POST',
+      url: '/dv/nia-dv/rotate',
+      headers: { cookie: adminCookie },
+      payload: { confirm: true },
+    })
+    expect(rotate.statusCode).toBe(200)
+    expect(json(rotate).previous).toBe(before.id)
+    expect(json(rotate).current).not.toBe(before.id)
+    const oldRow = db.select().from(dvCert).where(eq(dvCert.id, before.id)).get()!
+    expect(oldRow.status).toBe('retired')
+    const current = currentDefaultDv(db)!
+    expect(current.id).toBe(json(rotate).current)
+    expect(current.status).toBe('active')
+  })
+
+  it('blocks NIA DV rotation when the CVCA has expired', async () => {
+    const { app, adminCookie, db } = await harness()
+    db.update(cvcaKey).set({ notAfter: '2000-01-01T00:00:00.000Z' }).run()
+    const rotate = await app.inject({
+      method: 'POST',
+      url: '/dv/nia-dv/rotate',
+      headers: { cookie: adminCookie },
+      payload: { confirm: true },
+    })
+    expect(rotate.statusCode).toBe(409)
+    expect(json(rotate).error).toBe('cvca_expired')
+  })
+
+  it('blocks all terminal applications and approvals when the NIA DV has expired', async () => {
+    const { app, oidc, adminCookie, db } = await harness()
+    const ownerCookie = await loginDv(app, oidc, DV_USER)
+    const submit = await app.inject({
+      method: 'POST',
+      url: '/dv/terminal-applications',
+      headers: { cookie: ownerCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Pending IS', permissions: PERMISSIONS },
+    })
+    expect(submit.statusCode).toBe(201)
+    const id = json(submit).id as number
+
+    db.update(dvCert)
+      .set({ notAfter: '2000-01-01T00:00:00.000Z' })
+      .where(eq(dvCert.source, 'system'))
+      .run()
+
+    const status = await app.inject({ method: 'GET', url: '/dv/status' })
+    expect(status.statusCode).toBe(200)
+    expect(json(status).canIssueTerminals).toBe(false)
+    expect((json(status).niaDv as { expired: boolean }).expired).toBe(true)
+
+    const blockedSubmit = await app.inject({
+      method: 'POST',
+      url: '/dv/terminal-applications',
+      headers: { cookie: ownerCookie },
+      payload: { keyMode: 'remote_generated', subjectCn: 'Blocked IS', permissions: PERMISSIONS },
+    })
+    expect(blockedSubmit.statusCode).toBe(409)
+    expect(json(blockedSubmit).error).toBe('nia_dv_expired')
+
+    const blockedApprove = await app.inject({
+      method: 'POST',
+      url: `/dv/terminal-applications/${id}/approve`,
+      headers: { cookie: adminCookie },
+    })
+    expect(blockedApprove.statusCode).toBe(409)
+    expect(json(blockedApprove).error).toBe('nia_dv_expired')
+  })
+
+  it('refuses NIA DV rotation to non-admins', async () => {
+    const { app, oidc } = await harness()
+    const cookie = await loginDv(app, oidc, DV_USER)
+    const rotate = await app.inject({
+      method: 'POST',
+      url: '/dv/nia-dv/rotate',
+      headers: { cookie },
+      payload: { confirm: true },
+    })
+    expect(rotate.statusCode).toBe(403)
   })
 })

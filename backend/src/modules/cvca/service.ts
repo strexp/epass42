@@ -8,6 +8,7 @@
 import { AppError, type DvClass, type DvPermissions } from '@epass42/shared'
 import type { CvKeyPair, CvPublicKey } from '@epass42/pki'
 
+import { isCertificateExpired } from '../../util/certificate'
 import type {
   CvcaContext,
   CvcaKeyRow,
@@ -102,6 +103,17 @@ export class CvcaService {
     return this.dvs.ensureDefaultDv()
   }
 
+  /** Manually rotates the NIA (system default) DV, retiring the old one. */
+  rotateDefaultDv(): Promise<{ previous: DvCertRow | null; current: DvCertRow }> {
+    return this.dvs.rotateDefaultDv()
+  }
+
+  /** Whether the NIA DV exists and has not expired. */
+  canIssueTerminals(): boolean {
+    const dv = currentDefaultDv(this.ctx.db)
+    return Boolean(dv && !isCertificateExpired(dv.notAfter))
+  }
+
   /** The current default (system) DV certificate, or undefined. */
   defaultDv(): DvCertRow | undefined {
     return currentDefaultDv(this.ctx.db)
@@ -139,6 +151,15 @@ export class CvcaService {
     adminAccountId: number | null,
     override: { permissions?: DvPermissions } = {},
   ): Promise<TerminalCertRow> {
+    // Strict lifecycle gate: an expired/missing NIA DV blocks every new IS
+    // certificate, including those that would be signed by an owned DV.
+    if (!this.canIssueTerminals()) {
+      throw new AppError(
+        'nia_dv_expired',
+        'the NIA DV has expired; rotate it before issuing terminal certificates',
+        409,
+      )
+    }
     const dv = this.resolveDvSelection(application.mnt)
     if (!dv) {
       throw new AppError('no_dv_available', 'no Document Verifier available to sign', 409)

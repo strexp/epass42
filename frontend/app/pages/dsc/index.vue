@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  NAlert,
   NButton,
   NCard,
   NDataTable,
@@ -9,13 +10,17 @@ import {
   NIcon,
   NSpace,
   NText,
+  useDialog,
+  useMessage,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { FilePlus2, ListChecks, ScrollText, Settings } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useRealm } from '~/composables/useRealm'
 import DateTimeText from '~/components/common/DateTimeText.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
 import StatusTag from '~/components/common/StatusTag.vue'
+import { useDscStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -32,6 +37,11 @@ interface RequestRow {
 const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
+const message = useMessage()
+const dialog = useDialog()
+const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
+const rotateBusy = ref(false)
 usePageTitle(() => t('nav.dsc'))
 const requests = ref<RequestRow[]>([])
 const loading = ref(false)
@@ -111,8 +121,33 @@ const columns = computed<DataTableColumns<RequestRow>>(() => {
   return base
 })
 
+/** Confirms and performs the admin NIA DSC rotation. */
+function confirmRotateNiaDsc(): void {
+  dialog.warning({
+    title: t('dsc.rotateNiaDsc'),
+    content: t('dsc.rotateNiaDscWarning'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => void rotateNiaDsc(),
+  })
+}
+
+async function rotateNiaDsc(): Promise<void> {
+  rotateBusy.value = true
+  try {
+    await api('/dsc/nia-dsc/rotate', { method: 'POST', body: { confirm: true } })
+    message.success(t('common.success'))
+    await refreshLifecycle()
+  } catch (error) {
+    message.error(t(errorMessageKey(error)))
+  } finally {
+    rotateBusy.value = false
+  }
+}
+
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
   if (!signedIn.value) return
   await loadActivePassport()
   loading.value = true
@@ -131,8 +166,18 @@ onMounted(async () => {
     <NSpace vertical size="large">
       <PageHeader :title="$t('nav.dsc')" :subtitle="$t('home.dscCard')" />
 
+      <ExpiryAlert
+        v-if="lifecycle && !lifecycle.canIssueDocuments"
+        :title="$t('dsc.signingPaused')"
+        :description="
+          lifecycle.niaDsc
+            ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
+            : $t('dsc.niaDscMissing')
+        "
+      />
+
       <NSpace v-if="signedIn">
-        <NuxtLink to="/dsc/apply">
+        <NuxtLink v-if="lifecycle?.canIssueDocuments !== false" to="/dsc/apply">
           <NButton type="primary">
             <template #icon
               ><NIcon><FilePlus2 /></NIcon
@@ -140,6 +185,12 @@ onMounted(async () => {
             {{ $t('dsc.applyTitle') }}
           </NButton>
         </NuxtLink>
+        <NButton v-else type="primary" disabled>
+          <template #icon
+            ><NIcon><FilePlus2 /></NIcon
+          ></template>
+          {{ $t('dsc.applyTitle') }}
+        </NButton>
         <NuxtLink v-if="isReviewer" to="/dsc/admin">
           <NButton>
             <template #icon
@@ -165,6 +216,38 @@ onMounted(async () => {
           </NButton>
         </NuxtLink>
       </NSpace>
+
+      <NCard v-if="signedIn && state.me?.isAdmin" size="small" :title="$t('dsc.niaDscTitle')">
+        <NDescriptions v-if="lifecycle?.niaDsc" :column="3" size="small">
+          <NDescriptionsItem :label="$t('dsc.niaDscSerial')">
+            <span class="epass42-mono">{{ lifecycle.niaDsc.serial }}</span>
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('pkd.validity')">
+            {{ formatDate(lifecycle.niaDsc.notAfter) }}
+          </NDescriptionsItem>
+          <NDescriptionsItem :label="$t('pkd.status')">
+            <StatusTag :status="lifecycle.niaDsc.status ?? 'active'" />
+          </NDescriptionsItem>
+        </NDescriptions>
+        <NText v-else depth="3">{{ $t('dsc.niaDscMissing') }}</NText>
+        <NAlert
+          v-if="lifecycle && !lifecycle.canRotateNiaDsc"
+          type="warning"
+          style="margin-top: 12px"
+        >
+          {{ $t('dsc.cscaExpiredHint') }}
+        </NAlert>
+        <template #action>
+          <NButton
+            type="warning"
+            :loading="rotateBusy"
+            :disabled="!lifecycle?.canRotateNiaDsc"
+            @click="confirmRotateNiaDsc"
+          >
+            {{ $t('dsc.rotateNiaDsc') }}
+          </NButton>
+        </template>
+      </NCard>
 
       <NCard v-if="signedIn && activePassport" size="small" :title="$t('dsc.activePassportTitle')">
         <NText depth="3">{{ $t('dsc.activePassportHint') }}</NText>

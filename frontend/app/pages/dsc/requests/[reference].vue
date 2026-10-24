@@ -25,6 +25,8 @@ import { computed, onMounted, ref } from 'vue'
 import { ChevronDown, ChevronUp, LogIn } from '@lucide/vue'
 import type { SignRequest } from '@epass42/shared'
 import StatusTag from '~/components/common/StatusTag.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useDscStatus } from '~/composables/useLifecycleStatus'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { documentTypeLabel } from '~/utils/documentTypes'
@@ -53,12 +55,13 @@ interface RequestMeta {
 const route = useRoute()
 const api = useApi()
 const { t, te } = useI18n()
-const { formatDateTime } = useDateTime()
+const { formatDate, formatDateTime } = useDateTime()
 usePageTitle(() => t('dsc.detailTitle'))
 const message = useMessage()
 const dialog = useDialog()
 const notify = useNotify()
 const { auth, state, ensureLoaded } = useRealm('dsc')
+const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
 
 const reference = computed(() => String(route.params.reference ?? ''))
 const meta = ref<RequestMeta | null>(null)
@@ -76,6 +79,7 @@ const deliveryMode = ref<'applicant' | 'reviewer'>('applicant')
 const me = computed(() => state.value.me)
 const isReviewer = computed(() => (me.value?.reviewScope ?? 'none') !== 'none')
 const isAdmin = computed(() => me.value?.isAdmin ?? false)
+const canApproveDocuments = computed(() => lifecycle.value?.canIssueDocuments !== false)
 
 /** Whether the signed-in user owns this request (and may revoke it). */
 const isOwner = computed(
@@ -282,6 +286,7 @@ function confirmClaim(): void {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
   if (!signedIn.value) return
   await load()
   await loadMasked()
@@ -376,6 +381,15 @@ onMounted(async () => {
           <NTag size="small" type="info">{{ $t('dsc.reviewerBadge') }}</NTag>
         </template>
 
+        <ExpiryAlert
+          v-if="lifecycle && !lifecycle.canIssueDocuments"
+          :title="$t('dsc.signingPaused')"
+          :description="
+            lifecycle.niaDsc
+              ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
+              : $t('dsc.niaDscMissing')
+          "
+        />
         <template v-if="reviewed?.payload">
           <NDescriptions :column="2" size="small" style="margin-top: 8px">
             <NDescriptionsItem :label="$t('dsc.documentation')">
@@ -423,6 +437,7 @@ onMounted(async () => {
               v-if="meta?.status === 'submitted'"
               type="primary"
               :loading="busy"
+              :disabled="!canApproveDocuments"
               @click="approve"
             >
               {{ $t('common.approve') }}

@@ -22,6 +22,8 @@ import { LogIn, Save } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useCscaStatus } from '~/composables/useLifecycleStatus'
 import type { DocumentTypeCode, Lds2SignerType } from '@epass42/shared'
 import { dscDocumentTypeValues, documentTypesLabel } from '~/utils/documentTypes'
 import { lds2SignerTypeValues, lds2SignerTypesLabel } from '~/utils/lds2'
@@ -31,6 +33,8 @@ definePageMeta({ layout: 'realm' })
 const api = useApi()
 const { auth, state, ensureLoaded } = useRealm('csca')
 const { t } = useI18n()
+const { formatDate } = useDateTime()
+const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
 usePageTitle(() => t('csca.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
@@ -178,6 +182,10 @@ function prevStep(): void {
 }
 
 async function submit(): Promise<void> {
+  if (lifecycle.value?.canIssueCertificates === false) {
+    message.error(t('errors.csca_expired'))
+    return
+  }
   try {
     await formRef.value?.validate()
   } catch {
@@ -218,6 +226,7 @@ async function submit(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
 })
 </script>
 
@@ -228,6 +237,11 @@ onMounted(async () => {
       :breadcrumbs="[{ label: $t('nav.csca'), to: '/csca' }, { label: $t('nav.apply') }]"
     />
     <NCard v-if="signedIn">
+      <ExpiryAlert
+        v-if="lifecycle?.csca?.expired"
+        :title="$t('csca.expiredTitle')"
+        :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+      />
       <NSteps :current="step + 1" size="small" style="margin-bottom: 16px">
         <NStep :title="$t('csca.stepApplication')" />
         <NStep :title="$t('csca.stepReview')" />
@@ -381,7 +395,13 @@ onMounted(async () => {
             <NButton v-if="step < LAST_STEP" type="primary" @click="nextStep">
               {{ $t('common.next') }}
             </NButton>
-            <NButton v-else type="primary" :loading="submitting" @click="submit">
+            <NButton
+              v-else
+              type="primary"
+              :loading="submitting"
+              :disabled="lifecycle?.canIssueCertificates === false"
+              @click="submit"
+            >
               <template #icon
                 ><NIcon><Save /></NIcon
               ></template>

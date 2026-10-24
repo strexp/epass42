@@ -40,4 +40,9 @@ export default {
   ldifHint: 'Import this into OpenLDAP with slapadd.',
   objectId: 'Object',
   crlNumber: 'CRL number',
+  csca: 'Signing CA',
+  cscaFilter: 'Filter by CSCA key',
+  allCscas: 'All CSCAs',
+  thisUpdate: 'This update',
+  nextUpdate: 'Next update',
 } as const

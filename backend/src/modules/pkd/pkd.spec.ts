@@ -253,4 +253,19 @@ describe('M9 read-only LDAP server', () => {
     expect(entries).toBeGreaterThanOrEqual(1)
     client.unbind(() => undefined)
   }, 15_000)
+  it('publishes a retired NIA DSC and groups CRLs by CSCA key', async () => {
+    const { app, csca } = await setup()
+    await csca.ensureNiaDsc()
+    await csca.rotateNiaDsc()
+
+    const dscs = await app.inject({ method: 'GET', url: '/pkd/dscs' })
+    const items = dscs.json().items as { source: string; status: string }[]
+    expect(items.some((row) => row.source === 'nia' && row.status === 'active')).toBe(true)
+    expect(items.some((row) => row.source === 'nia' && row.status === 'retired')).toBe(true)
+
+    const crls = await app.inject({ method: 'GET', url: '/pkd/crls' })
+    const first = (crls.json().items as { cscaKeyId?: number; cscaSubject?: string }[])[0]!
+    expect(first.cscaKeyId).toBeTypeOf('number')
+    expect(first.cscaSubject).toContain('CN=')
+  })
 })

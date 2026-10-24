@@ -75,4 +75,8 @@ export default {
   policyNia: 'Selective (reviewed case by case)',
   policyAsManaged: 'Internal (own organization only)',
   policyStrict: 'Restricted (by explicit authorization only)',
+  expiredTitle: 'CSCA expired',
+  expiredWarning:
+    'The CSCA certificate expired on {date}. DSC/LDS2 issuance is paused; roll the CSCA key over.',
+  revokeReason: 'Revocation reason (optional)',
 } as const

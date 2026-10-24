@@ -190,4 +190,13 @@ export default {
   revokePassport: '吊销证件',
   revokePassportConfirm: '确定现在吊销该证件？吊销后不可使用。新证件获批时会自动替换它。',
   revokeReason: '原因（可选）',
+  signingPaused: '证件签发已暂停',
+  niaDscTitle: 'NIA 文档签名证书（NIA DSC）',
+  niaDscSerial: '序列号',
+  niaDscExpired: 'NIA DSC 已于 {date} 过期。新的证件签发已暂停，请管理员轮换 NIA DSC。',
+  niaDscMissing: '当前没有可用的 NIA DSC，新的证件签发已暂停。',
+  rotateNiaDsc: '轮换 NIA DSC',
+  rotateNiaDscWarning:
+    '将生成新的 NIA DSC 密钥与证书，并把旧证书标记为已退役。旧证书仍可验证历史签名，但不再用于新签发。此操作不可撤销。是否继续？',
+  cscaExpiredHint: 'CSCA 证书已过期，无法轮换 NIA DSC；请先在 CSCA 管理页轮换 CSCA 密钥。',
 } as const

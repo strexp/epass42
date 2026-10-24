@@ -12,6 +12,7 @@ import { registerApplicationRoutes } from './handlers/applications'
 import { registerCertificateRoutes } from './handlers/certificates'
 import { registerCrlRoutes } from './handlers/crl'
 import { registerSettingsRoutes } from './handlers/settings'
+import { registerStatusRoutes } from './handlers/status'
 import type { CscaRouteDeps } from './routeContext'
 
 /** Registers the CSCA routes. */
@@ -20,6 +21,7 @@ export function registerCscaRoutes(app: FastifyInstance, deps: CscaRouteDeps): v
   registerCertificateRoutes(app, deps)
   registerCrlRoutes(app, deps)
   registerSettingsRoutes(app, deps)
+  registerStatusRoutes(app, deps)
 }
 
 export type { CscaRouteDeps } from './routeContext'

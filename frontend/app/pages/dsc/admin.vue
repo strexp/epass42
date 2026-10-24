@@ -15,6 +15,8 @@ import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { downloadText } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useDscStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -30,6 +32,8 @@ interface RequestRow {
 const { state, ensureLoaded } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
+const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
 usePageTitle(() => t('dsc.adminTitle'))
 const message = useMessage()
 
@@ -163,6 +167,7 @@ const queueColumns = computed(() => [
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
   // The review queue is not for ordinary users.
   if (!isReviewer.value) {
     await navigateTo('/dsc')
@@ -181,6 +186,15 @@ onMounted(async () => {
         :breadcrumbs="[{ label: $t('nav.dsc'), to: '/dsc' }, { label: $t('dsc.adminTitle') }]"
       />
 
+      <ExpiryAlert
+        v-if="lifecycle && !lifecycle.canIssueDocuments"
+        :title="$t('dsc.signingPaused')"
+        :description="
+          lifecycle.niaDsc
+            ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
+            : $t('dsc.niaDscMissing')
+        "
+      />
       <NCard :title="$t('dsc.reviewQueue')" size="small">
         <template #action>
           <NButton size="small" @click="load">

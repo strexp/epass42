@@ -34,4 +34,13 @@ export default {
   download: '下载证书',
   privateKeyTitle: '下载私钥',
   privateKeyWarning: '私钥仅可下载一次。请立即妥善保存：下载后即被删除，无法再次获取。',
+  signingPaused: 'IS 证书签发已暂停',
+  niaDvTitle: 'NIA 文档验证者（NIA DV）',
+  niaDvReference: '持有者引用',
+  niaDvExpired: 'NIA DV 已于 {date} 过期。新的 IS 证书签发已暂停，请管理员轮换 NIA DV。',
+  niaDvMissing: '当前没有可用的 NIA DV，新的 IS 证书签发已暂停。',
+  rotateNiaDv: '轮换 NIA DV',
+  rotateNiaDvWarning:
+    '将生成新的 NIA DV 密钥与证书，并把旧证书标记为已退役。CV 证书没有吊销机制；已签发的 IS 证书在到期前仍然有效。此操作不可撤销。是否继续？',
+  cvcaExpiredHint: 'CVCA 证书已过期，无法轮换 NIA DV；请先在 CVCA 管理页轮换 CVCA 密钥。',
 } as const

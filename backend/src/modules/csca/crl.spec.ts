@@ -60,6 +60,25 @@ describe('M6 CRL', () => {
     expect(await parsed.verify({ publicKey: cscaCert.publicKey })).toBe(true)
   })
 
+  it('issues a separate CRL for a retired CSCA key after rollover', async () => {
+    const { db, csca } = await setup()
+    const old = currentCscaKey(db)!
+    const dsc = await issueDsc(csca, db, 'Pre-rollover DSC')
+    await csca.rollover()
+    csca.revoke(dsc.id, 'revoked after rollover')
+
+    const oldCrl = await csca.generateCrlForKey(old.id)
+    const parsedOld = parseCrl(new Uint8Array(oldCrl.der))
+    expect(isRevoked(parsedOld, dsc.serial)).toBeTruthy()
+    const oldCert = parseCertificatePem(old.certPem)
+    expect(await parsedOld.verify({ publicKey: oldCert.publicKey })).toBe(true)
+
+    const newCrl = await csca.generateCrl()
+    expect(isRevoked(parseCrl(new Uint8Array(newCrl.der)), dsc.serial)).toBeFalsy()
+    expect(oldCrl.cscaKeyId).toBe(old.id)
+    expect(newCrl.cscaKeyId).not.toBe(old.id)
+  })
+
   it('increments the CRL number monotonically', async () => {
     const { csca } = await setup()
     expect((await csca.generateCrl()).crlNumber).toBe(1)
@@ -149,5 +168,31 @@ describe('M6 CRL', () => {
     expect(pem.statusCode).toBe(200)
     const parsed = parseCrlPem(pem.body)
     expect(isRevoked(parsed, serial)).toBeTruthy()
+  })
+  it('publishes a pre-rollover revocation under the old CSCA key CRL', async () => {
+    const { app, db, csca, cookie } = await setup()
+    const old = currentCscaKey(db)!
+    const dsc = await issueDsc(csca, db, 'Old-key DSC')
+
+    await app.inject({
+      method: 'POST',
+      url: '/csca/keys/rollover',
+      headers: { cookie },
+      payload: { confirm: true },
+    })
+    await app.inject({
+      method: 'POST',
+      url: `/csca/certificates/${dsc.id}/revoke`,
+      headers: { cookie },
+      payload: { reason: 'rollover test' },
+    })
+
+    const list = await app.inject({ method: 'GET', url: '/pkd/crls' })
+    const oldCrl = (list.json().items as { id: string; cscaKeyId?: number }[]).find(
+      (row) => row.cscaKeyId === old.id,
+    )
+    expect(oldCrl).toBeTruthy()
+    const der = await app.inject({ method: 'GET', url: `/pkd/objects/${oldCrl!.id}.der` })
+    expect(isRevoked(parseCrl(new Uint8Array(der.rawPayload)), dsc.serial)).toBeTruthy()
   })
 })

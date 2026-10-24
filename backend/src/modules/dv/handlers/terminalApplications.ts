@@ -17,6 +17,7 @@ import { dvPermissionsSchema } from '@epass42/shared'
 import { writeAudit } from '../../../audit/audit'
 import { terminalApplication, terminalCert } from '../../../db/schema'
 import { nowIso } from '../../../util/time'
+import { certificateValidity } from '../../../util/certificate'
 import { requireAdmin, requireSession } from '../../auth/middleware'
 import { terminalMetadata } from '../../cvca/routeContext'
 import { terminalApplicationBody, type DvRouteDeps } from '../routeContext'
@@ -31,6 +32,11 @@ export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: Dv
     { schema: { body: terminalApplicationBody }, preHandler: requireSession(deps, 'dv') },
     async (request, reply) => {
       const principal = request.principal!
+      // Strict lifecycle gate: no new IS application while the NIA DV is
+      // expired or missing.
+      if (!service.canIssueTerminals()) {
+        return reply.code(409).send({ error: 'nia_dv_expired' })
+      }
       if (
         request.body.keyMode === 'user_uploaded' &&
         !request.body.csrPem &&
@@ -124,7 +130,19 @@ export function registerTerminalApplicationRoutes(app: FastifyInstance, deps: Dv
         row.terminalCertId !== null
           ? db.select().from(terminalCert).where(eq(terminalCert.id, row.terminalCertId)).get()
           : undefined
-      return { ...row, hasPrivateKey: cert?.keyRef != null }
+      const dv = service.resolveDvSelection(row.mnt)
+      return {
+        ...row,
+        hasPrivateKey: cert?.keyRef != null,
+        signingDv: dv
+          ? {
+              id: dv.id,
+              source: dv.source,
+              holderReference: dv.holderReference,
+              ...certificateValidity(dv.notAfter),
+            }
+          : null,
+      }
     },
   )
 

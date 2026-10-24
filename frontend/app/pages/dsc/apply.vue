@@ -31,6 +31,8 @@ import type { EncodedPortrait } from '~/components/emrtd/PortraitEditor.vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { usePkdConfig } from '~/composables/usePkdConfig'
 import { useRealm } from '~/composables/useRealm'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useDscStatus } from '~/composables/useLifecycleStatus'
 import { canIsValid, normaliseCan, randomCan } from '~/utils/can'
 import { documentTypeLabel, documentTypeValues } from '~/utils/documentTypes'
 
@@ -38,6 +40,8 @@ definePageMeta({ layout: 'realm' })
 
 const api = useApi()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
+const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
 usePageTitle(() => t('dsc.applyTitle'))
 const message = useMessage()
 const notify = useNotify()
@@ -293,6 +297,7 @@ async function submit(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
   try {
     const runtime = await loadPkdConfig()
     mrz.issuingState = runtime.countryAlpha3
@@ -317,6 +322,15 @@ onMounted(async () => {
       :breadcrumbs="[{ label: $t('nav.dsc'), to: '/dsc' }, { label: $t('nav.apply') }]"
     />
     <NCard>
+      <ExpiryAlert
+        v-if="lifecycle && !lifecycle.canIssueDocuments"
+        :title="$t('dsc.signingPaused')"
+        :description="
+          lifecycle.niaDsc
+            ? $t('dsc.niaDscExpired', { date: formatDate(lifecycle.niaDsc.notAfter) })
+            : $t('dsc.niaDscMissing')
+        "
+      />
       <NResult
         v-if="reference"
         status="success"
@@ -581,7 +595,13 @@ onMounted(async () => {
             <NButton v-if="step < LAST_STEP" type="primary" @click="nextStep">
               {{ $t('common.next') }}
             </NButton>
-            <NButton v-else type="primary" :loading="submitting" @click="submit">
+            <NButton
+              v-else
+              type="primary"
+              :loading="submitting"
+              :disabled="lifecycle?.canIssueDocuments === false"
+              @click="submit"
+            >
               <template #icon
                 ><NIcon><Send /></NIcon
               ></template>

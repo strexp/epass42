@@ -19,7 +19,9 @@ export function startCrlScheduler(
   const tick = async (): Promise<void> => {
     try {
       const generated = await service.maybeGenerateCrl()
-      if (generated) log('crl generated', { crlNumber: generated.crlNumber })
+      for (const row of generated) {
+        log('crl generated', { crlNumber: row.crlNumber, cscaKeyId: row.cscaKeyId })
+      }
     } catch (error) {
       log('crl generation failed', error)
     }

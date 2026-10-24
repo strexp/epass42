@@ -7,6 +7,7 @@
  */
 import { and, eq } from 'drizzle-orm'
 import {
+  AppError,
   dvPermissionsSchema,
   hasAnyPermission,
   type DvClass,
@@ -28,6 +29,7 @@ import {
 } from '@epass42/pki'
 
 import { dvApplication, dvCert, terminalApplication, terminalCert } from '../../db/schema'
+import { isCertificateExpired } from '../../util/certificate'
 import { openPrivateKey, sealPrivateKey } from '../../crypto/keyring'
 import { nowIso } from '../../util/time'
 import {
@@ -94,6 +96,7 @@ export class DvIssuanceService {
     if (existing) return existing
     const cvca = await this.keys.ensure()
     if (!cvca) return undefined
+    if (isCertificateExpired(cvca.notAfter)) return undefined
     const cvcaPair = await this.keys.loadKeyPair(cvca)
     const { config } = this.ctx
     return this.issueDv({
@@ -108,6 +111,49 @@ export class DvIssuanceService {
       keyMode: 'remote_generated',
       source: 'system',
     })
+  }
+
+  /**
+   * Rotates the NIA (system default) DV: issues a new DV under the current CVCA
+   * key and retires the previous one.  CV certificates cannot be revoked, so the
+   * old DV simply stops being selected for new terminal certificates.
+   */
+  async rotateDefaultDv(): Promise<{ previous: DvCertRow | null; current: DvCertRow }> {
+    const cvca = await this.keys.ensure()
+    if (!cvca) throw new Error('no CVCA key available')
+    if (isCertificateExpired(cvca.notAfter)) {
+      throw new AppError(
+        'cvca_expired',
+        'the CVCA certificate has expired; roll the CVCA key over first',
+        409,
+      )
+    }
+    const previous = currentDefaultDv(this.ctx.db) ?? null
+    const cvcaPair = await this.keys.loadKeyPair(cvca)
+    const { config } = this.ctx
+    if (previous) {
+      this.ctx.db.update(dvCert).set({ status: 'retired' }).where(eq(dvCert.id, previous.id)).run()
+    }
+    try {
+      const current = await this.issueDv({
+        cvca,
+        cvcaPair,
+        subjectCn: config.cvca.dv.defaultDv.commonName ?? `${config.cvca.commonName} Default DV`,
+        holderMnemonic: config.cvca.dv.defaultDv.holderMnemonic,
+        dvClass: 'domestic',
+        permissions: config.cvca.authorization,
+        validityDays: config.cvca.dv.validityDays,
+        mnt: null,
+        keyMode: 'remote_generated',
+        source: 'system',
+      })
+      return { previous, current }
+    } catch (error) {
+      if (previous) {
+        this.ctx.db.update(dvCert).set({ status: 'active' }).where(eq(dvCert.id, previous.id)).run()
+      }
+      throw error
+    }
   }
 
   /** Allocates an unused Certificate Holder Reference for a DV. */

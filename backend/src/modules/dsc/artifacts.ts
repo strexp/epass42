@@ -40,6 +40,15 @@ export class DscArtifactService {
 
   /** Resolves the Document Signer material for a request. */
   async selectSigningMaterial(row: SignRequestRow): Promise<SigningMaterial> {
+    // Strict lifecycle gate: an expired NIA DSC blocks every new document,
+    // including those that would be signed with an owned DSC.
+    if (!this.csca.hasUsableNiaDsc()) {
+      throw new AppError(
+        'nia_dsc_expired',
+        'the NIA Document Signer has expired; rotate it before issuing documents',
+        409,
+      )
+    }
     const payload = JSON.parse(row.payloadJson) as SignRequest
     const documentType = payload.mrz.documentCode
 

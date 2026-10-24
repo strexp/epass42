@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -11,9 +12,9 @@ import {
 } from '@epass42/pki'
 import { FakeOidc, makeTestApp, staticMntResolver } from '../../test-support'
 import type { Db } from '../../db/client'
-import { mntConfig } from '../../db/schema'
+import { dscCert, mntConfig } from '../../db/schema'
 import { recordAsAdmin } from '../auth/authorization'
-import { currentCscaKey, type CscaService } from '../csca/service'
+import { currentCscaKey, currentNiaDsc, type CscaService } from '../csca/service'
 import { mrzExpiry } from './build'
 import type { DscService } from './service'
 import type { MntResolver } from '../jurisdiction/whois'
@@ -1432,5 +1433,73 @@ describe('M7 DSC signing service', () => {
     const mineIds = (mine.json().items as { reference: string }[]).map((entry) => entry.reference)
     expect(mineIds).toContain(ownId)
     expect(mineIds).not.toContain(sharedId)
+  })
+  it('rotates the NIA DSC and retires the previous certificate', async () => {
+    const { app, oidc, db } = await harness()
+    const before = currentNiaDsc(db)!
+    const adminCookie = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+
+    const rotate = await app.inject({
+      method: 'POST',
+      url: '/dsc/nia-dsc/rotate',
+      headers: { cookie: adminCookie },
+      payload: { confirm: true },
+    })
+    expect(rotate.statusCode).toBe(200)
+    expect(rotate.json().previous).toBe(before.id)
+    expect(rotate.json().current).not.toBe(before.id)
+
+    const oldRow = db.select().from(dscCert).where(eq(dscCert.id, before.id)).get()!
+    expect(oldRow.status).toBe('retired')
+    const current = currentNiaDsc(db)!
+    expect(current.id).toBe(rotate.json().current)
+    expect(current.status).toBe('active')
+  })
+
+  it('blocks all document requests and approvals when the NIA DSC has expired', async () => {
+    const { app, oidc, db } = await harness()
+    const reference = await submit(app, oidc, 'X7654321')
+
+    db.update(dscCert)
+      .set({ notAfter: '2000-01-01T00:00:00.000Z' })
+      .where(eq(dscCert.source, 'nia'))
+      .run()
+
+    const status = await app.inject({ method: 'GET', url: '/dsc/status' })
+    expect(status.statusCode).toBe(200)
+    expect(status.json().canIssueDocuments).toBe(false)
+    expect(status.json().niaDsc.expired).toBe(true)
+
+    const applicantCookie = await applicant(app, oidc)
+    const blockedSubmit = await app.inject({
+      method: 'POST',
+      url: '/dsc/requests',
+      headers: { cookie: applicantCookie },
+      payload: payload('X7654322'),
+    })
+    expect(blockedSubmit.statusCode).toBe(409)
+    expect(blockedSubmit.json().error).toBe('nia_dsc_expired')
+
+    const adminCookie = await login(app, oidc, 'dsc', 'dsc-client', NIA_DSC_ADMIN)
+    const blockedApprove = await app.inject({
+      method: 'POST',
+      url: `/dsc/requests/${reference}/approve`,
+      headers: { cookie: adminCookie },
+      payload: {},
+    })
+    expect(blockedApprove.statusCode).toBe(409)
+    expect(blockedApprove.json().error).toBe('nia_dsc_expired')
+  })
+
+  it('refuses NIA DSC rotation to non-admins', async () => {
+    const { app, oidc } = await harness()
+    const cookie = await login(app, oidc, 'dsc', 'dsc-client', USER)
+    const rotate = await app.inject({
+      method: 'POST',
+      url: '/dsc/nia-dsc/rotate',
+      headers: { cookie },
+      payload: { confirm: true },
+    })
+    expect(rotate.statusCode).toBe(403)
   })
 })

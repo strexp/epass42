@@ -23,6 +23,13 @@ export interface PkdObject {
   cn: string
   subject?: string
   status?: string
+  /** The CSCA key that issued this object (certificate or CRL). */
+  cscaKeyId?: number
+  cscaSerial?: string
+  cscaSubject?: string
+  /** CRL validity window. */
+  thisUpdate?: string
+  nextUpdate?: string
 }
 
 /** The directory base DN. */
@@ -66,21 +73,32 @@ export function suffixEntry(config: AppConfig): SuffixEntry {
 export function listObjects(db: Db, config: AppConfig): PkdObject[] {
   void config
   const objects: PkdObject[] = []
-  for (const row of db.select().from(cscaKey).all()) {
+  const cscaRows = db.select().from(cscaKey).all()
+  const cscaById = new Map(cscaRows.map((row) => [row.id, row]))
+  for (const row of cscaRows) {
     objects.push({
       id: `csca-${row.id}`,
       kind: 'csca',
       cn: row.serial,
       subject: row.subjectDn,
       status: row.status,
+      cscaKeyId: row.id,
+      cscaSerial: row.serial,
+      cscaSubject: row.subjectDn,
       der: new Uint8Array(parseCertificatePem(row.certPem).rawData),
     })
   }
   for (const row of db.select().from(crl).all()) {
+    const issuer = row.cscaKeyId !== null ? cscaById.get(row.cscaKeyId) : undefined
     objects.push({
       id: `crl-${row.id}`,
       kind: 'crl',
       cn: String(row.crlNumber),
+      cscaKeyId: row.cscaKeyId ?? undefined,
+      cscaSerial: issuer?.serial,
+      cscaSubject: issuer?.subjectDn,
+      thisUpdate: row.thisUpdate,
+      nextUpdate: row.nextUpdate,
       der: new Uint8Array(row.der),
     })
   }

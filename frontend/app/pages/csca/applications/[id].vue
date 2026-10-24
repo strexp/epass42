@@ -19,6 +19,8 @@ import {
 } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import StatusTag from '~/components/common/StatusTag.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useCscaStatus } from '~/composables/useLifecycleStatus'
 import { errorMessageKey, useApiBase } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { documentTypesLabel } from '~/utils/documentTypes'
@@ -60,10 +62,12 @@ const route = useRoute()
 const api = useApi()
 const apiBase = useApiBase()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
 usePageTitle(() => t('csca.applicationTitle'))
 const message = useMessage()
 const dialog = useDialog()
 const { state, ensureLoaded } = useRealm('csca')
+const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
 
 const id = computed(() => String(route.params.id ?? ''))
 const application = ref<Application | null>(null)
@@ -73,6 +77,7 @@ const rejectReason = ref('')
 
 const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+const canApprove = computed(() => canReview.value && !(lifecycle.value?.csca?.expired ?? false))
 const isLds2 = computed(
   () => (application.value?.certificateType ?? application.value?.certType) === 'lds2',
 )
@@ -143,7 +148,7 @@ async function reject(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
-  await load()
+  await Promise.all([load(), refreshLifecycle()])
 })
 </script>
 
@@ -248,8 +253,13 @@ onMounted(async () => {
           </div>
         </template>
 
+        <ExpiryAlert
+          v-if="lifecycle?.csca?.expired"
+          :title="$t('csca.expiredTitle')"
+          :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+        />
         <div v-if="canReview" class="epass42-actions" style="margin-top: 12px">
-          <NButton type="primary" :loading="busy" @click="approve">
+          <NButton type="primary" :loading="busy" :disabled="!canApprove" @click="approve">
             {{ $t('csca.approve') }}
           </NButton>
           <NButton @click="rejectOpen = true">{{ $t('common.reject') }}</NButton>

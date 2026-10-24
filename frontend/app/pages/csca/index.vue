@@ -27,6 +27,8 @@ import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { signerCertificateLabel } from '~/utils/lds2'
 import StatusTag from '~/components/common/StatusTag.vue'
+import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import { useCscaStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
 
@@ -47,6 +49,7 @@ interface Application {
 const { state, ensureLoaded } = useRealm('csca')
 const api = useApi()
 const { t } = useI18n()
+const { formatDate } = useDateTime()
 usePageTitle(() => t('nav.csca'))
 const message = useMessage()
 const dialog = useDialog()
@@ -54,6 +57,7 @@ const dialog = useDialog()
 const applications = ref<Application[]>([])
 const loading = ref(false)
 const rolloverBusy = ref(false)
+const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
 const masterListBusy = ref(false)
 const delegation = ref<{
   mnt: string | null
@@ -169,6 +173,7 @@ async function rollover(): Promise<void> {
   try {
     await api('/csca/keys/rollover', { method: 'POST', body: { confirm: true } })
     message.success(t('common.success'))
+    await refreshLifecycle()
   } catch (error) {
     message.error(t(errorMessageKey(error)))
   } finally {
@@ -201,6 +206,7 @@ async function generateMasterList(): Promise<void> {
 
 onMounted(async () => {
   await ensureLoaded()
+  await refreshLifecycle()
   await loadDelegation()
   // Admins see every application; other users see their own.
   if (signedIn.value) await loadApplications()
@@ -212,10 +218,16 @@ onMounted(async () => {
     <NSpace vertical size="large">
       <PageHeader :title="$t('nav.csca')" :subtitle="$t('home.cscaCard')" />
 
+      <ExpiryAlert
+        v-if="lifecycle?.csca?.expired"
+        :title="$t('csca.expiredTitle')"
+        :description="$t('csca.expiredWarning', { date: formatDate(lifecycle.csca.notAfter) })"
+      />
+
       <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
         <NText depth="3">{{ $t('csca.publicHint') }}</NText>
         <template #action>
-          <NuxtLink to="/csca/apply">
+          <NuxtLink v-if="lifecycle?.canIssueCertificates !== false" to="/csca/apply">
             <NButton type="primary">
               <template #icon
                 ><NIcon><FilePlus2 /></NIcon
@@ -223,6 +235,12 @@ onMounted(async () => {
               {{ $t('nav.apply') }}
             </NButton>
           </NuxtLink>
+          <NButton v-else type="primary" disabled>
+            <template #icon
+              ><NIcon><FilePlus2 /></NIcon
+            ></template>
+            {{ $t('nav.apply') }}
+          </NButton>
         </template>
       </NCard>
 

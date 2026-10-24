@@ -13,6 +13,7 @@ import { registerReviewRoutes } from './handlers/review'
 import { registerDeliveryRoutes } from './handlers/delivery'
 import { registerSettingsRoutes } from './handlers/settings'
 import { registerPassportRoutes } from './handlers/passports'
+import { registerLifecycleRoutes } from './handlers/lifecycle'
 import type { DscRouteDeps } from './routeContext'
 
 /** Registers the DSC signing routes. */
@@ -22,6 +23,7 @@ export function registerDscRoutes(app: FastifyInstance, deps: DscRouteDeps): voi
   registerDeliveryRoutes(app, deps)
   registerSettingsRoutes(app, deps)
   registerPassportRoutes(app, deps)
+  registerLifecycleRoutes(app, deps)
 }
 
 export type { DscRouteDeps } from './routeContext'

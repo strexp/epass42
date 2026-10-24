@@ -39,4 +39,15 @@ export default {
   privateKeyTitle: 'Download private key',
   privateKeyWarning:
     'The private key can be downloaded only once. Save it securely now: it is deleted after this download and cannot be retrieved again.',
+  signingPaused: 'IS certificate issuance paused',
+  niaDvTitle: 'NIA Document Verifier (NIA DV)',
+  niaDvReference: 'Holder reference',
+  niaDvExpired:
+    'The NIA DV expired on {date}. New IS certificate issuance is paused; rotate the NIA DV.',
+  niaDvMissing: 'No usable NIA DV is available; new IS certificate issuance is paused.',
+  rotateNiaDv: 'Rotate NIA DV',
+  rotateNiaDvWarning:
+    'A new NIA DV key and certificate will be created and the old certificate marked as retired. CV certificates cannot be revoked; already issued IS certificates remain valid until they expire. This cannot be undone. Continue?',
+  cvcaExpiredHint:
+    'The CVCA certificate has expired, so the NIA DV cannot be rotated. Roll the CVCA key over first.',
 } as const

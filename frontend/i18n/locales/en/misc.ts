@@ -61,5 +61,14 @@ export default {
     token_expired: 'This link has expired.',
     dv_key_unavailable: 'No Document Verifier key is available for this organization yet.',
     signature_invalid: 'The signature could not be verified.',
+    csca_expired:
+      'The CSCA certificate has expired. New DSC/LDS2 certificates are paused; roll the CSCA key over first.',
+    nia_dsc_expired:
+      'The NIA DSC has expired. New document issuance is paused; rotate the NIA DSC.',
+    nia_dv_expired:
+      'The NIA DV has expired. New IS certificate issuance is paused; rotate the NIA DV.',
+    cvca_expired:
+      'The CVCA certificate has expired. Rotate the CVCA key before rotating the NIA DV.',
+    certificate_not_active: 'This certificate is not active and cannot be revoked.',
   },
 } as const

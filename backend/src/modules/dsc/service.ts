@@ -34,12 +34,24 @@ export class DscService {
   readonly requests: DscRequestService
   readonly artifacts: DscArtifactService
   readonly delivery: DscDeliveryService
+  readonly csca: CscaService
 
   constructor(db: Db, config: AppConfig, csca: CscaService, cvca: CvcaService) {
+    this.csca = csca
     this.settings = new DscSettingsService(db, config)
     this.requests = new DscRequestService(db, this.settings)
     this.artifacts = new DscArtifactService(db, config, csca, cvca, this.settings, this.requests)
     this.delivery = new DscDeliveryService(db, this.requests, this.artifacts)
+  }
+
+  /** Whether a valid NIA DSC exists, i.e. new documents may be issued. */
+  canIssueDocuments(): boolean {
+    return this.csca.hasUsableNiaDsc()
+  }
+
+  /** Manually rotates the NIA DSC (admin action; audit is written by the route). */
+  rotateNiaDsc(): ReturnType<CscaService['rotateNiaDsc']> {
+    return this.csca.rotateNiaDsc()
   }
 
   /* Settings ----------------------------------------------------------- */

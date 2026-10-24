@@ -57,5 +57,10 @@ export default {
     token_expired: '该链接已过期。',
     dv_key_unavailable: '该机构尚无可用的文档验证者密钥。',
     signature_invalid: '签名验证失败。',
+    csca_expired: 'CSCA 证书已过期，DSC/LDS2 证书签发已停用；请先轮换 CSCA 密钥。',
+    nia_dsc_expired: 'NIA DSC 已过期，新的证件签发已停用；请管理员轮换 NIA DSC。',
+    nia_dv_expired: 'NIA DV 已过期，新的 IS 证书签发已停用；请管理员轮换 NIA DV。',
+    cvca_expired: 'CVCA 证书已过期，无法轮换 NIA DV；请先轮换 CVCA 密钥。',
+    certificate_not_active: '该证书不是有效状态，无法吊销。',
   },
 } as const

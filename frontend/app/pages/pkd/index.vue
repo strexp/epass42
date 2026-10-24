@@ -26,6 +26,7 @@ import PermissionsSummary from '~/components/cvca/PermissionsSummary.vue'
 
 interface PkdCertificate {
   id: string
+  cscaKeyId?: number
   cn: string
   subject?: string
   status?: string
@@ -33,6 +34,11 @@ interface PkdCertificate {
 interface PkdCrl {
   id: string
   crlNumber: number
+  cscaKeyId?: number
+  cscaSerial?: string
+  cscaSubject?: string
+  thisUpdate?: string
+  nextUpdate?: string
 }
 interface PkdDv {
   id: string
@@ -74,6 +80,7 @@ usePageTitle(() => t('pkd.title'))
 
 const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
+const crlCscaFilter = ref<number>(0)
 const masterlists = ref<{ id: string }[]>([])
 const dscs = ref<PkdDsc[]>([])
 const cvca = ref<PkdCertificate[]>([])
@@ -127,6 +134,29 @@ function downloadLinks(id: string) {
   )
 }
 
+/** CSCA-key filter options for the CRL tab (only keys that publish a CRL). */
+const crlCscaOptions = computed(() => {
+  const issuers = new Set(
+    crls.value.map((crl) => crl.cscaKeyId).filter((id): id is number => id !== undefined),
+  )
+  return [
+    { label: t('pkd.allCscas'), value: 0 },
+    ...certificates.value
+      .filter((cert) => cert.cscaKeyId !== undefined && issuers.has(cert.cscaKeyId))
+      .map((cert) => ({
+        label: cert.subject ?? cert.cn,
+        value: cert.cscaKeyId as number,
+      })),
+  ]
+})
+
+/** CRLs of the selected CSCA key (all when no filter is selected). */
+const filteredCrls = computed(() =>
+  crlCscaFilter.value === 0
+    ? crls.value
+    : crls.value.filter((crl) => crl.cscaKeyId === crlCscaFilter.value),
+)
+
 const certColumns = computed(() => [
   { title: t('common.cn'), key: 'cn' },
   { title: t('common.subject'), key: 'subject' },
@@ -135,6 +165,22 @@ const certColumns = computed(() => [
 ])
 const crlColumns = computed(() => [
   { title: t('pkd.crlNumber'), key: 'crlNumber' },
+  {
+    title: t('pkd.csca'),
+    key: 'cscaSubject',
+    ellipsis: { tooltip: true },
+    render: (row: PkdCrl) => row.cscaSubject ?? row.cscaSerial ?? '—',
+  },
+  {
+    title: t('pkd.thisUpdate'),
+    key: 'thisUpdate',
+    render: (row: PkdCrl) => (row.thisUpdate ? formatDate(row.thisUpdate) : '—'),
+  },
+  {
+    title: t('pkd.nextUpdate'),
+    key: 'nextUpdate',
+    render: (row: PkdCrl) => (row.nextUpdate ? formatDate(row.nextUpdate) : '—'),
+  },
   { title: '', key: 'download', render: (row: PkdCrl) => downloadLinks(row.id) },
 ])
 const mlColumns = computed(() => [
@@ -308,15 +354,20 @@ onMounted(async () => {
         </NCard>
       </NTabPane>
       <NTabPane name="crls" :tab="$t('pkd.crls')">
-        <div role="region" :aria-label="$t('pkd.crls')">
-          <NDataTable
-            :columns="crlColumns"
-            :data="crls"
-            :loading="loading"
-            :pagination="pagination"
-            size="small"
-          />
-        </div>
+        <NCard size="small">
+          <NFormItem :label="$t('pkd.cscaFilter')" style="max-width: 420px">
+            <NSelect v-model:value="crlCscaFilter" :options="crlCscaOptions" />
+          </NFormItem>
+          <div role="region" :aria-label="$t('pkd.crls')">
+            <NDataTable
+              :columns="crlColumns"
+              :data="filteredCrls"
+              :loading="loading"
+              :pagination="pagination"
+              size="small"
+            />
+          </div>
+        </NCard>
       </NTabPane>
       <NTabPane name="mls" :tab="$t('pkd.masterlists')">
         <div role="region" :aria-label="$t('pkd.masterlists')">

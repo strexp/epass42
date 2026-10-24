@@ -35,6 +35,11 @@ export function registerRequestRoutes(app: FastifyInstance, deps: DscRouteDeps):
       const principal = resolvePrincipal(deps as AuthContext, request, 'dsc')
       if (!principal) return reply.code(401).send({ error: 'unauthorized' })
       request.principal = principal
+      // Strict lifecycle gate: no new document request is accepted while the
+      // NIA DSC is expired or missing.
+      if (!service.canIssueDocuments()) {
+        return reply.code(409).send({ error: 'nia_dsc_expired' })
+      }
       const mnt = principal.account.activeMnt ?? (await resolveIpMnt(deps, request.ip))
       const requester = {
         accountId: principal.account.id,

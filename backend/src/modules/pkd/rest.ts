@@ -57,6 +57,7 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
       .filter((object) => object.kind === 'csca')
       .map((object) => ({
         id: object.id,
+        cscaKeyId: object.cscaKeyId,
         cn: object.cn,
         subject: object.subject,
         status: object.status,
@@ -67,7 +68,15 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
   server.get('/pkd/crls', async () => {
     const items = listObjects(db, config)
       .filter((object) => object.kind === 'crl')
-      .map((object) => ({ id: object.id, crlNumber: Number(object.cn) }))
+      .map((object) => ({
+        id: object.id,
+        crlNumber: Number(object.cn),
+        cscaKeyId: object.cscaKeyId,
+        cscaSerial: object.cscaSerial,
+        cscaSubject: object.cscaSubject,
+        thisUpdate: object.thisUpdate,
+        nextUpdate: object.nextUpdate,
+      }))
     return { total: items.length, items }
   })
 
@@ -115,10 +124,10 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
     return { total: items.length, items }
   })
 
-  // Every active or revoked signer certificate (DSC or LDS2 Signer), with the
-  // certificate type, policy, name, validity, document type/LDS2 roles and
-  // application URL published for relying parties (certificate bytes stay under
-  // /csca/certificates).
+  // Every active, revoked or retired signer certificate (DSC or LDS2 Signer),
+  // with the certificate type, policy, name, validity, document type/LDS2 roles
+  // and application URL published for relying parties (certificate bytes stay
+  // under /csca/certificates).
   server.get('/pkd/dscs', async () => {
     const items = db
       .select()
@@ -128,7 +137,7 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
       .filter(
         (row) =>
           (row.source === 'nia' || row.source === 'owned') &&
-          (row.status === 'active' || row.status === 'revoked'),
+          (row.status === 'active' || row.status === 'revoked' || row.status === 'retired'),
       )
       .map((row) => {
         const meta = certMetadata(row)

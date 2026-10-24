@@ -69,4 +69,7 @@ export default {
   policyNia: '选择性（逐案审核）',
   policyAsManaged: '内部（仅限本机构）',
   policyStrict: '受限（仅限明确授权）',
+  expiredTitle: 'CSCA 已过期',
+  expiredWarning: 'CSCA 证书已于 {date} 过期。DSC/LDS2 证书签发已暂停，请管理员轮换 CSCA 密钥。',
+  revokeReason: '吊销原因（可选）',
 } as const

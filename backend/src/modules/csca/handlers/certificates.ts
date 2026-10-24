@@ -104,27 +104,37 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CscaRouteD
     {
       schema: {
         params: z.object({ id: z.coerce.number().int().positive() }),
-        body: z.object({ reason: z.string().max(2000).optional() }),
+        body: z.object({ reason: z.string().max(2000).optional() }).nullish(),
       },
-      preHandler: requireAdmin(deps, 'csca'),
+      preHandler: requireSession(deps, 'csca'),
     },
     async (request, reply) => {
+      const principal = request.principal!
       const row = db.select().from(dscCert).where(eq(dscCert.id, request.params.id)).get()
       if (!row) return reply.code(404).send({ error: 'certificate_not_found' })
       // System-managed signers (NIA, Master List) are never revoked from here.
       if (row.source !== 'owned') return reply.code(403).send({ error: 'forbidden' })
-      const cert = service.revoke(row.id, request.body.reason ?? null)
+      const owner = row.mnt !== null && row.mnt === principal.account.activeMnt
+      if (!principal.isAdmin && !owner) return reply.code(403).send({ error: 'forbidden' })
+      if (row.status !== 'active') return reply.code(409).send({ error: 'certificate_not_active' })
+      const cert = service.revoke(row.id, request.body?.reason ?? null)
       if (!cert) return reply.code(404).send({ error: 'certificate_not_found' })
       writeAudit(db, {
-        actorAccountId: request.principal!.account.id,
+        actorAccountId: principal.account.id,
         realm: 'csca',
         action: 'dsc.certificate.revoke',
         targetType: 'dsc_cert',
         targetId: cert.id,
         ip: request.ip,
+        detail: { self: !principal.isAdmin, mnt: row.mnt },
       })
-      // Regenerate the CRL so the revocation is published promptly (M6/T6.3).
-      if (deps.config.crl.autoGenerate) await service.generateCrl()
+      // Regenerate the CRL of the CSCA key that issued this certificate, so a
+      // revocation of a pre-rollover certificate is published under its own
+      // issuer (M6/T6.3).
+      if (deps.config.crl.autoGenerate) {
+        if (cert.cscaKeyId !== null) await service.generateCrlForKey(cert.cscaKeyId)
+        else await service.generateCrl()
+      }
       return reply.send(certMetadata(cert))
     },
   )

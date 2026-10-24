@@ -38,4 +38,9 @@ export default {
   ldifHint: '使用 slapadd 导入到 OpenLDAP。',
   objectId: '对象',
   crlNumber: 'CRL 编号',
+  csca: '签发 CA',
+  cscaFilter: '按 CSCA 密钥筛选',
+  allCscas: '全部 CSCA',
+  thisUpdate: '本次更新',
+  nextUpdate: '下次更新',
 } as const
