@@ -154,7 +154,7 @@ export default {
     },
     certAdmin: {
       summary:
-        'You run the certificate authority: review applications, issue and revoke certificates, refresh the CRL, roll over the CSCA key and publish the master list.',
+        'You run the certificate authority: review applications, issue and revoke certificates, refresh the CRL and roll over the CSCA key. A separate ML administrator publishes the master list.',
       steps: {
         s1: {
           title: 'Sign in as an administrator',
@@ -177,8 +177,8 @@ export default {
           body: 'As an administrator, roll over the CSCA key; a link certificate chains the new key to the previous one so trust is not interrupted.',
         },
         s6: {
-          title: 'Publish the master list',
-          body: 'As an administrator, generate the CSCA master list; it is published to the PKD.',
+          title: 'Coordinate master-list publication',
+          body: 'The ML administrator manages the Master List Signer and publishes the master list from the ML page; master lists remain public in the PKD.',
         },
       },
     },

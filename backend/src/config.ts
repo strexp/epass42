@@ -16,8 +16,8 @@ import {
   dvPermissionsSchema,
 } from '@epass42/shared'
 
-export const realmSchema = z.enum(['csca', 'cvca', 'dv', 'dsc'])
-export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dv', 'dsc'])
+export const realmSchema = z.enum(['csca', 'cvca', 'dv', 'dsc', 'ml'])
+export const roleSchema = z.enum(['pkd', 'csca', 'cvca', 'dv', 'dsc', 'ml'])
 
 /** The default (insecure) session secret used in development, also a legacy KEK. */
 export const DEV_SESSION_SECRET = 'dev-insecure-session-secret-change-me'
@@ -145,6 +145,32 @@ const cvcaSchema = z.object({
     .prefault({}),
 })
 
+/**
+ * Master List role (Doc 9303-12 §9): owns the Master List Signer certificate and
+ * the generation of signed CSCA Master Lists.  It is an independent realm and
+ * is reachable only by its configured administrator maintainers.
+ */
+const mlSignerSchema = z.object({
+  /** Defaults to `<csca.commonName> ML Signer` when omitted. */
+  commonName: z.string().optional(),
+  /** Defaults to the CSCA organization / organizational unit when omitted. */
+  organization: z.string().optional(),
+  organizationalUnit: z.string().optional(),
+  algorithm: z.enum(['rsa', 'ecdsa']).default('rsa'),
+  curve: z.enum(['P-256', 'P-384']).default('P-256'),
+  keyBits: z.number().int().default(2048),
+  pss: z.boolean().default(false),
+  hash: z.enum(['SHA-256', 'SHA-384', 'SHA-512']).default('SHA-256'),
+  /** Public-key validity in years. */
+  validityYears: z.number().int().min(1).default(10),
+})
+
+const mlSchema = z.object({
+  /** Create an ML Signer at startup when none exists. */
+  bootstrap: z.boolean().default(true),
+  signer: mlSignerSchema.prefault({}),
+})
+
 const configSchema = z.object({
   env: z.enum(['development', 'test', 'production']).default('development'),
   host: z.string().default('127.0.0.1'),
@@ -196,13 +222,15 @@ const configSchema = z.object({
       cvca: z.array(z.string()).default([]),
       dv: z.array(z.string()).default([]),
       dsc: z.array(z.string()).default([]),
+      ml: z.array(z.string()).default([]),
     })
-    .default({ csca: [], cvca: [], dv: [], dsc: [] }),
+    .default({ csca: [], cvca: [], dv: [], dsc: [], ml: [] }),
   /** Also treat any `mnt_by` entry as an admin MNT. */
   adminIncludeMntBy: z.boolean().default(false),
   oauthProviders: z.array(oauthProviderSchema).default([]),
   csca: cscaSchema.prefault({}),
   cvca: cvcaSchema.prefault({}),
+  ml: mlSchema.prefault({}),
   issuing: z
     .object({
       issuingAuthority: z.string().default('NIA'),
@@ -376,6 +404,17 @@ export function parseConfig(raw: RawConfig): AppConfig {
   if (rawCsca?.locality === undefined) parsed.csca.locality = parsed.countryAlpha3
   if (rawCsca?.crlDistributionPoints === undefined) {
     parsed.csca.crlDistributionPoints = [`ldap://epass42.local/c=${parsed.countryAlpha2}`]
+  }
+  // The ML Signer inherits the CSCA profile unless explicitly configured.
+  const rawMlSigner = rawObject(rawObject(raw.ml)?.signer)
+  if (rawMlSigner?.commonName === undefined) {
+    parsed.ml.signer.commonName = `${parsed.csca.commonName} ML Signer`
+  }
+  if (rawMlSigner?.organization === undefined) {
+    parsed.ml.signer.organization = parsed.csca.organization
+  }
+  if (rawMlSigner?.organizationalUnit === undefined) {
+    parsed.ml.signer.organizationalUnit = parsed.csca.organizationalUnit
   }
   // In development the Nuxt dev server runs on :3001 by default.
   if (parsed.frontendUrl === '' && parsed.env === 'development') {

@@ -15,7 +15,7 @@ export default {
   keyModeRemote: '由服务端生成',
   keyModeUpload: '上传 CSR / 公钥',
   subjectNameRule:
-    "只能使用字母、数字、空格及 . _ - ' ( ) & @，不能包含逗号、引号、反斜杠、分号、尖括号或等号。",
+    "只能使用字母、数字、空格及 . _ - ' ( ) & {'@'}，不能包含逗号、引号、反斜杠、分号、尖括号或等号。",
   subjectCn: '证书通用名称',
   holderMnemonic: '持有者助记符',
   holderMnemonicHint: '最多 9 个字母或数字。完整证书引用会自动分配。',

@@ -40,7 +40,7 @@ interface Certificate {
 
 const api = useApi()
 const apiBase = useApiBase()
-const { state, ensureLoaded } = useRealm('csca')
+const { state, ensureLoaded, showAdmin } = useRealm('csca')
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 usePageTitle(() => t('csca.certificatesTitle'))
@@ -53,7 +53,6 @@ const revokeTarget = ref<Certificate | null>(null)
 const revokeReason = ref('')
 const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
 
-const isCscaAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const myMnt = computed(() => state.value.me?.account.activeMnt ?? null)
 
 /** Whether the signed-in user owns this certificate's maintainer. */
@@ -67,14 +66,14 @@ function canRevoke(row: Certificate): boolean {
     row.status === 'active' &&
     row.source === 'owned' &&
     state.value.me !== null &&
-    (isCscaAdmin.value || isOwner(row))
+    (showAdmin.value || isOwner(row))
   )
 }
 
 /** Whether the current user may download this certificate's private key. */
 function canDownloadKey(row: Certificate): boolean {
   if (!row.hasPrivateKey || state.value.me === null) return false
-  return isCscaAdmin.value || (row.mnt !== null && row.mnt === myMnt.value)
+  return showAdmin.value || (row.mnt !== null && row.mnt === myMnt.value)
 }
 
 /** The file stem used for a certificate's downloads. */

@@ -25,6 +25,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ChevronDown, ChevronUp, LogIn } from '@lucide/vue'
 import type { SignRequest } from '@epass42/shared'
 import StatusTag from '~/components/common/StatusTag.vue'
+import AdminActionIcon from '~/components/common/AdminActionIcon.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
 import { useDscStatus } from '~/composables/useLifecycleStatus'
 import { errorMessageKey } from '~/composables/useApi'
@@ -60,7 +61,7 @@ usePageTitle(() => t('dsc.detailTitle'))
 const message = useMessage()
 const dialog = useDialog()
 const notify = useNotify()
-const { auth, state, ensureLoaded } = useRealm('dsc')
+const { auth, state, ensureLoaded, showAdmin } = useRealm('dsc')
 const { status: lifecycle, refresh: refreshLifecycle } = useDscStatus()
 
 const reference = computed(() => String(route.params.reference ?? ''))
@@ -124,7 +125,7 @@ const canClaim = computed(
 
 /** A NIA admin producing a reviewer-delivery file from the queue. */
 const canProduce = computed(
-  () => isAdmin.value && pendingDelivery.value && meta.value?.deliveryMode === 'reviewer',
+  () => showAdmin.value && pendingDelivery.value && meta.value?.deliveryMode === 'reviewer',
 )
 
 /** Whether a reviewer may show/preview the unmasked submission. */
@@ -366,7 +367,7 @@ onMounted(async () => {
             {{ $t('dsc.reveal') }}
           </NButton>
           <NButton v-if="canProduce" type="warning" @click="reveal">
-            {{ $t('dsc.produce') }}
+            {{ $t('dsc.produce') }}<AdminActionIcon />
           </NButton>
           <NButton v-if="canRevoke" type="error" @click="revokeOpen = true">
             {{ $t('dsc.revokePassport') }}
@@ -415,7 +416,7 @@ onMounted(async () => {
             </NDescriptionsItem>
           </NDescriptions>
 
-          <div v-if="isAdmin" style="margin-top: 12px">
+          <div v-if="showAdmin" style="margin-top: 12px">
             <NText depth="3" style="font-size: 12px">
               {{
                 meta?.status === 'submitted'

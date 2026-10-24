@@ -1,0 +1,35 @@
+/**
+ * 主列表（ML）业务中文文案。
+ */
+export default {
+  title: '主列表',
+  subtitle: '管理主列表签名者并发布 CSCA 主列表。',
+  signerTitle: '主列表签名者',
+  signerHint: '签名者证书由 CSCA 签发，用于签署每份已发布的主列表。',
+  signerMissing: '尚无主列表签名者证书。请轮换签名者以创建一张。',
+  signerExpired: '主列表签名者已于 {date} 过期。主列表生成已暂停，请轮换签名者。',
+  signerExpiring: '主列表签名者将于 {date} 过期（剩余 {days} 天），请安排轮换。',
+  signerSerial: '序列号',
+  signerSubject: '主体',
+  signerValidity: '有效期',
+  signerStatus: '状态',
+  signerFingerprint: 'SHA-256',
+  signerCreated: '创建时间',
+  signerKeyAlgorithm: '密钥算法',
+  rotateSigner: '轮换主列表签名者',
+  rotateWarning:
+    '将退役当前主列表签名者，并由当前 CSCA 签发一张新的签名者证书。已发布的主列表仍可验证。是否继续？',
+  cscaExpired: 'CSCA 证书已过期。请先轮换 CSCA 密钥，再轮换签名者。',
+  masterListTitle: '已发布的主列表',
+  masterListHint: '主列表的查询与下载仍在 PKD 目录中公开提供。',
+  latestMasterList: '最新主列表',
+  publishedAt: '发布时间',
+  signedBy: '签署者',
+  noMasterList: '尚未发布任何主列表。',
+  generate: '生成主列表',
+  generateWarning: '将根据当前证书生成并发布一份由当前主列表签名者签署的新 CSCA 主列表。是否继续？',
+  signedByRetired: '最新主列表由已退役的签名者签署。请重新生成主列表以发布当前签名者。',
+  openPkd: '打开公开目录',
+  noAccess: '仅主列表管理员可以查看此页面。',
+  signInHint: '请使用管理员维护者账户登录以管理主列表。',
+} as const

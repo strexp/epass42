@@ -66,7 +66,7 @@ const { formatDate } = useDateTime()
 usePageTitle(() => t('csca.applicationTitle'))
 const message = useMessage()
 const dialog = useDialog()
-const { state, ensureLoaded } = useRealm('csca')
+const { ensureLoaded, showAdmin } = useRealm('csca')
 const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
 
 const id = computed(() => String(route.params.id ?? ''))
@@ -75,8 +75,7 @@ const busy = ref(false)
 const rejectOpen = ref(false)
 const rejectReason = ref('')
 
-const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
-const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+const canReview = computed(() => showAdmin.value && application.value?.status === 'submitted')
 const canApprove = computed(() => canReview.value && !(lifecycle.value?.csca?.expired ?? false))
 const isLds2 = computed(
   () => (application.value?.certificateType ?? application.value?.certType) === 'lds2',
@@ -260,9 +259,9 @@ onMounted(async () => {
         />
         <div v-if="canReview" class="epass42-actions" style="margin-top: 12px">
           <NButton type="primary" :loading="busy" :disabled="!canApprove" @click="approve">
-            {{ $t('csca.approve') }}
+            {{ $t('csca.approve') }}<AdminActionIcon />
           </NButton>
-          <NButton @click="rejectOpen = true">{{ $t('common.reject') }}</NButton>
+          <NButton @click="rejectOpen = true">{{ $t('common.reject') }}<AdminActionIcon /></NButton>
         </div>
         <NTag v-if="canReview" size="small" type="info" style="margin-top: 8px">
           {{ $t('csca.reviewHint') }}

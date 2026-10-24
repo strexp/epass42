@@ -3,7 +3,10 @@ import { NButton, NDropdown, NIcon, NMenu, NSpace } from 'naive-ui'
 import {
   BookUser,
   CircleHelp,
+  CreditCard,
+  ExternalLink,
   FileBadge,
+  FileCheck,
   FolderTree,
   Languages,
   ShieldCheck,
@@ -37,9 +40,24 @@ const options = computed(() => [
     icon: () => h(NIcon, null, { default: () => h(FileBadge) }),
   },
   {
+    label: t('nav.ml'),
+    key: '/ml',
+    icon: () => h(NIcon, null, { default: () => h(FileCheck) }),
+  },
+  {
     label: t('nav.pkd'),
     key: '/pkd',
     icon: () => h(NIcon, null, { default: () => h(FolderTree) }),
+  },
+  {
+    label: () =>
+      h('span', { style: 'display: inline-flex; align-items: center; gap: 4px' }, [
+        t('nav.passcard'),
+        h(NIcon, { size: 13, style: 'opacity: 0.7' }, { default: () => h(ExternalLink) }),
+        h('span', { class: 'epass42-sr-only' }, ` (${t('common.opensInNewTab')})`),
+      ]),
+    key: 'https://passcard.nia.gov.dn42',
+    icon: () => h(NIcon, null, { default: () => h(CreditCard) }),
   },
   {
     label: t('nav.help'),
@@ -66,6 +84,10 @@ const active = computed(() => {
 })
 
 function onSelect(key: string): void {
+  if (/^https?:\/\//i.test(key)) {
+    window.open(key, '_blank', 'noopener,noreferrer')
+    return
+  }
   void navigateTo(key)
 }
 </script>

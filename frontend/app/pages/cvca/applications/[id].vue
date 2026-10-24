@@ -68,7 +68,7 @@ const { t } = useI18n()
 usePageTitle(() => t('cvca.applicationTitle'))
 const message = useMessage()
 const dialog = useDialog()
-const { state, ensureLoaded } = useRealm('cvca')
+const { ensureLoaded, showAdmin } = useRealm('cvca')
 
 const id = computed(() => String(route.params.id ?? ''))
 const application = ref<Application | null>(null)
@@ -80,8 +80,7 @@ const busy = ref(false)
 const rejectOpen = ref(false)
 const rejectReason = ref('')
 
-const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
-const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+const canReview = computed(() => showAdmin.value && application.value?.status === 'submitted')
 
 /** A system-generated DV key may be claimed once, from the application. */
 const canDownloadKey = computed(
@@ -291,9 +290,11 @@ onMounted(async () => {
           <PermissionsEditor v-model="review" />
           <div class="epass42-actions" style="margin-top: 12px">
             <NButton type="primary" :loading="busy" @click="approve">
-              {{ $t('cvca.approve') }}
+              {{ $t('cvca.approve') }}<AdminActionIcon />
             </NButton>
-            <NButton @click="rejectOpen = true">{{ $t('common.reject') }}</NButton>
+            <NButton @click="rejectOpen = true"
+              >{{ $t('common.reject') }}<AdminActionIcon
+            /></NButton>
           </div>
         </div>
         <div v-else-if="application.status === 'approved'" style="margin-top: 16px">

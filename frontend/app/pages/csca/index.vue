@@ -11,16 +11,7 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import {
-  Check,
-  FileCheck,
-  FilePlus2,
-  KeyRound,
-  RefreshCw,
-  RotateCcw,
-  ScrollText,
-  X,
-} from '@lucide/vue'
+import { Check, FilePlus2, KeyRound, RefreshCw, RotateCcw, ScrollText, X } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import type { Lds2SignerType } from '@epass42/shared'
 import { errorMessageKey } from '~/composables/useApi'
@@ -28,6 +19,7 @@ import { useRealm } from '~/composables/useRealm'
 import { signerCertificateLabel } from '~/utils/lds2'
 import StatusTag from '~/components/common/StatusTag.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
+import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 import { useCscaStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
@@ -46,7 +38,7 @@ interface Application {
   createdAt: string
 }
 
-const { state, ensureLoaded } = useRealm('csca')
+const { state, ensureLoaded, showAdmin } = useRealm('csca')
 const api = useApi()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
@@ -58,7 +50,6 @@ const applications = ref<Application[]>([])
 const loading = ref(false)
 const rolloverBusy = ref(false)
 const { status: lifecycle, refresh: refreshLifecycle } = useCscaStatus()
-const masterListBusy = ref(false)
 const delegation = ref<{
   mnt: string | null
   useNiaDsc: boolean
@@ -181,29 +172,6 @@ async function rollover(): Promise<void> {
   }
 }
 
-/** Confirms regenerating and publishing the CSCA master list. */
-function confirmMasterList(): void {
-  dialog.warning({
-    title: t('csca.masterList'),
-    content: t('csca.masterListWarning'),
-    positiveText: t('common.confirm'),
-    negativeText: t('common.cancel'),
-    onPositiveClick: () => void generateMasterList(),
-  })
-}
-
-async function generateMasterList(): Promise<void> {
-  masterListBusy.value = true
-  try {
-    await api('/pkd/masterlists', { method: 'POST' })
-    message.success(t('common.success'))
-  } catch (error) {
-    message.error(t(errorMessageKey(error)))
-  } finally {
-    masterListBusy.value = false
-  }
-}
-
 onMounted(async () => {
   await ensureLoaded()
   await refreshLifecycle()
@@ -227,20 +195,30 @@ onMounted(async () => {
       <NCard v-if="signedIn" :title="$t('csca.applyTitle')" size="small">
         <NText depth="3">{{ $t('csca.publicHint') }}</NText>
         <template #action>
-          <NuxtLink v-if="lifecycle?.canIssueCertificates !== false" to="/csca/apply">
-            <NButton type="primary">
+          <NSpace>
+            <NuxtLink v-if="lifecycle?.canIssueCertificates !== false" to="/csca/apply">
+              <NButton type="primary">
+                <template #icon
+                  ><NIcon><FilePlus2 /></NIcon
+                ></template>
+                {{ $t('nav.apply') }}
+              </NButton>
+            </NuxtLink>
+            <NButton v-else type="primary" disabled>
               <template #icon
                 ><NIcon><FilePlus2 /></NIcon
               ></template>
               {{ $t('nav.apply') }}
             </NButton>
-          </NuxtLink>
-          <NButton v-else type="primary" disabled>
-            <template #icon
-              ><NIcon><FilePlus2 /></NIcon
-            ></template>
-            {{ $t('nav.apply') }}
-          </NButton>
+            <NuxtLink v-if="showAdmin" to="/csca/audit">
+              <NButton>
+                <template #icon
+                  ><NIcon><ScrollText /></NIcon
+                ></template>
+                {{ $t('audit.title') }}<AdminActionIcon />
+              </NButton>
+            </NuxtLink>
+          </NSpace>
         </template>
       </NCard>
 
@@ -301,14 +279,6 @@ onMounted(async () => {
                 {{ $t('csca.certificatesTitle') }}
               </NButton>
             </NuxtLink>
-            <NuxtLink v-if="isAdmin" to="/csca/audit">
-              <NButton size="small">
-                <template #icon
-                  ><NIcon><ScrollText /></NIcon
-                ></template>
-                {{ $t('audit.title') }}
-              </NButton>
-            </NuxtLink>
           </NSpace>
         </template>
         <div v-if="applications.length" role="region" :aria-label="$t('csca.myApplications')">
@@ -324,20 +294,15 @@ onMounted(async () => {
         <NEmpty v-else :description="$t('csca.empty')" />
       </NCard>
 
-      <NCard v-if="isAdmin" :title="$t('nav.admin')" size="small">
+      <NCard v-if="showAdmin" :title="$t('nav.admin')" size="small">
+        <template #header-extra><AdminOnlyBadge /></template>
         <NAlert type="warning" :show-icon="false">{{ $t('csca.adminActionsHint') }}</NAlert>
         <NSpace style="margin-top: 12px">
           <NButton :loading="rolloverBusy" @click="confirmRollover">
             <template #icon
               ><NIcon><RotateCcw /></NIcon
             ></template>
-            {{ $t('csca.rollover') }}
-          </NButton>
-          <NButton :loading="masterListBusy" @click="confirmMasterList">
-            <template #icon
-              ><NIcon><FileCheck /></NIcon
-            ></template>
-            {{ $t('csca.masterList') }}
+            {{ $t('csca.rollover') }}<AdminActionIcon />
           </NButton>
         </NSpace>
       </NCard>

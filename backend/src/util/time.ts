@@ -18,3 +18,17 @@ export function isoInSeconds(seconds: number): string {
 export function isExpired(iso: string, now = nowIso()): boolean {
   return iso <= now
 }
+
+/** Adds whole years to a date (UTC). */
+export function addYears(date: Date, years: number): Date {
+  const out = new Date(date)
+  out.setUTCFullYear(out.getUTCFullYear() + years)
+  return out
+}
+
+/** Adds whole days to a date (UTC). */
+export function addDays(date: Date, days: number): Date {
+  const out = new Date(date)
+  out.setUTCDate(out.getUTCDate() + days)
+  return out
+}

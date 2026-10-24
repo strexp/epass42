@@ -1,12 +1,34 @@
 <script setup lang="ts">
 import { NButton, NCard, NGi, NGrid, NIcon, NSpace, NTag, NText } from 'naive-ui'
-import { BadgeCheck, CircleHelp, FileBadge, FolderTree, ScanLine, ShieldCheck } from '@lucide/vue'
+import type { Component } from 'vue'
+import {
+  BadgeCheck,
+  CircleHelp,
+  CreditCard,
+  ExternalLink,
+  FileBadge,
+  FileCheck,
+  FolderTree,
+  ScanLine,
+  ShieldCheck,
+} from '@lucide/vue'
 
 const { t } = useI18n()
 usePageTitle(() => t('nav.home'))
 
+interface HomeCard {
+  key: string
+  to: string
+  icon: Component
+  title: string
+  body: string
+  cta: string
+  public: boolean
+  external?: boolean
+}
+
 /** The public site catalogue: one card per service, plus the role guide. */
-const cards = [
+const cards: HomeCard[] = [
   {
     key: 'csca',
     to: '/csca',
@@ -44,6 +66,15 @@ const cards = [
     public: false,
   },
   {
+    key: 'ml',
+    to: '/ml',
+    icon: FileCheck,
+    title: 'nav.ml',
+    body: 'home.mlCard',
+    cta: 'home.ctaBrowse',
+    public: false,
+  },
+  {
     key: 'pkd',
     to: '/pkd',
     icon: FolderTree,
@@ -51,6 +82,16 @@ const cards = [
     body: 'home.pkdCard',
     cta: 'home.ctaBrowse',
     public: true,
+  },
+  {
+    key: 'passcard',
+    to: 'https://passcard.nia.gov.dn42',
+    icon: CreditCard,
+    title: 'nav.passcard',
+    body: 'home.passcardCard',
+    cta: 'home.ctaOpen',
+    public: true,
+    external: true,
   },
   {
     key: 'help',
@@ -77,7 +118,12 @@ const cards = [
         class="epass42-cards"
       >
         <NGi v-for="card in cards" :key="card.key" span="3 s:3 m:1">
-          <NuxtLink :to="card.to" class="epass42-card-link">
+          <NuxtLink
+            :to="card.to"
+            :target="card.external ? '_blank' : undefined"
+            :rel="card.external ? 'noopener noreferrer' : undefined"
+            class="epass42-card-link"
+          >
             <NCard hoverable class="epass42-card">
               <NSpace vertical size="small" align="start">
                 <NIcon size="28"><component :is="card.icon" /></NIcon>
@@ -88,7 +134,15 @@ const cards = [
                 <NText depth="2">{{ $t(card.body) }}</NText>
               </NSpace>
               <template #action>
-                <NButton text type="primary">{{ $t(card.cta) }}</NButton>
+                <NButton text type="primary">
+                  {{ $t(card.cta) }}
+                  <NIcon v-if="card.external" size="14" class="epass42-external-icon">
+                    <ExternalLink />
+                  </NIcon>
+                  <span v-if="card.external" class="epass42-sr-only">
+                    ({{ $t('common.opensInNewTab') }})
+                  </span>
+                </NButton>
               </template>
             </NCard>
           </NuxtLink>
@@ -105,6 +159,9 @@ const cards = [
 }
 .epass42-card {
   height: 100%;
+}
+.epass42-external-icon {
+  margin-left: 4px;
 }
 :deep(.n-grid-item) {
   display: flex;

@@ -27,7 +27,9 @@ body {
 }
 
 .epass42-main {
-  flex: 1;
+  /* Grow with the page content and never shrink below it: a tall form must not
+     be clipped by the column flex layout (notably in WebKit). */
+  flex: 1 0 auto;
 }
 
 .epass42-page {

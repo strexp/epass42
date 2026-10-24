@@ -1,25 +1,16 @@
 /**
  * CSCA role facade (M5).
  *
- * Composes the focused services — key lifecycle, DSC issuance, CRL and Master
- * List — behind the single entry point consumed by the routes and the DSC
- * signing service.
+ * Composes the focused services — key lifecycle, DSC issuance and CRL — behind
+ * the single entry point consumed by the routes and the DSC signing service.
  */
 import type { CertKeyPair, HashName } from '@epass42/pki'
 
-import type {
-  CscaContext,
-  CscaKeyRow,
-  CrlRow,
-  DscApplicationRow,
-  DscCertRow,
-  MasterListRow,
-} from './context'
+import type { CscaContext, CscaKeyRow, CrlRow, DscApplicationRow, DscCertRow } from './context'
 import { CscaKeyService, currentCscaKey } from './keys'
 import { DscIssuanceService, currentNiaDsc } from './dscIssuance'
 import { CrlService } from './crlService'
 import { isCertificateExpired, signerValidity } from '../../util/certificate'
-import { MasterListService } from './masterListService'
 
 export type { CscaKeyRow, DscCertRow, DscApplicationRow, CrlRow, CscaContext } from './context'
 export { currentCscaKey, currentNiaDsc }
@@ -29,13 +20,11 @@ export class CscaService {
   readonly keys: CscaKeyService
   readonly dscIssuance: DscIssuanceService
   readonly crl: CrlService
-  readonly masterList: MasterListService
 
   constructor(private readonly ctx: CscaContext) {
     this.keys = new CscaKeyService(ctx)
     this.dscIssuance = new DscIssuanceService(ctx, this.keys)
     this.crl = new CrlService(ctx, this.keys)
-    this.masterList = new MasterListService(ctx, this.keys, this.dscIssuance)
   }
 
   /** Whether the current CSCA certificate may issue new signer certificates. */
@@ -150,23 +139,5 @@ export class CscaService {
 
   maybeGenerateCrl(now?: Date): Promise<CrlRow[]> {
     return this.crl.maybeGenerate(now)
-  }
-
-  /* Master List -------------------------------------------------------- */
-
-  currentMasterListSigner(): DscCertRow | undefined {
-    return this.masterList.currentSigner()
-  }
-
-  ensureMasterListSigner(): Promise<DscCertRow> {
-    return this.masterList.ensureSigner()
-  }
-
-  latestMasterList(): MasterListRow | undefined {
-    return this.masterList.latest()
-  }
-
-  generateMasterList(): Promise<MasterListRow> {
-    return this.masterList.generate()
   }
 }

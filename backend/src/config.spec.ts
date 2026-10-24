@@ -49,3 +49,33 @@ describe('country configuration', () => {
     expect(() => parseConfig({ countryAlpha2: 'X' })).toThrow()
   })
 })
+
+describe('ML configuration', () => {
+  it('derives the signer subject from the CSCA profile', () => {
+    const config = parseConfig({
+      csca: { commonName: 'Example CSCA', organization: 'Example Org', organizationalUnit: 'PKI' },
+      ml: { signer: { validityYears: 5 } },
+    })
+    expect(config.ml.signer.commonName).toBe('Example CSCA ML Signer')
+    expect(config.ml.signer.organization).toBe('Example Org')
+    expect(config.ml.signer.organizationalUnit).toBe('PKI')
+    expect(config.ml.signer.validityYears).toBe(5)
+    expect(config.ml.bootstrap).toBe(true)
+  })
+
+  it('keeps explicit ML signer values and defaults the administrator list', () => {
+    const config = parseConfig({
+      roles: ['pkd', 'ml'],
+      ml: {
+        bootstrap: false,
+        signer: { commonName: 'Custom Signer', organization: 'Custom Org', algorithm: 'ecdsa' },
+      },
+    })
+    expect(config.roles).toEqual(['pkd', 'ml'])
+    expect(config.ml.bootstrap).toBe(false)
+    expect(config.ml.signer.commonName).toBe('Custom Signer')
+    expect(config.ml.signer.organization).toBe('Custom Org')
+    expect(config.ml.signer.algorithm).toBe('ecdsa')
+    expect(config.adminMnts.ml).toEqual([])
+  })
+})

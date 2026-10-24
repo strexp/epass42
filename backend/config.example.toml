@@ -31,8 +31,8 @@ frontendUrl = "http://localhost:3001"
 countryAlpha2 = "XD"
 countryAlpha3 = "XDN"
 
-# Enabled roles: any subset of ["pkd", "csca", "cvca", "dv", "dsc"].
-roles = ["pkd", "csca", "cvca", "dv", "dsc"]
+# Enabled roles: any subset of ["pkd", "csca", "cvca", "dv", "dsc", "ml"].
+roles = ["pkd", "csca", "cvca", "dv", "dsc", "ml"]
 
 databasePath = "./data/epass42.db"
 runMigrations = true
@@ -75,6 +75,7 @@ csca = ["EXAMPLE-CSCA-MNT"]
 cvca = ["EXAMPLE-CVCA-MNT"]
 dv = ["EXAMPLE-DV-MNT"]
 dsc = ["EXAMPLE-DSC-MNT"]
+ml = ["EXAMPLE-ML-MNT"]
 # Also accept any MNT from the identity's `mnt_by`.
 adminIncludeMntBy = false
 
@@ -262,6 +263,27 @@ whoisCacheTtlMs = 300000
 whoisCacheMaxEntries = 1024
 
 # ============================================================================
+# Master list — role `ml`
+# ============================================================================
+# The ML realm owns the Master List Signer certificate and the generation of
+# signed CSCA Master Lists.  It is administrator-only: list the maintainers
+# that may manage it under `adminMnts.ml` above.  Public master-list queries
+# and downloads stay under the `pkd` role.  Enable with `roles = [..., "ml"]`.
+[ml]
+# Create an ML Signer at startup when none exists.
+bootstrap = true
+
+[ml.signer]
+# commonName = "ePass 42 ML Signer"  # defaults to "<csca.commonName> ML Signer"
+# organization / organizationalUnit default to the [csca] values.
+algorithm = "rsa"
+curve = "P-256"
+keyBits = 2048
+pss = false
+hash = "SHA-256"
+validityYears = 10
+
+# ============================================================================
 # Login — OAuth/OIDC providers, one per realm
 # ============================================================================
 # The `dn42` claim carries the ASN and maintainer data.  A realm may list more
@@ -311,6 +333,19 @@ dn42 = "dn42"
 realm = "dsc"
 issuer = "https://auth.example.net"
 clientId = "epass42-dsc"
+clientSecret = "replace-me"
+alias = "auth"
+scopes = ["openid", "profile", "email", "dn42"]
+enabled = true
+
+[oauthProviders.claimMap]
+dn42 = "dn42"
+
+# Master list realm (ML administrators).
+[[oauthProviders]]
+realm = "ml"
+issuer = "https://auth.example.net"
+clientId = "epass42-ml"
 clientSecret = "replace-me"
 alias = "auth"
 scopes = ["openid", "profile", "email", "dn42"]

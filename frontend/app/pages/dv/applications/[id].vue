@@ -66,7 +66,7 @@ const { status: lifecycle, refresh: refreshLifecycle } = useDvStatus()
 usePageTitle(() => t('dv.applicationTitle'))
 const message = useMessage()
 const dialog = useDialog()
-const { state, ensureLoaded } = useRealm('dv')
+const { ensureLoaded, showAdmin } = useRealm('dv')
 
 const id = computed(() => String(route.params.id ?? ''))
 const application = ref<Application | null>(null)
@@ -76,8 +76,7 @@ const busy = ref(false)
 const rejectOpen = ref(false)
 const rejectReason = ref('')
 
-const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
-const canReview = computed(() => isAdmin.value && application.value?.status === 'submitted')
+const canReview = computed(() => showAdmin.value && application.value?.status === 'submitted')
 const canApprove = computed(() => canReview.value && lifecycle.value?.canIssueTerminals !== false)
 const approved = computed(() => application.value?.status === 'approved')
 
@@ -270,9 +269,11 @@ onMounted(async () => {
           <PermissionsEditor v-model="review" />
           <div class="epass42-actions" style="margin-top: 12px">
             <NButton type="primary" :loading="busy" :disabled="!canApprove" @click="approve">
-              {{ $t('dv.approve') }}
+              {{ $t('dv.approve') }}<AdminActionIcon />
             </NButton>
-            <NButton @click="rejectOpen = true">{{ $t('common.reject') }}</NButton>
+            <NButton @click="rejectOpen = true"
+              >{{ $t('common.reject') }}<AdminActionIcon
+            /></NButton>
           </div>
         </div>
         <div v-else-if="approved" style="margin-top: 16px">

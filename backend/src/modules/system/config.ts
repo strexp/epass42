@@ -28,6 +28,7 @@ export function registerConfigRoutes(
         cvca: providersFor('cvca'),
         dv: providersFor('dv'),
         dsc: providersFor('dsc'),
+        ml: providersFor('ml'),
       },
     }
   })

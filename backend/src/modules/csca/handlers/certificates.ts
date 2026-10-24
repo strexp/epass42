@@ -24,7 +24,9 @@ export function registerCertificateRoutes(app: FastifyInstance, deps: CscaRouteD
     { schema: { querystring: z.object({ includeRevoked: z.coerce.boolean().default(false) }) } },
     async (request) => {
       const rows = db.select().from(dscCert).orderBy(desc(dscCert.id)).all()
+      // ML Signers are issued by the CSCA but owned and listed by the ML role.
       const items = rows
+        .filter((row) => row.source !== 'ml-signer')
         .filter((row) => request.query.includeRevoked || row.status === 'active')
         .map(certMetadata)
       return { total: items.length, items }

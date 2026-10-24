@@ -67,6 +67,16 @@ interface PkdDsc {
   notBefore: string | null
   notAfter: string | null
 }
+interface PkdMlSigner {
+  id: string
+  serial: string
+  subject: string
+  status: string
+  notBefore: string | null
+  notAfter: string | null
+  fingerprintSha256: string
+}
+
 interface RevokedDocument {
   hash: string
   documentCode: string
@@ -83,6 +93,7 @@ const certificates = ref<PkdCertificate[]>([])
 const crls = ref<PkdCrl[]>([])
 const crlCscaFilter = ref<number>(0)
 const masterlists = ref<{ id: string; latest?: boolean }[]>([])
+const mlSigners = ref<PkdMlSigner[]>([])
 const dscs = ref<PkdDsc[]>([])
 const cvca = ref<PkdCertificate[]>([])
 const dvs = ref<PkdDv[]>([])
@@ -195,6 +206,31 @@ const mlColumns = computed(() => [
         : '—',
   },
   { title: '', key: 'download', render: (row: { id: string }) => downloadLinks(row.id) },
+])
+
+const mlSignerColumns = computed(() => [
+  {
+    title: t('pkd.serial'),
+    key: 'serial',
+    render: (row: PkdMlSigner) => h('span', { class: 'epass42-mono' }, row.serial),
+  },
+  { title: t('common.subject'), key: 'subject', ellipsis: { tooltip: true } },
+  {
+    title: t('common.status'),
+    key: 'status',
+    render: (row: PkdMlSigner) => h(StatusTag, { status: row.status }),
+  },
+  {
+    title: t('pkd.validity'),
+    key: 'validity',
+    render: (row: PkdMlSigner) => `${formatDate(row.notBefore)} → ${formatDate(row.notAfter)}`,
+  },
+  {
+    title: t('common.sha256'),
+    key: 'fingerprintSha256',
+    ellipsis: { tooltip: true },
+  },
+  { title: '', key: 'download', render: (row: PkdMlSigner) => downloadLinks(row.id) },
 ])
 
 const cvcaColumns = computed(() => [
@@ -327,6 +363,7 @@ onMounted(async () => {
     masterlists.value = (
       await api<{ items: { id: string; latest?: boolean }[] }>('/pkd/masterlists')
     ).items
+    mlSigners.value = (await api<{ items: PkdMlSigner[] }>('/pkd/ml-signers')).items
     dscs.value = (await api<{ items: PkdDsc[] }>('/pkd/dscs')).items
     cvca.value = (await api<{ items: PkdCertificate[] }>('/pkd/cvca')).items
     dvs.value = (await api<{ items: PkdDv[] }>('/pkd/dvs')).items
@@ -395,6 +432,20 @@ onMounted(async () => {
             size="small"
           />
         </div>
+      </NTabPane>
+      <NTabPane name="ml-signers" :tab="$t('pkd.mlSigners')">
+        <NCard size="small">
+          <p>{{ $t('pkd.mlSignersHint') }}</p>
+          <div role="region" :aria-label="$t('pkd.mlSigners')">
+            <NDataTable
+              :columns="mlSignerColumns"
+              :data="mlSigners"
+              :loading="loading"
+              :pagination="pagination"
+              size="small"
+            />
+          </div>
+        </NCard>
       </NTabPane>
       <NTabPane name="dvs" :tab="$t('pkd.dvs')">
         <NCard size="small">

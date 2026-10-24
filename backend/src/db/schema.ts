@@ -25,7 +25,7 @@ export const oauthProvider = sqliteTable(
   'oauth_provider',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    realm: text('realm', { enum: ['csca', 'cvca', 'dv', 'dsc'] }).notNull(),
+    realm: text('realm', { enum: ['csca', 'cvca', 'dv', 'dsc', 'ml'] }).notNull(),
     issuer: text('issuer').notNull(),
     clientId: text('client_id').notNull(),
     scopes: text('scopes'),

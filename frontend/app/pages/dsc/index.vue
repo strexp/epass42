@@ -14,12 +14,13 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import { FilePlus2, ListChecks, ScrollText, Settings } from '@lucide/vue'
+import { FilePlus2, ListChecks, RotateCcw, ScrollText, Settings } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { useRealm } from '~/composables/useRealm'
 import DateTimeText from '~/components/common/DateTimeText.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
 import StatusTag from '~/components/common/StatusTag.vue'
+import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 import { useDscStatus } from '~/composables/useLifecycleStatus'
 
 definePageMeta({ layout: 'realm' })
@@ -34,7 +35,7 @@ interface RequestRow {
   createdAt: string
 }
 
-const { state, ensureLoaded } = useRealm('dsc')
+const { state, ensureLoaded, showAdmin } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
@@ -176,48 +177,54 @@ onMounted(async () => {
         "
       />
 
-      <NSpace v-if="signedIn">
-        <NuxtLink v-if="lifecycle?.canIssueDocuments !== false" to="/dsc/apply">
-          <NButton type="primary">
-            <template #icon
-              ><NIcon><FilePlus2 /></NIcon
-            ></template>
-            {{ $t('dsc.applyTitle') }}
-          </NButton>
-        </NuxtLink>
-        <NButton v-else type="primary" disabled>
-          <template #icon
-            ><NIcon><FilePlus2 /></NIcon
-          ></template>
-          {{ $t('dsc.applyTitle') }}
-        </NButton>
-        <NuxtLink v-if="isReviewer" to="/dsc/admin">
-          <NButton>
-            <template #icon
-              ><NIcon><ListChecks /></NIcon
-            ></template>
-            {{ $t('dsc.reviewQueue') }}
-          </NButton>
-        </NuxtLink>
-        <NuxtLink v-if="state.me?.isAdmin" to="/dsc/settings">
-          <NButton>
-            <template #icon
-              ><NIcon><Settings /></NIcon
-            ></template>
-            {{ $t('dsc.settingsTitle') }}
-          </NButton>
-        </NuxtLink>
-        <NuxtLink v-if="state.me?.isAdmin" to="/dsc/audit">
-          <NButton>
-            <template #icon
-              ><NIcon><ScrollText /></NIcon
-            ></template>
-            {{ $t('audit.title') }}
-          </NButton>
-        </NuxtLink>
-      </NSpace>
+      <NCard v-if="signedIn" :title="$t('dsc.applyTitle')" size="small">
+        <NText depth="3">{{ $t('dsc.applyHint') }}</NText>
+        <template #action>
+          <NSpace>
+            <NuxtLink v-if="lifecycle?.canIssueDocuments !== false" to="/dsc/apply">
+              <NButton type="primary">
+                <template #icon
+                  ><NIcon><FilePlus2 /></NIcon
+                ></template>
+                {{ $t('dsc.applyTitle') }}
+              </NButton>
+            </NuxtLink>
+            <NButton v-else type="primary" disabled>
+              <template #icon
+                ><NIcon><FilePlus2 /></NIcon
+              ></template>
+              {{ $t('dsc.applyTitle') }}
+            </NButton>
+            <NuxtLink v-if="isReviewer" to="/dsc/admin">
+              <NButton>
+                <template #icon
+                  ><NIcon><ListChecks /></NIcon
+                ></template>
+                {{ $t('dsc.reviewQueue') }}
+              </NButton>
+            </NuxtLink>
+            <NuxtLink v-if="showAdmin" to="/dsc/settings">
+              <NButton>
+                <template #icon
+                  ><NIcon><Settings /></NIcon
+                ></template>
+                {{ $t('dsc.settingsTitle') }}<AdminActionIcon />
+              </NButton>
+            </NuxtLink>
+            <NuxtLink v-if="showAdmin" to="/dsc/audit">
+              <NButton>
+                <template #icon
+                  ><NIcon><ScrollText /></NIcon
+                ></template>
+                {{ $t('audit.title') }}<AdminActionIcon />
+              </NButton>
+            </NuxtLink>
+          </NSpace>
+        </template>
+      </NCard>
 
-      <NCard v-if="signedIn && state.me?.isAdmin" size="small" :title="$t('dsc.niaDscTitle')">
+      <NCard v-if="showAdmin" size="small" :title="$t('dsc.niaDscTitle')">
+        <template #header-extra><AdminOnlyBadge /></template>
         <NDescriptions v-if="lifecycle?.niaDsc" :column="3" size="small">
           <NDescriptionsItem :label="$t('dsc.niaDscSerial')">
             <span class="epass42-mono">{{ lifecycle.niaDsc.serial }}</span>
@@ -244,7 +251,10 @@ onMounted(async () => {
             :disabled="!lifecycle?.canRotateNiaDsc"
             @click="confirmRotateNiaDsc"
           >
-            {{ $t('dsc.rotateNiaDsc') }}
+            <template #icon
+              ><NIcon><RotateCcw /></NIcon
+            ></template>
+            {{ $t('dsc.rotateNiaDsc') }}<AdminActionIcon />
           </NButton>
         </template>
       </NCard>

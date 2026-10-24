@@ -1,10 +1,10 @@
 /**
  * PKD directory aggregation (M9/T9.1).
  *
- * Publishes the CSCA certificates (root and link), CRLs and Master Lists, and
- * the authorization-PKI CVCA and DV certificates (Doc 9303-12 §7.2), as opaque
- * DER objects with stable ids, plus the LDAP DN layout used by the REST, LDIF
- * and read-only LDAP surfaces.
+ * Publishes the CSCA certificates (root and link), CRLs, Master Lists, Master
+ * List Signer certificates, and the authorization-PKI CVCA and DV
+ * certificates (Doc 9303-12 §7.2), as opaque DER objects with stable ids, plus
+ * the LDAP DN layout used by the REST, LDIF and read-only LDAP surfaces.
  */
 import { parseCertificatePem } from '@epass42/pki'
 import type { AppConfig } from '../../config'
@@ -12,7 +12,7 @@ import type { Db } from '../../db/client'
 import { crl, cscaKey, cvcaKey, dscCert, dvCert, masterList } from '../../db/schema'
 
 /** The kinds of published object. */
-export type PkdObjectKind = 'csca' | 'crl' | 'ml' | 'cvca' | 'dv' | 'dsc'
+export type PkdObjectKind = 'csca' | 'crl' | 'ml' | 'ml-signer' | 'cvca' | 'dv' | 'dsc'
 
 /** A published object. */
 export interface PkdObject {
@@ -89,6 +89,20 @@ export function listObjects(db: Db, config: AppConfig): PkdObject[] {
     })
   }
   for (const row of db.select().from(dscCert).all()) {
+    if (row.source === 'ml-signer') {
+      // ML Signers are public PKD objects, but not DSCs.
+      objects.push({
+        id: `ml-signer-${row.id}`,
+        kind: 'ml-signer',
+        cn: row.serial,
+        subject: row.subjectDn,
+        status: row.status,
+        cscaKeyId: row.cscaKeyId ?? undefined,
+        cscaSerial: row.cscaKeyId !== null ? cscaById.get(row.cscaKeyId)?.serial : undefined,
+        der: new Uint8Array(parseCertificatePem(row.certPem).rawData),
+      })
+      continue
+    }
     if (row.source !== 'nia' && row.source !== 'owned') continue
     objects.push({
       id: `dsc-${row.id}`,

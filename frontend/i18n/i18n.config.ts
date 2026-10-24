@@ -59,6 +59,7 @@ import enDv from './locales/en/dv'
 import enHelp from './locales/en/help'
 import enLegal from './locales/en/legal'
 import enMisc from './locales/en/misc'
+import enMl from './locales/en/ml'
 import enPkd from './locales/en/pkd'
 import zhCsca from './locales/zh/csca'
 import zhCommon from './locales/zh/common'
@@ -68,6 +69,7 @@ import zhDv from './locales/zh/dv'
 import zhHelp from './locales/zh/help'
 import zhLegal from './locales/zh/legal'
 import zhMisc from './locales/zh/misc'
+import zhMl from './locales/zh/ml'
 import zhPkd from './locales/zh/pkd'
 
 export default defineI18nConfig(() => ({
@@ -81,6 +83,7 @@ export default defineI18nConfig(() => ({
       cvca: enCvca,
       dv: enDv,
       dsc: enDsc,
+      ml: enMl,
       pkd: enPkd,
       help: enHelp,
       legal: enLegal,
@@ -92,6 +95,7 @@ export default defineI18nConfig(() => ({
       cvca: zhCvca,
       dv: zhDv,
       dsc: zhDsc,
+      ml: zhMl,
       pkd: zhPkd,
       help: zhHelp,
       legal: zhLegal,

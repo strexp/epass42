@@ -28,7 +28,7 @@ interface Certificate {
 
 const api = useApi()
 const apiBase = useApiBase()
-const { state, ensureLoaded } = useRealm('cvca')
+const { state, ensureLoaded, showAdmin } = useRealm('cvca')
 const { t } = useI18n()
 const { formatDate } = useDateTime()
 usePageTitle(() => t('cvca.certificatesTitle'))
@@ -37,7 +37,6 @@ const dialog = useDialog()
 const certificates = ref<Certificate[]>([])
 const loading = ref(false)
 
-const isAdmin = computed(() => state.value.me?.isAdmin ?? false)
 const myMnt = computed(() => state.value.me?.account.activeMnt ?? null)
 
 function isOwner(row: Certificate): boolean {
@@ -47,7 +46,7 @@ function isOwner(row: Certificate): boolean {
 /** Whether the current user may download this certificate's private key. */
 function canDownloadKey(row: Certificate): boolean {
   if (!row.hasPrivateKey || state.value.me === null) return false
-  return isAdmin.value || isOwner(row)
+  return showAdmin.value || isOwner(row)
 }
 
 function keyUrl(id: number): string {

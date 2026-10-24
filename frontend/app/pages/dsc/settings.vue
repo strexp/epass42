@@ -18,10 +18,11 @@ import { Save } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
+import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 
 definePageMeta({ layout: 'realm' })
 
-const { state, ensureLoaded } = useRealm('dsc')
+const { state, ensureLoaded, showAdmin } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
 usePageTitle(() => t('dsc.settingsTitle'))
@@ -121,8 +122,13 @@ onMounted(async () => {
         <NText depth="3">{{ $t('errors.forbidden') }}</NText>
       </NCard>
 
+      <NCard v-else-if="!showAdmin" :title="$t('dsc.settingsTitle')" size="small">
+        <NText depth="3">{{ $t('auth.adminModeOffHint') }}</NText>
+      </NCard>
+
       <template v-else>
         <NCard :title="$t('dsc.deliveryMode')" size="small">
+          <template #header-extra><AdminOnlyBadge /></template>
           <NText depth="3">{{ $t('dsc.deliveryModeHint') }}</NText>
           <NRadioGroup
             :value="deliveryMode"
@@ -144,6 +150,7 @@ onMounted(async () => {
         </NCard>
 
         <NCard :title="$t('dsc.issuingProfile')" size="small">
+          <template #header-extra><AdminOnlyBadge /></template>
           <NFormItem :label="$t('dsc.issuanceAuthority')">
             <NInput v-model:value="profile.issuingAuthority" />
           </NFormItem>
@@ -162,6 +169,7 @@ onMounted(async () => {
         </NCard>
 
         <NCard :title="$t('dsc.securityDefaults')" size="small">
+          <template #header-extra><AdminOnlyBadge /></template>
           <NText depth="3">{{ $t('dsc.securityDefaultsHint') }}</NText>
           <SecurityOptions
             v-model="profile.security"
@@ -171,6 +179,7 @@ onMounted(async () => {
         </NCard>
 
         <NCard :title="$t('dsc.lds2Title')" size="small">
+          <template #header-extra><AdminOnlyBadge /></template>
           <NText depth="3">{{ $t('dsc.lds2Hint') }}</NText>
           <div style="margin-top: 8px">
             <NSwitch
@@ -194,7 +203,7 @@ onMounted(async () => {
             <template #icon
               ><NIcon><Save /></NIcon
             ></template>
-            {{ $t('common.save') }}
+            {{ $t('common.save') }}<AdminActionIcon />
           </NButton>
           <NuxtLink to="/dsc">
             <NButton quaternary>{{ $t('common.back') }}</NButton>

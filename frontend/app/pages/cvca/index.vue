@@ -16,6 +16,7 @@ import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import StatusTag from '~/components/common/StatusTag.vue'
+import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 
 definePageMeta({ layout: 'realm' })
 
@@ -29,7 +30,7 @@ interface Application {
   createdAt: string
 }
 
-const { state, ensureLoaded } = useRealm('cvca')
+const { state, ensureLoaded, showAdmin } = useRealm('cvca')
 const api = useApi()
 const { t } = useI18n()
 usePageTitle(() => t('nav.cvca'))
@@ -169,14 +170,24 @@ onMounted(async () => {
       <NCard v-if="signedIn" :title="$t('cvca.applyTitle')" size="small">
         <NText depth="3">{{ $t('cvca.publicHint') }}</NText>
         <template #action>
-          <NuxtLink to="/cvca/apply">
-            <NButton type="primary">
-              <template #icon
-                ><NIcon><FilePlus2 /></NIcon
-              ></template>
-              {{ $t('nav.apply') }}
-            </NButton>
-          </NuxtLink>
+          <NSpace>
+            <NuxtLink to="/cvca/apply">
+              <NButton type="primary">
+                <template #icon
+                  ><NIcon><FilePlus2 /></NIcon
+                ></template>
+                {{ $t('nav.apply') }}
+              </NButton>
+            </NuxtLink>
+            <NuxtLink v-if="showAdmin" to="/cvca/audit">
+              <NButton>
+                <template #icon
+                  ><NIcon><ScrollText /></NIcon
+                ></template>
+                {{ $t('audit.title') }}<AdminActionIcon />
+              </NButton>
+            </NuxtLink>
+          </NSpace>
         </template>
       </NCard>
 
@@ -237,14 +248,6 @@ onMounted(async () => {
                 {{ $t('cvca.certificatesTitle') }}
               </NButton>
             </NuxtLink>
-            <NuxtLink v-if="isAdmin" to="/cvca/audit">
-              <NButton size="small">
-                <template #icon
-                  ><NIcon><ScrollText /></NIcon
-                ></template>
-                {{ $t('audit.title') }}
-              </NButton>
-            </NuxtLink>
           </NSpace>
         </template>
         <div v-if="applications.length" role="region" :aria-label="$t('cvca.myApplications')">
@@ -260,14 +263,15 @@ onMounted(async () => {
         <NEmpty v-else :description="$t('cvca.empty')" />
       </NCard>
 
-      <NCard v-if="isAdmin" :title="$t('nav.admin')" size="small">
+      <NCard v-if="showAdmin" :title="$t('nav.admin')" size="small">
+        <template #header-extra><AdminOnlyBadge /></template>
         <NAlert type="warning" :show-icon="false">{{ $t('cvca.adminActionsHint') }}</NAlert>
         <NSpace style="margin-top: 12px">
           <NButton :loading="rolloverBusy" @click="confirmRollover">
             <template #icon
               ><NIcon><RotateCcw /></NIcon
             ></template>
-            {{ $t('cvca.rollover') }}
+            {{ $t('cvca.rollover') }}<AdminActionIcon />
           </NButton>
         </NSpace>
       </NCard>

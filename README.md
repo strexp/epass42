@@ -112,7 +112,8 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
 - **M8** delivery: masked preview, one-time reveal, delivery modes and history — done.
 - **M9** PKD role: REST, LDIF dump, a built-in read-only LDAP server and the
   OpenLDAP LDIF schema — done.
-- **M10** CSCA Master List generation, publication and verification — done.
+- **M10** CSCA Master List generation, publication and verification, now owned by the
+  independent `ml` role with an administrator-only UI and public PKD reads — done.
 - **M11** frontend (Nuxt 4 SPA + Naive UI): i18n (en), dark mode, API client,
   applicant/admin flows, masked preview and one-time claim — done.
 - **M18** CSCA-issued LDS2 Signer certificates (LDS2-TS/V/B), certificate-type

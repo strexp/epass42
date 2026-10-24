@@ -13,14 +13,26 @@ const ADMIN = {
   dn42: { asn: 4242422189, active_mnt: 'EXAMPLE-CSCA-MNT', mnt_by: ['EXAMPLE-CSCA-MNT'] },
 }
 
+const ML_ADMIN = {
+  sub: 'ml-admin',
+  dn42: { asn: 4242422190, active_mnt: 'EXAMPLE-ML-MNT', mnt_by: ['EXAMPLE-ML-MNT'] },
+}
+
 async function setup() {
   const oidc = new FakeOidc()
   oidc.set('csca-client', { subject: ADMIN.sub, claims: ADMIN })
   const built = await makeTestApp(oidc, { csca: { bootstrap: true } })
   // Publish a CRL and a Master List.
   await built.csca.generateCrl()
-  await built.csca.generateMasterList()
-  return { app: built.app, db: built.dbHandle.db, config: built.config, oidc, csca: built.csca }
+  await built.ml.generateMasterList()
+  return {
+    app: built.app,
+    db: built.dbHandle.db,
+    config: built.config,
+    oidc,
+    csca: built.csca,
+    ml: built.ml,
+  }
 }
 
 describe('M9 PKD REST and LDIF', () => {
@@ -46,6 +58,31 @@ describe('M9 PKD REST and LDIF', () => {
 
     const missing = await app.inject({ method: 'GET', url: '/pkd/objects/csca-999.der' })
     expect(missing.statusCode).toBe(404)
+  })
+
+  it('publishes ML signer certificates publicly in the PKD', async () => {
+    const { app } = await setup()
+
+    const list = await app.inject({ method: 'GET', url: '/pkd/ml-signers' })
+    expect(list.statusCode).toBe(200)
+    const items = list.json().items as { id: string; status: string; fingerprintSha256: string }[]
+    expect(items.length).toBeGreaterThanOrEqual(1)
+    expect(items[0]!.status).toBe('active')
+    expect(items[0]!.fingerprintSha256).toMatch(/^[0-9a-f]{64}$/)
+
+    const der = await app.inject({
+      method: 'GET',
+      url: `/pkd/objects/${items[0]!.id}.der`,
+    })
+    expect(der.statusCode).toBe(200)
+    expect(der.rawPayload[0]).toBe(0x30)
+
+    const pem = await app.inject({
+      method: 'GET',
+      url: `/pkd/objects/${items[0]!.id}.pem`,
+    })
+    expect(pem.statusCode).toBe(200)
+    expect(pem.body).toContain('BEGIN CERTIFICATE')
   })
 
   it('publishes active and revoked DSCs with policy, type, validity and URL', async () => {
@@ -177,18 +214,20 @@ describe('M9 PKD REST and LDIF', () => {
   it('generates a Master List via the admin endpoint', async () => {
     const { app, oidc } = await setup()
     oidc.set('csca-client', { subject: ADMIN.sub, claims: ADMIN })
-    const start = await app.inject({ method: 'GET', url: '/auth/csca/login' })
+    oidc.set('ml-client', { subject: ML_ADMIN.sub, claims: ML_ADMIN })
+    const start = await app.inject({ method: 'GET', url: '/auth/ml/login' })
     const state = new URL(start.headers.location as string).searchParams.get('state')
     const callback = await app.inject({
       method: 'GET',
-      url: `/auth/csca/callback?code=x&state=${state}`,
+      url: `/auth/ml/callback?code=x&state=${state}`,
     })
-    const cookie = callback.cookies.find((entry) => entry.name === 'epass42_csca_sid')!
+    const cookie = callback.cookies.find((entry) => entry.name === 'epass42_ml_sid')!
 
     const created = await app.inject({
       method: 'POST',
-      url: '/pkd/masterlists',
+      url: '/ml/masterlists',
       headers: { cookie: `${cookie.name}=${cookie.value}` },
+      payload: { confirm: true },
     })
     expect(created.statusCode).toBe(201)
     expect(created.json().id).toMatch(/^ml-/)
@@ -309,8 +348,8 @@ describe('M9 read-only LDAP server', () => {
   })
 
   it('marks only the newest master list as latest', async () => {
-    const { app, csca } = await setup()
-    const newest = await csca.generateMasterList()
+    const { app, ml } = await setup()
+    const newest = await ml.generateMasterList()
     const list = await app.inject({ method: 'GET', url: '/pkd/masterlists' })
     const items = list.json().items as { id: string; latest: boolean }[]
     expect(items.filter((item) => item.latest)).toHaveLength(1)

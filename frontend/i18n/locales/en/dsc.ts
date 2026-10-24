@@ -2,6 +2,8 @@
  * English messages for the personalization (DSC) realm.
  */
 export default {
+  applyHint:
+    'Provide the document details and a photo; after an administrator reviews it, you can claim the personalization file.',
   applyTitle: 'Request a personalization file',
   applyIntro:
     'Provide the document details and a clear photo. An administrator reviews the request, after which the personalization file can be claimed once.',

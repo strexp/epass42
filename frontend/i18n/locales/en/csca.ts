@@ -20,7 +20,7 @@ export default {
   lds2ValidityHint:
     'LDS2 Signer certificates default to 10 years and 3 months (Doc 9303-12 Table 1).',
   subjectNameRule:
-    "Use only letters, digits, spaces and . _ - ' ( ) & @; commas, quotes, backslashes, semicolons, angle brackets and equals signs are not allowed.",
+    "Use only letters, digits, spaces and . _ - ' ( ) & {'@'}; commas, quotes, backslashes, semicolons, angle brackets and equals signs are not allowed.",
   subjectCn: 'Certificate common name',
   subjectO: 'Organisation (O)',
   subjectOu: 'Organisational unit (OU)',
@@ -57,9 +57,6 @@ export default {
   rollover: 'Roll over CSCA key',
   rolloverWarning:
     'This creates a new CSCA key and publishes a link certificate from the previous key. Already-issued certificates stay valid, but the change cannot be undone. Continue?',
-  masterList: 'Generate master list',
-  masterListWarning:
-    'This regenerates and publishes the CSCA master list from the current certificates. Continue?',
   adminActionsHint:
     'Authority-level operations. Each one asks for confirmation and cannot be undone.',
   crl: 'CRL',

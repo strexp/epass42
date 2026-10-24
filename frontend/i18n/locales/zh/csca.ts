@@ -18,7 +18,7 @@ export default {
   lds2KeyHint: ' LDS2 签名者证书的公钥必须为 ECDSA（P-256 或 P-384）。',
   lds2ValidityHint: 'LDS2 签名者证书默认有效期为 10 年 3 个月（Doc 9303-12 Table 1）。',
   subjectNameRule:
-    "只能使用字母、数字、空格及 . _ - ' ( ) & @，不能包含逗号、引号、反斜杠、分号、尖括号或等号。",
+    "只能使用字母、数字、空格及 . _ - ' ( ) & {'@'}，不能包含逗号、引号、反斜杠、分号、尖括号或等号。",
   subjectCn: '证书通用名称',
   subjectO: '组织（O）',
   subjectOu: '组织单位（OU）',
@@ -54,8 +54,6 @@ export default {
   rollover: '轮换 CSCA 密钥',
   rolloverWarning:
     '将生成新的 CSCA 密钥，并发布一张链接证书把它与旧密钥相连。已签发的证书仍然有效，但此操作不可撤销。是否继续？',
-  masterList: '生成主列表',
-  masterListWarning: '将根据当前证书重新生成并发布 CSCA 主列表。是否继续？',
   adminActionsHint: '证书颁发机构级别的操作。每一项都需要确认，且不可撤销。',
   crl: 'CRL',
   privateKey: '私钥',

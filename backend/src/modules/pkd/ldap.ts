@@ -52,6 +52,10 @@ export function buildEntries(db: Db, config: AppConfig): LdapEntry[] {
       dn: `ou=dsc,${base}`,
       attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['dsc'] },
     },
+    {
+      dn: `ou=ml-signer,${base}`,
+      attributes: { objectclass: ['top', 'organizationalUnit'], ou: ['ml-signer'] },
+    },
   ]
   for (const object of listObjects(db, config)) {
     entries.push(entryFor(base, object))
@@ -74,9 +78,10 @@ function entryFor(base: string, object: PkdObject): LdapEntry {
       },
     }
   }
-  if (object.kind === 'dsc') {
+  if (object.kind === 'dsc' || object.kind === 'ml-signer') {
+    const ou = object.kind === 'ml-signer' ? 'ml-signer' : 'dsc'
     return {
-      dn: `cn=${object.cn},ou=dsc,${base}`,
+      dn: `cn=${object.cn},ou=${ou},${base}`,
       attributes: {
         objectclass: ['top', 'inetOrgPerson', 'pkiUser'],
         cn: [object.cn],

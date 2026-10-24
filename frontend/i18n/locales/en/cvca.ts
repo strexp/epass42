@@ -7,7 +7,7 @@ export default {
   stepReview: 'Review and submit',
   reviewSummary: 'Review the application before submitting it for approval.',
   subjectNameRule:
-    "Use only letters, digits, spaces and . _ - ' ( ) & @; commas, quotes, backslashes, semicolons, angle brackets and equals signs are not allowed.",
+    "Use only letters, digits, spaces and . _ - ' ( ) & {'@'}; commas, quotes, backslashes, semicolons, angle brackets and equals signs are not allowed.",
   subjectCn: 'Certificate common name',
   holderMnemonic: 'Holder mnemonic',
   holderMnemonicHint:

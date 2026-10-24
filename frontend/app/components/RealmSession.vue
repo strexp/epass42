@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NAvatar, NButton, NCard, NDropdown, NIcon, NTag, NText } from 'naive-ui'
+import { NAvatar, NButton, NCard, NDropdown, NIcon, NSpace, NTag, NText } from 'naive-ui'
 import { ChevronDown, LogIn, LogOut, ShieldCheck, ShieldOff } from '@lucide/vue'
 import { computed, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
@@ -13,6 +13,7 @@ const { t } = useI18n()
 const { config, load } = usePkdConfig()
 
 const me = computed(() => auth.realms[props.realm].me)
+const adminMode = computed(() => auth.realms[props.realm].adminMode)
 const label = computed(
   () =>
     ({
@@ -20,13 +21,16 @@ const label = computed(
       cvca: t('nav.cvca'),
       dv: t('nav.dv'),
       dsc: t('nav.dsc'),
+      ml: t('nav.ml'),
     })[props.realm],
 )
 const providers = computed(() => config.value?.oauthProviders[props.realm] ?? [])
 /** The realm avatar colour. */
 const avatarColor = computed(() => {
   if (!me.value) return '#767676'
-  return { csca: '#2080f0', cvca: '#7c3aed', dv: '#0d9488', dsc: '#18a058' }[props.realm]
+  return { csca: '#2080f0', cvca: '#7c3aed', dv: '#0d9488', dsc: '#18a058', ml: '#d97706' }[
+    props.realm
+  ]
 })
 /** Login-method options when more than one provider is configured. */
 const options = computed(() =>
@@ -40,6 +44,10 @@ onMounted(async () => {
 
 function login(provider?: number): void {
   auth.login(props.realm, route.fullPath, provider)
+}
+
+function toggleAdminMode(): void {
+  auth.toggleAdminMode(props.realm)
 }
 
 async function logout(): Promise<void> {
@@ -85,12 +93,26 @@ async function logout(): Promise<void> {
           ></template>
           {{ $t('common.login') }}
         </NButton>
-        <NButton v-else size="small" @click="logout">
-          <template #icon
-            ><NIcon><LogOut /></NIcon
-          ></template>
-          {{ $t('common.logout') }}
-        </NButton>
+        <NSpace v-else align="center" :size="8">
+          <NButton
+            v-if="me?.isAdmin"
+            size="small"
+            :type="adminMode ? 'primary' : 'default'"
+            :aria-pressed="adminMode"
+            @click="toggleAdminMode"
+          >
+            <template #icon
+              ><NIcon><ShieldCheck v-if="adminMode" /><ShieldOff v-else /></NIcon
+            ></template>
+            {{ adminMode ? $t('auth.adminModeOn') : $t('auth.adminModeOff') }}
+          </NButton>
+          <NButton size="small" @click="logout">
+            <template #icon
+              ><NIcon><LogOut /></NIcon
+            ></template>
+            {{ $t('common.logout') }}
+          </NButton>
+        </NSpace>
       </div>
     </NCard>
   </div>

@@ -37,6 +37,36 @@ export interface DvStatus {
   cvca: LifecycleCertificate | null
 }
 
+/** An ML signer certificate with the metadata shown in the ML inventory. */
+export interface MlSignerCertificate extends LifecycleCertificate {
+  serial: string
+  subjectDn: string
+  status: string
+  source: string
+  keyAlgorithm: string | null
+  notBefore: string | null
+  createdAt: string
+  fingerprintSha256: string
+}
+
+export interface MlMasterListStatus {
+  id: number
+  objectId: string
+  publishedAt: string | null
+  signerId: number | null
+  signerSerial: string | null
+  signerStatus: string | null
+  signerExpired: boolean | null
+}
+
+export interface MlStatus {
+  signer: MlSignerCertificate | null
+  latestMasterList: MlMasterListStatus | null
+  canGenerateMasterList: boolean
+  canRotateSigner: boolean
+  csca: LifecycleCertificate | null
+}
+
 /** CSCA certificate validity and signer-issuance availability. */
 export function useCscaStatus() {
   const status = useState<CscaStatus | null>('csca-lifecycle-status', () => null)
@@ -64,6 +94,24 @@ export function useDscStatus() {
     try {
       const api = useApi()
       status.value = await api<DscStatus>('/dsc/status')
+    } catch {
+      status.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+  return { status, loading, refresh }
+}
+
+/** ML Signer validity and master-list generation availability. */
+export function useMlStatus() {
+  const status = useState<MlStatus | null>('ml-lifecycle-status', () => null)
+  const loading = ref(false)
+  async function refresh(): Promise<void> {
+    loading.value = true
+    try {
+      const api = useApi()
+      status.value = await api<MlStatus>('/ml/status')
     } catch {
       status.value = null
     } finally {

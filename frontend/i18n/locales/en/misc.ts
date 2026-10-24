@@ -40,6 +40,7 @@ export default {
     document_number_conflict: 'This document number already exists for your organization.',
     dsc_document_type_mismatch:
       'This Document Signer certificate is not authorized to sign this document type.',
+    ml_signer_missing: 'No ML Signer certificate exists yet. Rotate the signer to create one.',
     no_active_dsc:
       'No approved Document Signer certificate is available for this organization yet.',
     no_active_dv:
@@ -61,6 +62,8 @@ export default {
     token_expired: 'This link has expired.',
     dv_key_unavailable: 'No Document Verifier key is available for this organization yet.',
     signature_invalid: 'The signature could not be verified.',
+    ml_signer_expired: 'The ML Signer has expired. Rotate it before generating a master list.',
+    csca_missing: 'No CSCA key is available to issue the ML Signer.',
     csca_expired:
       'The CSCA certificate has expired. New DSC/LDS2 certificates are paused; roll the CSCA key over first.',
     nia_dsc_expired:

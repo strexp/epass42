@@ -23,6 +23,10 @@ export default {
   policy: 'Policy',
   validity: 'Validity',
   url: 'URL',
+  serial: 'Serial',
+  mlSigners: 'Master List signers',
+  mlSignersHint:
+    'Public Master List Signer certificates (active and retired), used to sign the CSCA master lists.',
   status: 'Status',
   revoked: 'Revoked documents',
   revokedHint:

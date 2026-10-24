@@ -21,15 +21,18 @@ interface RealmState {
   me: Me | null
   loading: boolean
   loaded: boolean
+  /** UI-only administrator mode; authorization is still enforced by the API. */
+  adminMode: boolean
 }
 
 /** Per-realm authentication state (the two realms never share a session). */
 export const useAuthStore = defineStore('auth', () => {
   const realms = reactive<Record<Realm, RealmState>>({
-    csca: { me: null, loading: false, loaded: false },
-    cvca: { me: null, loading: false, loaded: false },
-    dv: { me: null, loading: false, loaded: false },
-    dsc: { me: null, loading: false, loaded: false },
+    csca: { me: null, loading: false, loaded: false, adminMode: true },
+    cvca: { me: null, loading: false, loaded: false, adminMode: true },
+    dv: { me: null, loading: false, loaded: false, adminMode: true },
+    dsc: { me: null, loading: false, loaded: false, adminMode: true },
+    ml: { me: null, loading: false, loaded: false, adminMode: true },
   })
 
   async function fetchMe(realm: Realm): Promise<Me | null> {
@@ -72,5 +75,10 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = `${base}/auth/${realm}/login${query ? `?${query}` : ''}`
   }
 
-  return { realms, fetchMe, logout, login }
+  /** Toggles the UI-only administrator mode for one realm. */
+  function toggleAdminMode(realm: Realm): void {
+    realms[realm].adminMode = !realms[realm].adminMode
+  }
+
+  return { realms, fetchMe, logout, login, toggleAdminMode }
 })

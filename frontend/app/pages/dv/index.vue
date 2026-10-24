@@ -13,11 +13,12 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { FilePlus2, RefreshCw, ScrollText } from '@lucide/vue'
+import { FilePlus2, RefreshCw, RotateCcw, ScrollText } from '@lucide/vue'
 import { computed, h, onMounted, ref } from 'vue'
 import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import StatusTag from '~/components/common/StatusTag.vue'
+import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
 import { useDvStatus } from '~/composables/useLifecycleStatus'
 
@@ -33,7 +34,7 @@ interface Application {
   createdAt: string
 }
 
-const { state, ensureLoaded } = useRealm('dv')
+const { state, ensureLoaded, showAdmin } = useRealm('dv')
 const api = useApi()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
@@ -153,20 +154,30 @@ onMounted(async () => {
       <NCard v-if="signedIn" :title="$t('dv.applyTitle')" size="small">
         <NText depth="3">{{ $t('dv.applyHint') }}</NText>
         <template #action>
-          <NuxtLink v-if="lifecycle?.canIssueTerminals !== false" to="/dv/apply">
-            <NButton type="primary">
+          <NSpace>
+            <NuxtLink v-if="lifecycle?.canIssueTerminals !== false" to="/dv/apply">
+              <NButton type="primary">
+                <template #icon
+                  ><NIcon><FilePlus2 /></NIcon
+                ></template>
+                {{ $t('nav.apply') }}
+              </NButton>
+            </NuxtLink>
+            <NButton v-else type="primary" disabled>
               <template #icon
                 ><NIcon><FilePlus2 /></NIcon
               ></template>
               {{ $t('nav.apply') }}
             </NButton>
-          </NuxtLink>
-          <NButton v-else type="primary" disabled>
-            <template #icon
-              ><NIcon><FilePlus2 /></NIcon
-            ></template>
-            {{ $t('nav.apply') }}
-          </NButton>
+            <NuxtLink v-if="showAdmin" to="/dv/audit">
+              <NButton>
+                <template #icon
+                  ><NIcon><ScrollText /></NIcon
+                ></template>
+                {{ $t('audit.title') }}<AdminActionIcon />
+              </NButton>
+            </NuxtLink>
+          </NSpace>
         </template>
       </NCard>
 
@@ -174,7 +185,8 @@ onMounted(async () => {
         <NText depth="3">{{ $t('auth.signInTo', { realm: 'DV' }) }}</NText>
       </NCard>
 
-      <NCard v-if="signedIn && isAdmin" size="small" :title="$t('dv.niaDvTitle')">
+      <NCard v-if="showAdmin" size="small" :title="$t('dv.niaDvTitle')">
+        <template #header-extra><AdminOnlyBadge /></template>
         <NDescriptions v-if="lifecycle?.niaDv" :column="3" size="small">
           <NDescriptionsItem :label="$t('dv.niaDvReference')">
             <span class="epass42-mono">{{ lifecycle.niaDv.holderReference }}</span>
@@ -201,7 +213,10 @@ onMounted(async () => {
             :disabled="!lifecycle?.canRotateNiaDv"
             @click="confirmRotateNiaDv"
           >
-            {{ $t('dv.rotateNiaDv') }}
+            <template #icon
+              ><NIcon><RotateCcw /></NIcon
+            ></template>
+            {{ $t('dv.rotateNiaDv') }}<AdminActionIcon />
           </NButton>
         </template>
       </NCard>
@@ -219,14 +234,6 @@ onMounted(async () => {
               ></template>
               {{ $t('common.reload') }}
             </NButton>
-            <NuxtLink v-if="isAdmin" to="/dv/audit">
-              <NButton size="small">
-                <template #icon
-                  ><NIcon><ScrollText /></NIcon
-                ></template>
-                {{ $t('audit.title') }}
-              </NButton>
-            </NuxtLink>
           </NSpace>
         </template>
         <div v-if="applications.length" role="region" :aria-label="$t('dv.myApplications')">

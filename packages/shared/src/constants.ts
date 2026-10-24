@@ -11,15 +11,15 @@ export const COUNTRY_ALPHA2 = 'XD' as const
 export const COUNTRY_ALPHA3 = 'XDN' as const
 
 /** The available service roles; a deployment may enable a subset. */
-export const ROLES = ['pkd', 'csca', 'cvca', 'dv', 'dsc'] as const
+export const ROLES = ['pkd', 'csca', 'cvca', 'dv', 'dsc', 'ml'] as const
 export type Role = (typeof ROLES)[number]
 
 /**
- * The independent OAuth realms (CSCA, CVCA, DV and DSC logins are separate).
+ * The independent OAuth realms (CSCA, CVCA, DV, DSC and ML logins are separate).
  * CVCA is the country-level authorization PKI trust anchor (Doc 9303-12 §3.2);
  * DV holders log in to the DV realm to apply for terminal certificates.
  */
-export const REALMS = ['csca', 'cvca', 'dv', 'dsc'] as const
+export const REALMS = ['csca', 'cvca', 'dv', 'dsc', 'ml'] as const
 export type Realm = (typeof REALMS)[number]
 
 /** Maximum sizes for DSC signing requests (bytes). */

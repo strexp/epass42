@@ -86,18 +86,25 @@ const PROVIDERS = [
     clientId: 'dsc-client',
     scopes: ['openid', 'email', 'dn42'],
   },
+  {
+    realm: 'ml',
+    issuer: 'https://ml.idp.test',
+    clientId: 'ml-client',
+    scopes: ['openid', 'email', 'dn42'],
+  },
 ] as const
 
 /** Base raw configuration used by every test (merged with per-test overrides). */
 const TEST_CONFIG: RawConfig = {
   cookieSecure: false,
   sessionSecret: 'test-session-secret-0123456789',
-  roles: ['pkd', 'csca', 'cvca', 'dv', 'dsc'],
+  roles: ['pkd', 'csca', 'cvca', 'dv', 'dsc', 'ml'],
   adminMnts: {
     csca: ['EXAMPLE-CSCA-MNT'],
     cvca: ['EXAMPLE-CVCA-MNT'],
     dv: ['EXAMPLE-DV-MNT'],
     dsc: ['EXAMPLE-DSC-MNT'],
+    ml: ['EXAMPLE-ML-MNT'],
   },
   csca: { bootstrap: false, keyBits: 2048 },
   cvca: { bootstrap: false, keyBits: 2048 },

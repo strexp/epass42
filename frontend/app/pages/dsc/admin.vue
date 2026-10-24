@@ -15,6 +15,8 @@ import { errorMessageKey } from '~/composables/useApi'
 import { useRealm } from '~/composables/useRealm'
 import { downloadText } from '~/utils/download'
 import StatusTag from '~/components/common/StatusTag.vue'
+import AdminOnlyBadge from '~/components/common/AdminOnlyBadge.vue'
+import AdminActionIcon from '~/components/common/AdminActionIcon.vue'
 import ExpiryAlert from '~/components/common/ExpiryAlert.vue'
 import { useDscStatus } from '~/composables/useLifecycleStatus'
 
@@ -29,7 +31,7 @@ interface RequestRow {
   deliveryMode: string
 }
 
-const { state, ensureLoaded } = useRealm('dsc')
+const { state, ensureLoaded, showAdmin } = useRealm('dsc')
 const api = useApi()
 const { t } = useI18n()
 const { formatDate } = useDateTime()
@@ -155,7 +157,7 @@ const queueColumns = computed(() => [
                 },
                 {
                   icon: () => h(NIcon, null, { default: () => h(Download) }),
-                  default: () => t('dsc.produce'),
+                  default: () => [t('dsc.produce'), h(AdminActionIcon)],
                 },
               ),
             default: () => t('dsc.produceConfirm'),
@@ -217,7 +219,8 @@ onMounted(async () => {
         <NEmpty v-else :description="$t('dsc.emptyQueue')" />
       </NCard>
 
-      <NCard v-if="isAdmin" :title="$t('dsc.pendingQueue')" size="small">
+      <NCard v-if="showAdmin" :title="$t('dsc.pendingQueue')" size="small">
+        <template #header-extra><AdminOnlyBadge /></template>
         <div v-if="queue.length" role="region" :aria-label="$t('dsc.pendingQueue')">
           <NDataTable
             :columns="queueColumns"

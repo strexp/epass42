@@ -1,23 +1,19 @@
 /**
  * PKD REST surface (M9/T9.2, Appendix D):
- * `GET /pkd/{certificates,crls,masterlists,dscs,revoked,revoked/:hash,ldif}`,
+ * `GET /pkd/{certificates,crls,masterlists,ml-signers,dscs,revoked,revoked/:hash,ldif}`,
  * `POST /pkd/revoked/check`, `GET /pkd/objects/:id.:format`.
  */
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { desc } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { derToPem } from '@epass42/pki'
+import { derToPem, parseCertificatePem, sha256 } from '@epass42/pki'
 import { documentIssueTypeSchema } from '@epass42/shared'
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
 import { dscCert, dvCert, masterList } from '../../db/schema'
-import { writeAudit } from '../../audit/audit'
-import { requireAdmin, type AuthContext } from '../auth/middleware'
-import type { SessionStore } from '../auth/session'
 import { certMetadata } from '../csca/routeContext'
-import type { CscaService } from '../csca/service'
 import { parsePermissions } from '../cvca/service'
 import { listObjects } from './directory'
 import { buildLdif } from './ldif'
@@ -35,8 +31,6 @@ import {
 export interface PkdRouteDeps {
   config: AppConfig
   db: Db
-  sessions: SessionStore
-  csca: CscaService
 }
 
 /** The MRZ lookup fields a relying party supplies to check revocation. */
@@ -89,6 +83,30 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
       publishedAt: row.publishedAt,
       createdAt: row.createdAt,
     }))
+    return { total: items.length, items }
+  })
+
+  // Master List Signer certificates are published for relying parties (active
+  // and retired) but are not Document Signers.
+  server.get('/pkd/ml-signers', async () => {
+    const items = db
+      .select()
+      .from(dscCert)
+      .where(eq(dscCert.source, 'ml-signer'))
+      .orderBy(desc(dscCert.id))
+      .all()
+      .map((row) => {
+        const der = new Uint8Array(parseCertificatePem(row.certPem).rawData)
+        return {
+          id: `ml-signer-${row.id}`,
+          serial: row.serial,
+          subject: row.subjectDn,
+          status: row.status,
+          notBefore: row.notBefore,
+          notAfter: row.notAfter,
+          fingerprintSha256: Buffer.from(sha256(der)).toString('hex'),
+        }
+      })
     return { total: items.length, items }
   })
 
@@ -229,21 +247,4 @@ export function registerPkdRoutes(app: FastifyInstance, deps: PkdRouteDeps): voi
   server.get('/pkd/ldif', async (_request, reply) => {
     return reply.type('text/plain; charset=utf-8').send(buildLdif(db, config))
   })
-
-  server.post(
-    '/pkd/masterlists',
-    { preHandler: requireAdmin(deps as unknown as AuthContext, 'csca') },
-    async (request, reply) => {
-      const row = await deps.csca.generateMasterList()
-      writeAudit(db, {
-        actorAccountId: request.principal?.account.id ?? null,
-        realm: 'csca',
-        action: 'pkd.masterlist.generate',
-        targetType: 'master_list',
-        targetId: row.id,
-        ip: request.ip,
-      })
-      return reply.code(201).send({ id: `ml-${row.id}` })
-    },
-  )
 }

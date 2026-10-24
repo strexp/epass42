@@ -45,6 +45,8 @@ import { registerCvcaRoutes } from './modules/cvca/routes'
 import { DscService } from './modules/dsc/service'
 import { registerDscRoutes } from './modules/dsc/routes'
 import { registerDvRoutes } from './modules/dv/routes'
+import { MlService } from './modules/ml/service'
+import { registerMlRoutes } from './modules/ml/routes'
 import { registerPkdRoutes } from './modules/pkd/rest'
 import { WhoisMntResolver, type MntResolver } from './modules/jurisdiction/whois'
 import { createMailer } from './mail/mailer'
@@ -72,6 +74,7 @@ export interface BuiltApp {
   csca: CscaService
   cvca: CvcaService
   dsc: DscService
+  ml: MlService
 }
 
 const defaultDriverFactory: OidcDriverFactory = (provider, redirectUri) => {
@@ -199,7 +202,9 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
   const sessions = new SessionStore(dbHandle.db, config)
   const keks = resolveKeks(config, config.dataDir)
   const csca = new CscaService({ db: dbHandle.db, config, keks })
-  if (realmEnabled(config, 'csca')) {
+  // The ML role needs the CSCA key to issue its signer certificate, even when
+  // the CSCA service routes themselves are not enabled.
+  if (realmEnabled(config, 'csca') || realmEnabled(config, 'ml')) {
     await csca.ensureCscaKey()
     // Verify the stored key can be opened, so a KEK mismatch is reported at
     // startup rather than when issuing a DSC.
@@ -241,6 +246,19 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
     }
   }
   const dsc = new DscService(dbHandle.db, config, csca, cvca)
+  const ml = new MlService({ db: dbHandle.db, config, keks }, csca)
+
+  // Prepare the ML Signer certificate at startup when the ML role opts in.
+  // Failures are logged rather than aborting: the ML status endpoint reports
+  // the missing signer and an administrator can retry the rotation.
+  if (realmEnabled(config, 'ml') && config.ml.bootstrap) {
+    try {
+      const signer = await ml.ensureSigner()
+      if (signer) app.log.info({ signerId: signer.id }, 'ML signer ready')
+    } catch (error) {
+      app.log.error({ err: error }, 'failed to prepare the ML Signer certificate')
+    }
+  }
 
   // Prepare the system NIA Document Signer certificate at startup so it is
   // always present in the certificate registry and the PKD directory.  Only
@@ -271,10 +289,13 @@ export async function buildApp(options: BuildAppOptions): Promise<BuiltApp> {
     const resolver = options.mntResolver ?? new WhoisMntResolver(config.jurisdiction)
     registerDscRoutes(app, { config, db: dbHandle.db, sessions, service: dsc, mailer, resolver })
   }
+  if (realmEnabled(config, 'ml')) {
+    registerMlRoutes(app, { config, db: dbHandle.db, sessions, service: ml })
+  }
   if ((config.roles as readonly string[]).includes('pkd')) {
-    registerPkdRoutes(app, { config, db: dbHandle.db, sessions, csca })
+    registerPkdRoutes(app, { config, db: dbHandle.db })
   }
 
   await app.ready()
-  return { app, config, dbHandle, providers, sessions, csca, cvca, dsc }
+  return { app, config, dbHandle, providers, sessions, csca, cvca, dsc, ml }
 }

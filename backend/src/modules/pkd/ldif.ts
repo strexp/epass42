@@ -32,8 +32,9 @@ function entryFor(config: AppConfig, object: PkdObject): string {
     lines.push(`cn: ${object.cn}`, `sn: ${object.cn}`)
     if (object.subject) lines.push(`description: ${object.subject}`)
     lines.push(`cACertificate;binary:: ${wrap(base64Value(object.der)).join('\n ')}`)
-  } else if (object.kind === 'dsc') {
-    lines.push(`dn: cn=${object.cn},ou=dsc,${base}`)
+  } else if (object.kind === 'dsc' || object.kind === 'ml-signer') {
+    const ou = object.kind === 'ml-signer' ? 'ml-signer' : 'dsc'
+    lines.push(`dn: cn=${object.cn},ou=${ou},${base}`)
     lines.push('objectClass: top', 'objectClass: inetOrgPerson', 'objectClass: pkiUser')
     lines.push(`cn: ${object.cn}`, `sn: ${object.cn}`)
     if (object.subject) lines.push(`description: ${object.subject}`)
@@ -107,6 +108,11 @@ export function buildLdif(db: Db, config: AppConfig): string {
     'objectClass: top',
     'objectClass: organizationalUnit',
     'ou: dsc',
+    '',
+    `dn: ou=ml-signer,${base}`,
+    'objectClass: top',
+    'objectClass: organizationalUnit',
+    'ou: ml-signer',
     '',
   ]
   const entries = listObjects(db, config).map(entryFor.bind(null, config))

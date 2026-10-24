@@ -6,13 +6,12 @@
  */
 import type { AppConfig } from '../../config'
 import type { Db } from '../../db/client'
-import { crl, cscaKey, dscApplication, dscCert, masterList } from '../../db/schema'
+import { crl, cscaKey, dscApplication, dscCert } from '../../db/schema'
 
 export type CscaKeyRow = typeof cscaKey.$inferSelect
 export type DscCertRow = typeof dscCert.$inferSelect
 export type DscApplicationRow = typeof dscApplication.$inferSelect
 export type CrlRow = typeof crl.$inferSelect
-export type MasterListRow = typeof masterList.$inferSelect
 
 /** Collaborators for the CSCA services. */
 export interface CscaContext {

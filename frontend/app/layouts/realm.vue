@@ -7,6 +7,7 @@ const route = useRoute()
 const realm = computed<Realm>(() => {
   if (route.path.startsWith('/dv')) return 'dv'
   if (route.path.startsWith('/cvca')) return 'cvca'
+  if (route.path.startsWith('/ml')) return 'ml'
   return route.path.startsWith('/csca') ? 'csca' : 'dsc'
 })
 </script>

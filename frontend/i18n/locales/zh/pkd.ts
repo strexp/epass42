@@ -21,6 +21,9 @@ export default {
   policy: '策略',
   validity: '有效期',
   url: '网址',
+  serial: '序列号',
+  mlSigners: '主列表签名者',
+  mlSignersHint: '公开的主列表签名者证书（有效与已退役），用于签署 CSCA 主列表。',
   status: '状态',
   revoked: '吊销证件',
   revokedHint:
