@@ -17,6 +17,7 @@ describe('backend e2e — system and authentication', () => {
       const config = await backend.client.get('/api/config')
       expect(config.status).toBe(200)
       const body = config.json<{
+        env: string
         roles: string[]
         countryAlpha2: string
         countryAlpha3: string
@@ -26,6 +27,7 @@ describe('backend e2e — system and authentication', () => {
         >
         oauthProviders: Record<string, { id: number; alias: string }[]>
       }>()
+      expect(body.env).toBe('development')
       expect(body.roles).toEqual(['pkd', 'csca', 'cvca', 'dv', 'dsc', 'ml'])
       expect(body.countryAlpha2).toBe('XD')
       expect(body.countryAlpha3).toBe('XDN')

@@ -21,6 +21,7 @@ export function registerConfigRoutes(
         issuer: record.config.issuer,
       }))
     return {
+      env: deps.config.env,
       roles: deps.config.roles,
       countryAlpha2: deps.config.countryAlpha2,
       countryAlpha3: deps.config.countryAlpha3,

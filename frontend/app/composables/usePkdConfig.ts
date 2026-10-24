@@ -10,6 +10,7 @@ export interface CertificatePolicyConfig {
 
 /** The `/api/config` payload. */
 export interface PkdConfig {
+  env: 'development' | 'test' | 'production'
   roles: Role[]
   countryAlpha2: string
   countryAlpha3: string

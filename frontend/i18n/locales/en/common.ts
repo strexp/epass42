@@ -25,6 +25,19 @@ export default {
     status: 'Status',
     apply: 'Apply',
   },
+  devWarning: {
+    iconLabel: 'Development environment warning',
+    title: 'Development Environment Warning',
+    headline: 'This site is running in the development environment',
+    intro:
+      'This site is for testing and demonstration only; do not use it for production business.',
+    dataPersistence:
+      'Data may not persist and may be deleted when the service restarts or is cleaned up.',
+    dataLoss: 'Data may be wiped or reset during testing; do not store production data.',
+    security: 'Security may not be guaranteed; do not submit sensitive information.',
+    reopenHint: 'You can reopen this warning at any time from the warning icon in the page header.',
+    acknowledge: 'I understand',
+  },
   common: {
     login: 'Sign in',
     logout: 'Sign out',

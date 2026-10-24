@@ -23,6 +23,17 @@ export default {
     status: '状态',
     apply: '申请',
   },
+  devWarning: {
+    iconLabel: '开发环境警告',
+    title: '开发环境警告',
+    headline: '当前站点运行于开发环境',
+    intro: '本站点仅用于测试与演示，请勿用于正式业务。',
+    dataPersistence: '数据可能不会持久保存，服务重启或清理时可能被删除。',
+    dataLoss: '测试期间可能发生删档或重置，请勿存放正式数据。',
+    security: '安全性可能无法保证，请勿提交敏感信息。',
+    reopenHint: '可随时点击页面顶部的警告图标重新查看本提示。',
+    acknowledge: '我已知悉',
+  },
   common: {
     login: '登录',
     logout: '退出登录',

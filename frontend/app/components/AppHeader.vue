@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NButton, NDropdown, NIcon, NMenu, NSpace } from 'naive-ui'
+import { NButton, NDropdown, NIcon, NMenu, NSpace, NTooltip } from 'naive-ui'
 import {
   BookUser,
   CircleHelp,
@@ -12,8 +12,11 @@ import {
   ShieldCheck,
   BadgeCheck,
   ScanLine,
+  TriangleAlert,
 } from '@lucide/vue'
-import { computed, h } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
+import { usePkdConfig } from '~/composables/usePkdConfig'
+import { DEV_WARNING_STORAGE_KEY, shouldShowDevWarning } from '~/utils/devWarning'
 
 const { t, locales, setLocale } = useI18n()
 const route = useRoute()
@@ -66,6 +69,40 @@ const options = computed(() => [
   },
 ])
 
+const { config, load: loadPkdConfig } = usePkdConfig()
+const development = computed(() => config.value?.env === 'development')
+const devWarningOpen = ref(false)
+
+/** localStorage can throw in privacy-restricted browsers; never break the header. */
+function warningAcknowledged(): boolean {
+  try {
+    return window.localStorage.getItem(DEV_WARNING_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function onDevWarningUpdate(value: boolean): void {
+  devWarningOpen.value = value
+  if (value) return
+  try {
+    window.localStorage.setItem(DEV_WARNING_STORAGE_KEY, '1')
+  } catch {
+    // Ignore storage failures: the warning simply reappears on the next visit.
+  }
+}
+
+onMounted(async () => {
+  try {
+    await loadPkdConfig()
+  } catch {
+    return
+  }
+  if (shouldShowDevWarning(config.value?.env, warningAcknowledged())) {
+    devWarningOpen.value = true
+  }
+})
+
 /** The configured locales, for the language switcher. */
 const localeOptions = computed(() =>
   (locales.value as { code: string; name?: string }[]).map((item) => ({
@@ -112,6 +149,22 @@ function onSelect(key: string): void {
       />
     </nav>
     <NSpace class="epass42-header-actions" align="center">
+      <NTooltip v-if="development">
+        <template #trigger>
+          <NButton
+            quaternary
+            circle
+            type="warning"
+            :aria-label="$t('devWarning.iconLabel')"
+            @click="devWarningOpen = true"
+          >
+            <template #icon
+              ><NIcon><TriangleAlert /></NIcon
+            ></template>
+          </NButton>
+        </template>
+        {{ $t('devWarning.iconLabel') }}
+      </NTooltip>
       <NDropdown :options="localeOptions" @select="(key) => onLocaleSelect(String(key))">
         <NButton quaternary circle :aria-label="$t('common.language')">
           <template #icon
@@ -121,6 +174,7 @@ function onSelect(key: string): void {
       </NDropdown>
       <ThemeToggle />
     </NSpace>
+    <DevWarningModal :show="devWarningOpen" @update:show="onDevWarningUpdate" />
   </header>
 </template>
 
