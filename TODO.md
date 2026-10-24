@@ -61,7 +61,7 @@ epass42/
 │   └── shared/         # zod schema、类型、错误码、常量（OID、国家码）
 ├── backend/            # Fastify + TypeScript，模块化
 ├── frontend/           # Nuxt 4 + Naive UI
-├── scripts/            # gen-csca / gen-dsc / verify
+├── scripts/            # e2e 测试套件（packages + backend；card42 手动）
 ├── deploy/             # docker-compose、OpenLDAP schema
 └── TODO.md
 ```

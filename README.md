@@ -11,7 +11,7 @@ epass42/
 ├── packages/
 │   ├── pki/       pure functions: X.509/CRL/CMS/SOD/MasterList/data groups/perso
 │   └── shared/    zod schemas, types, error codes and constants (OIDs, country codes)
-├── scripts/       gen-csca, verify (M2)
+├── scripts/       e2e test suite (packages + backend), plus the manual card42 harness
 ├── backend/       Fastify + SQLite/Drizzle (M3–M4)
 ├── frontend/      Nuxt 4 + Naive UI (M11)
 ├── deploy/        docker-compose, Dockerfiles and the OpenLDAP schema (LDIF validation)
@@ -29,6 +29,17 @@ epass42/
 pnpm install
 pnpm check          # format:check + lint + typecheck + test
 ```
+
+### Run the e2e tests
+
+```bash
+pnpm --filter @epass42/scripts test           # both suites
+pnpm --filter @epass42/scripts test:packages  # library only (no server)
+pnpm --filter @epass42/scripts test:backend   # boots the backend on a random port
+```
+
+See [`scripts/e2e-run/README.md`](scripts/e2e-run/README.md) for what each suite
+covers and for the manual card42 harness.
 
 ### Run the backend (M3–M4)
 
@@ -61,17 +72,10 @@ pnpm dev    # backend on :3000, frontend on :3001
 
 ### Generate a CSCA (M2)
 
-```bash
-pnpm --filter @epass42/scripts exec tsx src/gen-csca.ts \
-  --out ./csca --cn "Example CSCA" --key-rsa-bits 4096 \
-  --crl-dp ldap://epass42.local/c=XD
-
-pnpm --filter @epass42/scripts exec tsx src/verify.ts \
-  cert ./csca/csca.crt --kind csca
-```
-
-`csca.key` is written as an encrypted PKCS#8 PEM (passphrase prompted, or set
-`EPASS42_KEY_PASSPHRASE`). See [`scripts/README.md`](scripts/README.md).
+CSCA generation and certificate verification are done by the backend and
+`packages/pki`; the standalone `scripts/gen-csca` / `scripts/verify` CLIs were
+removed. `scripts/` now holds the e2e test suite and the manual card42 harness
+([`scripts/README.md`](scripts/README.md)).
 
 ## Design notes
 
@@ -99,7 +103,8 @@ pnpm --filter @epass42/scripts exec tsx src/verify.ts \
 - **M1** `packages/pki` (certificates, CRL, CMS/SOD/CardSecurity, Master List,
   data groups, MRZ, SecurityInfo, perso script, verification) — core done;
   ECDSA remains optional.
-- **M2** `scripts/gen-csca` + `scripts/verify` — done.
+- **M2** CSCA/DSC generation and verification tooling — done; the standalone
+  `scripts` CLIs were later retired in favour of `packages/pki` and the backend.
 - **M3** backend skeleton: Fastify + zod/OpenAPI, SQLite/Drizzle schema and
   migrations, configuration, logging, health checks — done.
 - **M4** dual-realm OIDC authentication (`/auth/{realm}/login|callback|logout|me`),

@@ -29,14 +29,6 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run test
-      - name: M2 script check (generate CSCA and verify it)
-        env:
-          EPASS42_KEY_PASSPHRASE: ci-passphrase
-        run: |
-          pnpm --filter @epass42/scripts exec tsx src/gen-csca.ts \
-            --out "$RUNNER_TEMP/csca" --cn "ePass 42 CI CSCA" --key-rsa-bits 2048
-          pnpm --filter @epass42/scripts exec tsx src/verify.ts \
-            cert "$RUNNER_TEMP/csca/csca.crt" --kind csca
 
   build:
     needs: check

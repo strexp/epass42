@@ -3,24 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "bin": {
-    "epass42-gen-csca": "./src/gen-csca.ts",
-    "epass42-verify": "./src/verify.ts"
-  },
   "scripts": {
-    "gen-csca": "tsx src/gen-csca.ts",
-    "verify": "tsx src/verify.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "test:packages": "vitest run e2e-run/packages",
+    "test:backend": "vitest run e2e-run/backend",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@epass42/pki": "workspace:*",
-    "@epass42/shared": "workspace:*",
-    "pkijs": "^3.4.1"
+    "@epass42/shared": "workspace:*"
   },
   "devDependencies": {
+    "pkijs": "^3.4.1",
     "tsx": "^4.20.6",
-    "typescript": "~5.9.3",
     "vitest": "^5.0.2"
   }
 }
